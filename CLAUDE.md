@@ -16,7 +16,7 @@ O projeto foi **planejado antes de ser codificado**. As decisões já tomadas es
 | `docs/03-modelo-de-dados.md` | ER, constraints, índices justificados, SQL do dashboard, seed. |
 | `docs/04-contratos-api.md` | Endpoints, payloads, catálogo de erros, eventos SSE. |
 | `docs/05-sprints.md` | Escopo, critérios de aceite e testes de cada sprint. |
-| `docs/adr/` | Decisões (ADRs). **Antes de implementar algo, leia o ADR relacionado.** Os números 0015–0017 são da Sprint 0 (plataforma); os 0018–0021 vieram da revisão de 30/09. |
+| `docs/adr/` | Decisões (ADRs). **Antes de implementar algo, leia o ADR relacionado.** Os números 0015–0017 e 0022–0023 são da Sprint 0 (plataforma); os 0018–0021 vieram da revisão de 30/09. |
 | `docs/revisoes/` | Registros de revisões de arquitetura (o que motivou, o que foi adotado e o que foi rejeitado). |
 | `docs/JORNADA.md` | Narrativa do projeto por fase. |
 | `DECISOES.md` | Índice curto das decisões e premissas (entregável do enunciado). |
@@ -38,7 +38,7 @@ O projeto foi **planejado antes de ser codificado**. As decisões já tomadas es
 - **Testes:** xUnit, Testcontainers (PostgreSQL real, **nunca** banco em memória), NetArchTest, Vitest + Testing Library, MSW (mock de API no front) e Playwright (E2E, Sprint 5).
 - **Infra:** Docker Compose com `db`, `migrator`, `api`, `worker` e `web`. CI com GitHub Actions.
 
-Bibliotecas aprovadas até agora: Npgsql.EntityFrameworkCore.PostgreSQL, Pgvector.EntityFrameworkCore, Microsoft.Extensions.AI, Microsoft.Extensions.AI.OpenAI, Microsoft.AspNetCore.OpenApi, Swashbuckle.AspNetCore.SwaggerUI (só a UI), Bogus (seed), xUnit, Testcontainers.PostgreSql, NetArchTest.Rules e Shouldly (asserções; **não** use FluentAssertions, cuja v8+ tem licença comercial). A partir da Sprint 2 (ADR-0019): OpenTelemetry.Extensions.Hosting, OpenTelemetry.Exporter.OpenTelemetryProtocol, OpenTelemetry.Instrumentation.AspNetCore, OpenTelemetry.Instrumentation.Http e Npgsql.OpenTelemetry. As decisões pendentes da Sprint 0 (logs, UI kit do front) serão registradas em ADR.
+Bibliotecas aprovadas até agora: Npgsql.EntityFrameworkCore.PostgreSQL, Pgvector.EntityFrameworkCore, Microsoft.EntityFrameworkCore.Design (CLI de migrations), Microsoft.Extensions.Hosting (Worker e Migrator), Microsoft.Extensions.AI, Microsoft.Extensions.AI.OpenAI, Microsoft.AspNetCore.OpenApi, Swashbuckle.AspNetCore.SwaggerUI (só a UI), Bogus (seed), xUnit v3 (sobre o Microsoft.Testing.Platform), Microsoft.AspNetCore.Mvc.Testing (`WebApplicationFactory`), Testcontainers.PostgreSql, NetArchTest.Rules e Shouldly (asserções; **não** use FluentAssertions, cuja v8+ tem licença comercial). No front, além da stack acima: ESLint, Prettier, jsdom, @testing-library/user-event e @testing-library/jest-dom. As versões ficam fixadas em `Directory.Packages.props` (gestão central) e no `package.json`. A partir da Sprint 2 (ADR-0019): OpenTelemetry.Extensions.Hosting, OpenTelemetry.Exporter.OpenTelemetryProtocol, OpenTelemetry.Instrumentation.AspNetCore, OpenTelemetry.Instrumentation.Http e Npgsql.OpenTelemetry. As decisões pendentes da Sprint 0 (logs, UI kit do front) serão registradas em ADR.
 
 ## Estrutura
 
