@@ -1,0 +1,82 @@
+# =============================================================
+# HelpDesk Inteligente — .gitignore
+# =============================================================
+
+# ---------- Segredos e configuração local (NUNCA versionar) ----------
+.env
+.env.*
+!.env.example
+secrets.json
+appsettings.*.local.json
+*.pfx
+*.key
+*.pem
+
+# ---------- .NET ----------
+[Bb]in/
+[Oo]bj/
+[Dd]ebug/
+[Rr]elease/
+*.user
+*.suo
+*.userprefs
+.vs/
+*.rsuser
+[Tt]est[Rr]esult*/
+*.trx
+coverage/
+coverage*.xml
+coverage*.json
+*.coverage
+*.coveragexml
+[Cc]overage[Rr]eport*/
+artifacts/
+*.nupkg
+*.snupkg
+# pacote de migrations gerado por "dotnet ef migrations bundle"
+efbundle
+efbundle.exe
+
+# ---------- Node / Vite (web/) ----------
+node_modules/
+dist/
+dist-ssr/
+.vite/
+*.local
+*.tsbuildinfo
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# ---------- Testes do frontend / E2E ----------
+web/coverage/
+playwright-report/
+test-results/
+blob-report/
+playwright/.cache/
+
+# ---------- IDEs ----------
+.idea/
+*.swp
+.vscode/*
+!.vscode/settings.json
+!.vscode/extensions.json
+!.vscode/launch.json
+!.vscode/tasks.json
+
+# ---------- Sistema operacional ----------
+.DS_Store
+Thumbs.db
+Desktop.ini
+ehthumbs.db
+
+# ---------- Logs e temporários ----------
+logs/
+*.log
+tmp/
+*.tmp
+
+# ---------- Docker (overrides locais) ----------
+docker-compose.override.yml
+compose.override.yaml
