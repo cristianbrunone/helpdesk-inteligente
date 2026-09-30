@@ -1,0 +1,10 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\HelpDesk.Domain\HelpDesk.Domain.csproj" />
+    <ProjectReference Include="..\..\src\HelpDesk.Application\HelpDesk.Application.csproj" />
+    <ProjectReference Include="..\..\src\HelpDesk.Infrastructure\HelpDesk.Infrastructure.csproj" />
+    <ProjectReference Include="..\..\src\HelpDesk.Api\HelpDesk.Api.csproj" />
+    <ProjectReference Include="..\..\src\HelpDesk.Worker\HelpDesk.Worker.csproj" />
+    <ProjectReference Include="..\..\src\HelpDesk.Migrator\HelpDesk.Migrator.csproj" />
+  </ItemGroup>
+</Project>

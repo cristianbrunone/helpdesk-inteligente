@@ -1,0 +1,7 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+  <ItemGroup>
+    <ProjectReference Include="..\HelpDesk.Application\HelpDesk.Application.csproj" />
+    <!-- Só para composição via DI (ADR-0002). -->
+    <ProjectReference Include="..\HelpDesk.Infrastructure\HelpDesk.Infrastructure.csproj" />
+  </ItemGroup>
+</Project>
