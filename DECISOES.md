@@ -19,6 +19,7 @@ Resumo das principais decisões técnicas. Cada linha aponta para um ADR complet
 | [0011](docs/adr/0011-estrategia-de-embeddings.md) | Tabela única de documentos RAG, 768 dimensões | Coluna de embedding nas tabelas de negócio | Precisão máxima do modelo em troca de compatibilidade entre fake e real. |
 | [0012](docs/adr/0012-copiloto-com-streaming-sse.md) | Copiloto com streaming SSE | Resposta JSON completa | Parser de SSE e erro no meio do stream em troca de UX conversacional e transparência das ferramentas. |
 | [0013](docs/adr/0013-minimal-apis.md) | Minimal APIs com route groups | Controllers (MVC) | Organização por convenção própria em troca de endpoints finos por construção. |
+| [0014](docs/adr/0014-fluxo-git-trunk-based.md) | Trunk-based com uma branch por sprint, PR e merge commit | GitFlow clássico | Sem área de integração separada em troca de uma `main` sempre entregável e sprints visíveis como PRs. |
 
 ## Premissas assumidas
 

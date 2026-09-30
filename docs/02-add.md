@@ -220,6 +220,7 @@ sequenceDiagram
 | [ADR-0011](adr/0011-estrategia-de-embeddings.md) | Tabela única de documentos RAG, dimensão fixa (768) e reconciliação por modelo | Aceita (validar na PoC) |
 | [ADR-0012](adr/0012-copiloto-com-streaming-sse.md) | Copiloto com streaming SSE em vez de resposta completa | Aceita |
 | [ADR-0013](adr/0013-minimal-apis.md) | Minimal APIs com route groups em vez de Controllers | Aceita |
+| [ADR-0014](adr/0014-fluxo-git-trunk-based.md) | Fluxo Git trunk-based com uma branch por sprint em vez de GitFlow | Aceita |
 
 ---
 
