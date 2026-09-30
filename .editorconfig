@@ -118,6 +118,11 @@ dotnet_diagnostic.CA1849.severity = warning
 # Logs com template estruturado, nunca interpolação (logs estruturados, NFR-11)
 dotnet_diagnostic.CA2254.severity = warning
 
+# ---------- Migrations geradas pelo EF Core ----------
+# Código gerado e nunca editado à mão: fica fora das regras de estilo e do dotnet format.
+[src/HelpDesk.Infrastructure/Migrations/*.cs]
+generated_code = true
+
 # ---------- Testes: regras mais flexíveis ----------
 [tests/**/*.cs]
 # Nomes no padrão Metodo_Cenario_ResultadoEsperado usam underscore

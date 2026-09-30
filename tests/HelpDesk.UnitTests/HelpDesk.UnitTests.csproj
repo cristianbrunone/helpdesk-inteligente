@@ -2,5 +2,7 @@
   <ItemGroup>
     <ProjectReference Include="..\..\src\HelpDesk.Domain\HelpDesk.Domain.csproj" />
     <ProjectReference Include="..\..\src\HelpDesk.Application\HelpDesk.Application.csproj" />
+    <!-- Lógica pura da Infrastructure (ex.: convenção snake_case), testada sem I/O. -->
+    <ProjectReference Include="..\..\src\HelpDesk.Infrastructure\HelpDesk.Infrastructure.csproj" />
   </ItemGroup>
 </Project>
