@@ -303,3 +303,4 @@ Usa os health checks do ASP.NET Core:
 - `banco` indisponível → **503** `Unhealthy`.
 - A fila com uma triagem pendente há mais de 5 minutos → `Degraded` (**200**). Isso indica que o Worker está parado ou que o provedor está lento, sem derrubar a API.
 - O provedor de LLM **não** entra no health check de propósito: a API funciona sem ele (D1).
+- **Entrega incremental:** nas Sprints 0 e 1, o `/health` tem apenas o check `banco`. O `filaTriagem` entra na Sprint 2, junto com a tabela `triagens_ia`.

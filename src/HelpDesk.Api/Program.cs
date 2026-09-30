@@ -1,10 +1,19 @@
+using HelpDesk.Api.Endpoints;
 using HelpDesk.Api.Erros;
 using HelpDesk.Api.Observabilidade;
+using HelpDesk.Application.Categorias;
+using HelpDesk.Infrastructure;
 
 var builder = WebApplication.CreateBuilder(args);
 
 // Logs em JSON no stdout: configurados em appsettings.json (ADR-0016).
+var connectionString = builder.Configuration.GetConnectionString("Default")
+    ?? throw new InvalidOperationException("A variável ConnectionStrings__Default não foi configurada.");
+
+builder.Services.AdicionarInfraestrutura(connectionString);
+builder.Services.AddScoped<ListarCategorias>();
 builder.Services.AdicionarProblemDetails();
+builder.Services.AdicionarSaude();
 builder.Services.AddOpenApi();
 
 var app = builder.Build();
@@ -22,6 +31,9 @@ app.UseSwaggerUI(options =>
     options.RoutePrefix = "swagger";
     options.DocumentTitle = "HelpDesk Inteligente — API";
 });
+
+app.MapSaude();
+app.MapCategorias();
 
 app.Run();
 

@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using HelpDesk.Api.Endpoints;
 
 namespace HelpDesk.Api.Observabilidade;
 
@@ -32,7 +33,14 @@ internal sealed partial class CorrelacaoMiddleware(RequestDelegate next, ILogger
         {
             // Rota como template (/api/chamados/{id}): nunca o path cru, a query string, headers ou o corpo (NFR-06).
             var rota = (http.GetEndpoint() as RouteEndpoint)?.RoutePattern.RawText ?? "(sem rota)";
-            LogRequisicao(logger, http.Request.Method, rota, http.Response.StatusCode,
+            var status = http.Response.StatusCode;
+
+            // O healthcheck do Docker chama /health a cada poucos segundos: sucesso vai para Debug, falha continua visível.
+            var nivel = rota == SaudeEndpoints.Rota && status < StatusCodes.Status400BadRequest
+                ? LogLevel.Debug
+                : LogLevel.Information;
+
+            LogRequisicao(logger, nivel, http.Request.Method, rota, status,
                 Stopwatch.GetElapsedTime(inicio).TotalMilliseconds);
         }
     }
@@ -46,9 +54,9 @@ internal sealed partial class CorrelacaoMiddleware(RequestDelegate next, ILogger
             ? valor
             : null;
 
-    [LoggerMessage(Level = LogLevel.Information,
-        Message = "HTTP {Metodo} {Rota} respondeu {Status} em {DuracaoMs:0.0} ms")]
-    private static partial void LogRequisicao(ILogger logger, string metodo, string rota, int status, double duracaoMs);
+    [LoggerMessage(Message = "HTTP {Metodo} {Rota} respondeu {Status} em {DuracaoMs:0.0} ms")]
+    private static partial void LogRequisicao(ILogger logger, LogLevel nivel, string metodo, string rota, int status,
+        double duracaoMs);
 
     /// <summary>Scope estruturado: o formatter JSON grava a propriedade <c>CorrelationId</c> e o texto legível.</summary>
     private sealed class EscopoCorrelacao(string correlationId) : IReadOnlyList<KeyValuePair<string, object>>

@@ -10,8 +10,9 @@ public sealed class InicializadorBancoTests(BancoFixture banco)
     private static CancellationToken Ct => TestContext.Current.CancellationToken;
 
     [Fact]
-    public async Task MigrarEAplicarSeed_ExecutadoDuasVezes_MantemAsCincoCategoriasSemDuplicar()
+    public async Task MigrarEAplicarSeed_ExecutadoNovamente_MantemAsCincoCategoriasSemDuplicar()
     {
+        // A fixture já executou o inicializador uma vez ao subir o banco.
         await ExecutarInicializadorAsync();
         await ExecutarInicializadorAsync();
 
