@@ -21,6 +21,17 @@ Resumo das principais decisões técnicas. Cada linha aponta para um ADR complet
 | [0013](docs/adr/0013-minimal-apis.md) | Minimal APIs com route groups | Controllers (MVC) | Organização por convenção própria em troca de endpoints finos por construção. |
 | [0014](docs/adr/0014-fluxo-git-trunk-based.md) | Trunk-based com uma branch por sprint, PR e merge commit | GitFlow clássico | Sem área de integração separada em troca de uma `main` sempre entregável e sprints visíveis como PRs. |
 
+### Adicionadas na revisão de arquitetura de 30/09
+
+Uma revisão por pares confrontou o desenho com um catálogo de 25 padrões agênticos e um checklist de produção, antes de qualquer código de IA existir. Os detalhes estão em [`docs/revisoes/2026-09-30-padroes-agenticos.md`](docs/revisoes/2026-09-30-padroes-agenticos.md).
+
+| # | Decisão | Alternativa rejeitada | Trade-off principal |
+|---|---|---|---|
+| [0018](docs/adr/0018-evals-offline-da-ia.md) | Evals offline: conjunto rotulado de ~30 casos + harness próprio, comparando sem RAG × com RAG | Só a métrica online (taxa de aceitação) | Exige chave e cota, então não roda no CI; em troca, a qualidade é medida antes de mudar. |
+| [0019](docs/adr/0019-tracing-opentelemetry.md) | Tracing com OpenTelemetry, spans por etapa e Aspire Dashboard opcional | Só logs estruturados + `uso_llm` | 5 pacotes e um contêiner opcional em troca de ver onde cada segundo e cada token foram gastos. |
+| [0020](docs/adr/0020-guardrail-de-saida-do-copiloto.md) | Guardrail de saída do copiloto: PII mascarada no stream e citações verificadas | Confiar só nos guardrails de entrada e de ação | ~64 caracteres de atraso no stream em troca de defesa em profundidade e de um *grounding check* determinístico. |
+| [0021](docs/adr/0021-kill-switch-e-orcamentos-de-ia.md) | Kill switch por funcionalidade + limite de tokens por chamada | Usar `LLM_PROVIDER=fake` como desligamento | Mais configurações em troca de desligar com precisão, sem sugestões falsas, e de custo previsível. |
+
 ## Premissas assumidas
 
 O enunciado permite registrar premissas aqui em vez de consultar o recrutador.

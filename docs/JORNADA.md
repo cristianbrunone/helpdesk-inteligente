@@ -115,6 +115,27 @@ O `CLAUDE.md` funciona como o **contrato** entre o desenvolvedor e os assistente
 
 ---
 
+## Revisão de arquitetura por pares: padrões agênticos (30/09)
+
+**Artefatos:** [`revisoes/2026-09-30-padroes-agenticos.md`](revisoes/2026-09-30-padroes-agenticos.md), [`adr/0018`](adr/0018-evals-offline-da-ia.md) a [`adr/0021`](adr/0021-kill-switch-e-orcamentos-de-ia.md), plano de sprints v1.1
+
+Com a Sprint 0 em andamento, um AI Engineer externo compartilhou um catálogo de 25 padrões de design de agentes com um checklist de produção. Em vez de "adicionar o que parecia interessante", o desenho foi **confrontado** com a referência, padrão por padrão:
+
+- **A maior parte já estava coberta.** O princípio central do catálogo ("comece pelo padrão mais simples: workflow antes de agente") é exatamente o ADR-0004. A triagem é um *prompt chain* com gate de validação, e o copiloto é um agente ReAct.
+- **9 padrões foram rejeitados com justificativa.** Por exemplo, multiagente consome cerca de 15× os tokens de um chat, sem subtarefas separáveis que o justifiquem.
+- **4 lacunas foram adotadas**, cada uma com ADR:
+  - evals offline (ADR-0018);
+  - tracing com OpenTelemetry (ADR-0019);
+  - guardrail de saída do copiloto (ADR-0020);
+  - kill switches e orçamentos de tokens (ADR-0021).
+- **1 item ficou opcional:** uma nova tentativa corretiva na triagem.
+
+**Por que agora, e por que não virou uma sprint extra no final:** nenhuma das mudanças afeta código já escrito (a Sprint 0 não mudou), então o custo de adotar era zero. Cada item foi encaixado na sprint em que o código relacionado nasce: tracing na 2, evals na 3, guardrail na 4. Uma sprint no final seria a primeira a ser cortada. Os evals passaram a ficar **acima** do copiloto na linha de corte.
+
+**Aprendizado:** a lacuna mais importante não era de funcionalidade, e sim de **medição**. Sem evals, o RAG seria "uma funcionalidade implementada". Com evals comparando sem RAG × com RAG, ele vira "uma funcionalidade cujo efeito foi medido".
+
+---
+
 ## Fase 4 — Walking Skeleton (Sprint 0)
 
 _(a preencher)_
