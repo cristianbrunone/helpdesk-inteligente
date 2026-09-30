@@ -7,7 +7,12 @@ using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 
 // Serviço one-shot (ADR-0015): aplica as migrations e o seed e termina com 0 (sucesso) ou 1 (falha).
-var builder = Host.CreateApplicationBuilder(args);
+// Content root = pasta do executável: o appsettings.json (logs JSON, ADR-0016) é achado de qualquer diretório.
+var builder = Host.CreateApplicationBuilder(new HostApplicationBuilderSettings
+{
+    Args = args,
+    ContentRootPath = AppContext.BaseDirectory,
+});
 
 var connectionString = builder.Configuration.GetConnectionString("Default")
     ?? throw new InvalidOperationException("A variável ConnectionStrings__Default não foi configurada.");

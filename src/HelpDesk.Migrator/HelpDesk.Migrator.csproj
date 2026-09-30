@@ -15,4 +15,9 @@
   <ItemGroup>
     <ProjectReference Include="..\HelpDesk.Infrastructure\HelpDesk.Infrastructure.csproj" />
   </ItemGroup>
+
+  <!-- O SDK de console não copia o appsettings.json sozinho (os SDKs Web e Worker copiam). -->
+  <ItemGroup>
+    <None Update="appsettings.json" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
 </Project>

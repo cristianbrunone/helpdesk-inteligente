@@ -4,5 +4,7 @@
     <ProjectReference Include="..\..\src\HelpDesk.Application\HelpDesk.Application.csproj" />
     <!-- Lógica pura da Infrastructure (ex.: convenção snake_case), testada sem I/O. -->
     <ProjectReference Include="..\..\src\HelpDesk.Infrastructure\HelpDesk.Infrastructure.csproj" />
+    <!-- BackgroundServices do Worker testados sem I/O (ex.: heartbeat). -->
+    <ProjectReference Include="..\..\src\HelpDesk.Worker\HelpDesk.Worker.csproj" />
   </ItemGroup>
 </Project>
