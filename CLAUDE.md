@@ -109,6 +109,8 @@ cd web && npm run lint && npm test && npm run build
 
 ## Git
 
+Decisão no ADR-0014. O guia completo, com comandos e o ciclo de cada sprint, está em `docs/padroes/fluxo-git.md`.
+
 - **Fluxo:** trunk-based com uma branch curta por sprint (`sprint/0-walking-skeleton`, `sprint/1-chamados`...). Abra PR para `main`, com CI verde obrigatório, e faça **merge commit** (preserva os commits pequenos). Crie uma tag por sprint (`v0.1.0`...).
 - **Commits:** Conventional Commits em pt-BR: `tipo(escopo): descrição no imperativo`.
   - Tipos: `feat`, `fix`, `test`, `refactor`, `docs`, `build`, `ci`, `chore`.
