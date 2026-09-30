@@ -223,6 +223,7 @@ sequenceDiagram
 | [ADR-0014](adr/0014-fluxo-git-trunk-based.md) | Fluxo Git trunk-based com uma branch por sprint em vez de GitFlow | Aceita |
 | [ADR-0015](adr/0015-migrations-em-servico-one-shot.md) | Migrations e seed num serviço one-shot em vez do startup da API | Aceita |
 | [ADR-0016](adr/0016-logs-estruturados-nativos.md) | Logging nativo do .NET em JSON em vez de Serilog | Aceita |
+| [ADR-0017](adr/0017-ui-kit-mantine.md) | Mantine como biblioteca de UI em vez de Tailwind + shadcn/ui | Aceita |
 | [ADR-0018](adr/0018-evals-offline-da-ia.md) | Evals offline com conjunto rotulado e harness próprio | Aceita (revisão 30/09) |
 | [ADR-0019](adr/0019-tracing-opentelemetry.md) | Tracing com OpenTelemetry e Aspire Dashboard opcional | Aceita (revisão 30/09) |
 | [ADR-0020](adr/0020-guardrail-de-saida-do-copiloto.md) | Guardrail de saída do copiloto (PII + citações verificadas) | Aceita (revisão 30/09) |
