@@ -21,6 +21,12 @@ Resumo das principais decisões técnicas. Cada linha aponta para um ADR complet
 | [0013](docs/adr/0013-minimal-apis.md) | Minimal APIs com route groups | Controllers (MVC) | Organização por convenção própria em troca de endpoints finos por construção. |
 | [0014](docs/adr/0014-fluxo-git-trunk-based.md) | Trunk-based com uma branch por sprint, PR e merge commit | GitFlow clássico | Sem área de integração separada em troca de uma `main` sempre entregável e sprints visíveis como PRs. |
 
+### Decisões de plataforma (Sprint 0)
+
+| # | Decisão | Alternativa rejeitada | Trade-off principal |
+|---|---|---|---|
+| [0015](docs/adr/0015-migrations-em-servico-one-shot.md) | Migrations e seed num serviço one-shot (`migrator`) | Migrate no startup da API | Um contêiner a mais em troca de um único ponto de DDL e de falhas isoladas e visíveis. |
+
 ### Adicionadas na revisão de arquitetura de 30/09
 
 Uma revisão por pares confrontou o desenho com um catálogo de 25 padrões agênticos e um checklist de produção, antes de qualquer código de IA existir. Os detalhes estão em [`docs/revisoes/2026-09-30-padroes-agenticos.md`](docs/revisoes/2026-09-30-padroes-agenticos.md).

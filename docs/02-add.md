@@ -221,12 +221,13 @@ sequenceDiagram
 | [ADR-0012](adr/0012-copiloto-com-streaming-sse.md) | Copiloto com streaming SSE em vez de resposta completa | Aceita |
 | [ADR-0013](adr/0013-minimal-apis.md) | Minimal APIs com route groups em vez de Controllers | Aceita |
 | [ADR-0014](adr/0014-fluxo-git-trunk-based.md) | Fluxo Git trunk-based com uma branch por sprint em vez de GitFlow | Aceita |
+| [ADR-0015](adr/0015-migrations-em-servico-one-shot.md) | Migrations e seed num serviço one-shot em vez do startup da API | Aceita |
 | [ADR-0018](adr/0018-evals-offline-da-ia.md) | Evals offline com conjunto rotulado e harness próprio | Aceita (revisão 30/09) |
 | [ADR-0019](adr/0019-tracing-opentelemetry.md) | Tracing com OpenTelemetry e Aspire Dashboard opcional | Aceita (revisão 30/09) |
 | [ADR-0020](adr/0020-guardrail-de-saida-do-copiloto.md) | Guardrail de saída do copiloto (PII + citações verificadas) | Aceita (revisão 30/09) |
 | [ADR-0021](adr/0021-kill-switch-e-orcamentos-de-ia.md) | Kill switches por funcionalidade e orçamentos de tokens | Aceita (revisão 30/09) |
 
-Os ADRs 0015 a 0017 estão reservados para as decisões de plataforma da Sprint 0 (migrations, logs e UI kit do frontend). A revisão de 30/09 está registrada em [`revisoes/2026-09-30-padroes-agenticos.md`](revisoes/2026-09-30-padroes-agenticos.md).
+As decisões de plataforma da Sprint 0 usam os ADRs 0015 a 0017 (migrations, logs e UI kit do frontend) e 0022 a 0023 (estratégia de CI e gestão de segredos). A revisão de 30/09 está registrada em [`revisoes/2026-09-30-padroes-agenticos.md`](revisoes/2026-09-30-padroes-agenticos.md).
 
 ---
 
