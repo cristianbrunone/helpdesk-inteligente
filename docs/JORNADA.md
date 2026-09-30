@@ -90,6 +90,31 @@ Aprendizado: a pergunta "onde fica a fila?", deixada em aberto no ADR-0003, só 
 
 ---
 
+## Preparação para a Fase 4: fundação do repositório
+
+**Artefatos:** [`adr/0014`](adr/0014-fluxo-git-trunk-based.md), [`padroes/fluxo-git.md`](padroes/fluxo-git.md), `.github/pull_request_template.md`, `CLAUDE.md`, `README.md`, `.gitignore`, `.gitattributes`, `.editorconfig`
+
+Antes de escrever a primeira linha de código, preparamos o repositório para que o processo fosse **visível** e **reprodutível**:
+
+- **A documentação foi o primeiro commit.** Os requisitos, o ADD, os ADRs e o plano de sprints entraram na `main` antes de qualquer código, então o histórico mostra que o planejamento veio primeiro.
+- **O fluxo Git foi decidido antes da primeira branch** (ADR-0014): trunk-based com uma branch por sprint, PR com CI verde, merge commit (para preservar os commits pequenos) e uma tag por sprint. O GitFlow clássico foi descartado como cerimônia excessiva para um dev só em 7 dias. Um template de PR padroniza cada entrega, com os critérios de aceite e a Definition of Done.
+- **O README é vivo.** Ele nasce no primeiro commit e ganha uma seção por sprint. Isso virou item da Definition of Done.
+- **Aprendizado de ambiente.** O primeiro `git add` no Windows avisou sobre a conversão LF → CRLF. Como tudo roda em contêineres Linux, isso quebraria scripts dentro do Docker. O `.gitattributes` passou a forçar LF no repositório, e os arquivos já commitados foram renormalizados (`git add --renormalize .`).
+
+### Como a IA é usada no desenvolvimento
+
+O uso de assistentes de IA é **governado e documentado**, e não improvisado:
+
+| Ferramenta | Papel | Limites |
+|---|---|---|
+| **Claude (chat)** | Parceiro de arquitetura nas Fases 1 a 3: requisitos, ADD, ADRs, modelo de dados, contratos e plano | Toda decisão foi revisada e aprovada pelo desenvolvedor; cada ADR compara pelo menos duas alternativas |
+| **Claude Code (local, VS Code)** | Implementação, sprint a sprint, seguindo o `CLAUDE.md` | Não faz commit nem push sem pedido explícito; não contraria ADR em silêncio; não adiciona biblioteca sem justificativa |
+| **Claude Code (sessões na nuvem)** | Validação em **clone limpo** (a Definition of Done diz "`docker compose up` a partir de um clone limpo"), suíte completa de testes com Docker, auto-fix de CI nos PRs e tarefas paralelas bem delimitadas | 4 modos explícitos no `CLAUDE.md`. Nos modos de validação, não edita nada, só reporta. Nunca envia para a `main`, nunca faz merge. Usa sempre a IA fake: a chave do provedor real **nunca** sai da máquina do desenvolvedor |
+
+O `CLAUDE.md` funciona como o **contrato** entre o desenvolvedor e os assistentes. As mesmas regras de arquitetura, de IA (mascaramento, saída não confiável) e de Git valem para qualquer código, seja escrito à mão ou com assistente.
+
+---
+
 ## Fase 4 — Walking Skeleton (Sprint 0)
 
 _(a preencher)_

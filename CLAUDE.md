@@ -118,6 +118,50 @@ Decisão no ADR-0014. O guia completo, com comandos e o ciclo de cada sprint, es
 - **Um commit = uma mudança coesa**, que compila e passa nos testes. Não misture refatoração com feature.
 - **Não faça commit nem push sem pedido explícito do desenvolvedor.** Ao terminar uma unidade de trabalho, sugira a mensagem de commit.
 
+## Sessões na nuvem (Claude Code na nuvem)
+
+**Como saber se você está numa:** se a variável de ambiente `CLAUDE_CODE_REMOTE_SESSION_ID` existir, você está numa sessão na nuvem. Nesse caso, as regras desta seção **prevalecem** sobre as demais quando houver conflito.
+
+O desenvolvimento principal acontece **localmente**, no VS Code. A nuvem tem papéis limitados, e cada pedido do desenvolvedor se encaixa em **um** dos modos abaixo. Se o pedido não se encaixar claramente em nenhum, **pergunte antes de agir**.
+
+| Modo | Para quê | Pode editar? | Pode commitar/enviar? |
+|---|---|---|---|
+| **1. Validação em clone limpo** | Verificar a Definition of Done a partir de um clone novo: `docker compose up`, `/health`, a suíte de testes e o build do front | ❌ Não | ❌ Não |
+| **2. Execução de testes** | Rodar a suíte completa (inclusive Testcontainers) e reportar | ❌ Não | ❌ Não |
+| **3. Auto-fix de PR** | Corrigir **só** a falha de CI ou o comentário de revisão do PR de sprint | ✅ O mínimo necessário | ✅ Na branch do PR |
+| **4. Tarefa paralela delimitada** | Uma tarefa que o desenvolvedor descreveu explicitamente (por exemplo, textos do seed) | ✅ Só o escopo pedido | ✅ Numa branch própria, com PR para a **branch da sprint** (nunca para a `main`) |
+
+**Nos modos 1 e 2:** se encontrar um problema, **não corrija**. Diagnostique e reporte. A correção é feita localmente pelo desenvolvedor.
+
+**Nos modos 3 e 4:** o pedido do desenvolvedor vale como a autorização explícita para commit e push exigida na seção Git, **apenas dentro do escopo do modo**. Siga os Conventional Commits e mantenha o trailer `Claude-Session`, por rastreabilidade.
+
+**Sempre proibido na nuvem:**
+
+- enviar para a `main`, fazer merge de PR ou criar tags;
+- alterar ADRs, o `DECISOES.md`, este `CLAUDE.md`, os documentos de `docs/` ou os workflows de CI, **a menos que** isso seja exatamente a correção pedida no modo 3;
+- implementar funcionalidade fora do escopo da sprint ou "aproveitar para melhorar" outra coisa;
+- usar um provedor real de IA. Na nuvem, `LLM_PROVIDER` é **sempre** `fake`. Nunca peça, crie ou use chaves de API;
+- desabilitar, pular ou enfraquecer testes para "fazer passar".
+
+**Ambiente:** a nuvem tem Docker, `docker compose` e Node. O .NET 10 SDK **não** vem instalado. Se `dotnet` não existir, instale com o script oficial (`dotnet-install.sh --channel 10.0`) e registre isso no relatório.
+
+**Relatório (modos 1 e 2):** termine sempre com este formato:
+
+```
+## Relatório de validação
+- Branch / commit testado: <branch> @ <sha curto>
+- Ambiente: sessão na nuvem (clone limpo), LLM_PROVIDER=fake
+| Verificação                         | Resultado | Observação |
+|-------------------------------------|-----------|------------|
+| docker compose up (todos saudáveis) | ✅/❌      |            |
+| GET /health                          | ✅/❌      |            |
+| dotnet test (Category!=ProvedorReal) | ✅/❌      | N passaram, N falharam |
+| web: lint + test + build             | ✅/❌      |            |
+| Critérios de aceite da sprint        | ✅/❌      | um por linha, se aplicável |
+- Falhas: comando, trecho relevante do erro (sem segredos nem dados pessoais) e causa provável
+- Nada foi alterado no repositório.
+```
+
 ## Ao terminar uma tarefa
 
 1. Rode o build e os testes afetados.
