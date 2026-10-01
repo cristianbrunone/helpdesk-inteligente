@@ -19,7 +19,11 @@ public static class FabricaClienteChat
     /// primeiro <c>Use</c> é a camada mais externa.
     /// </summary>
     public static IChatClient Montar(OpcoesLlm opcoes, ILoggerFactory logs, IRegistroUsoLlm registro) =>
-        new ChatClientBuilder(Criar(opcoes))
+        Montar(Criar(opcoes), opcoes, logs, registro);
+
+    /// <summary>A mesma composição sobre um provedor já criado (o harness de evals põe um espião nele).</summary>
+    public static IChatClient Montar(IChatClient provedor, OpcoesLlm opcoes, ILoggerFactory logs, IRegistroUsoLlm registro) =>
+        new ChatClientBuilder(provedor)
             .Use(interno => new ResilienciaChatClient(interno, opcoes, logs.CreateLogger<ResilienciaChatClient>()))
             .Use(interno => new TelemetriaChatClient(interno, opcoes, registro, logs.CreateLogger<TelemetriaChatClient>()))
             // Nunca o prompt nem a resposta nos atributos: EnableSensitiveData fica desligado, explicitamente.
@@ -33,9 +37,12 @@ public static class FabricaClienteChat
         _ => throw new ArgumentOutOfRangeException(nameof(opcoes), opcoes.Provedor, "Provedor de LLM desconhecido."),
     };
 
-    private static IChatClient CriarOpenAiCompativel(OpcoesLlm opcoes)
-    {
-        var cliente = new OpenAIClient(
+    private static IChatClient CriarOpenAiCompativel(OpcoesLlm opcoes) =>
+        ClienteOpenAi(opcoes).GetChatClient(opcoes.ModeloChat).AsIChatClient();
+
+    /// <summary>Cliente do SDK apontado para o endpoint compatível; compartilhado com os embeddings.</summary>
+    internal static OpenAIClient ClienteOpenAi(OpcoesLlm opcoes) =>
+        new(
             new ApiKeyCredential(opcoes.ChaveApi!),
             new OpenAIClientOptions
             {
@@ -46,7 +53,4 @@ public static class FabricaClienteChat
                 // Rede de segurança: o timeout de cada tentativa é do middleware; este só evita conexão pendurada.
                 NetworkTimeout = opcoes.Timeout + TimeSpan.FromSeconds(10),
             });
-
-        return cliente.GetChatClient(opcoes.ModeloChat).AsIChatClient();
-    }
 }

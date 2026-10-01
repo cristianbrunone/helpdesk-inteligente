@@ -52,6 +52,14 @@ jobs:
       - name: Testes (unitários, integração com Testcontainers e arquitetura)
         run: dotnet test --no-build --configuration Release --filter "Category!=ProvedorReal"
 
+      # ADR-0018: no CI o harness roda com o fake e uma repetição. Não mede qualidade; garante que ele funciona.
+      - name: Smoke do harness de evals (fake, sem RAG)
+        env:
+          LLM_PROVIDER: fake
+        run: >-
+          dotnet run --project tools/HelpDesk.Evals --no-build --configuration Release --
+          --rag off --repeticoes 1 --saida "${{ runner.temp }}/evals"
+
   frontend:
     name: Frontend (React)
     runs-on: ubuntu-24.04

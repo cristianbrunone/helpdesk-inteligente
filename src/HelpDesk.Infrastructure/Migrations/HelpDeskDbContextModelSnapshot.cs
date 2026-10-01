@@ -7,6 +7,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
+using Pgvector;
 
 #nullable disable
 
@@ -246,6 +247,53 @@ namespace HelpDesk.Infrastructure.Migrations
                         });
                 });
 
+            modelBuilder.Entity("HelpDesk.Domain.Conhecimento.ArtigoConhecimento", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<bool>("Ativo")
+                        .HasColumnType("boolean")
+                        .HasColumnName("ativo");
+
+                    b.Property<DateTimeOffset>("AtualizadoEm")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("atualizado_em");
+
+                    b.Property<short?>("CategoriaId")
+                        .HasColumnType("smallint")
+                        .HasColumnName("categoria_id");
+
+                    b.Property<string>("Conteudo")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("conteudo");
+
+                    b.Property<DateTimeOffset>("CriadoEm")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("criado_em");
+
+                    b.Property<string>("Titulo")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("titulo");
+
+                    b.HasKey("Id")
+                        .HasName("pk_artigos_conhecimento");
+
+                    b.HasIndex("CategoriaId")
+                        .HasDatabaseName("ix_artigos_conhecimento_categoria_id");
+
+                    b.ToTable("artigos_conhecimento", null, t =>
+                        {
+                            t.HasCheckConstraint("ck_artigos_conhecimento_conteudo_preenchido", "char_length(btrim(conteudo)) > 0");
+
+                            t.HasCheckConstraint("ck_artigos_conhecimento_titulo_preenchido", "char_length(btrim(titulo)) > 0");
+                        });
+                });
+
             modelBuilder.Entity("HelpDesk.Domain.Triagem.TriagemIA", b =>
                 {
                     b.Property<Guid>("Id")
@@ -285,6 +333,13 @@ namespace HelpDesk.Infrastructure.Migrations
                     b.Property<string>("ErroMotivo")
                         .HasColumnType("text")
                         .HasColumnName("erro_motivo");
+
+                    b.Property<string>("Fontes")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("jsonb")
+                        .HasColumnName("fontes")
+                        .HasDefaultValueSql("'[]'::jsonb");
 
                     b.Property<DateTimeOffset?>("LockExpiraEm")
                         .HasColumnType("timestamp with time zone")
@@ -377,6 +432,91 @@ namespace HelpDesk.Infrastructure.Migrations
                             t.HasCheckConstraint("ck_triagens_ia_resumo_tamanho", "resumo IS NULL OR char_length(resumo) <= 200");
 
                             t.HasCheckConstraint("ck_triagens_ia_sugestao_completa", "status NOT IN ('concluida', 'aceita', 'rejeitada') OR (categoria_sugerida_id IS NOT NULL AND prioridade_sugerida IS NOT NULL AND resumo IS NOT NULL AND resposta_sugerida IS NOT NULL AND confianca IS NOT NULL)");
+                        });
+                });
+
+            modelBuilder.Entity("HelpDesk.Infrastructure.Persistencia.DocumentoRag", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<Guid?>("ArtigoId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("artigo_id");
+
+                    b.Property<short?>("CategoriaId")
+                        .HasColumnType("smallint")
+                        .HasColumnName("categoria_id");
+
+                    b.Property<Guid?>("ChamadoId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("chamado_id");
+
+                    b.Property<short>("ChunkIndice")
+                        .HasColumnType("smallint")
+                        .HasColumnName("chunk_indice");
+
+                    b.Property<string>("ConteudoMascarado")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("conteudo_mascarado");
+
+                    b.Property<Vector>("Embedding")
+                        .HasColumnType("vector(768)")
+                        .HasColumnName("embedding");
+
+                    b.Property<string>("EmbeddingModelo")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("embedding_modelo");
+
+                    b.Property<string>("HashConteudo")
+                        .IsRequired()
+                        .HasColumnType("char(64)")
+                        .HasColumnName("hash_conteudo");
+
+                    b.Property<DateTimeOffset?>("IndexadoEm")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("indexado_em");
+
+                    b.Property<DateTimeOffset>("OrigemAtualizadaEm")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("origem_atualizada_em")
+                        .HasDefaultValueSql("'-infinity'");
+
+                    b.HasKey("Id")
+                        .HasName("pk_documentos_rag");
+
+                    b.HasIndex("ArtigoId")
+                        .HasDatabaseName("ix_documentos_rag_artigo_id");
+
+                    b.HasIndex("Embedding")
+                        .HasDatabaseName("ix_documentos_rag_embedding_hnsw");
+
+                    NpgsqlIndexBuilderExtensions.HasMethod(b.HasIndex("Embedding"), "hnsw");
+                    NpgsqlIndexBuilderExtensions.HasOperators(b.HasIndex("Embedding"), new[] { "vector_cosine_ops" });
+
+                    b.HasIndex("IndexadoEm")
+                        .HasDatabaseName("ix_documentos_rag_fila")
+                        .HasFilter("embedding IS NULL");
+
+                    b.HasIndex("ChamadoId", "ArtigoId", "ChunkIndice")
+                        .IsUnique()
+                        .HasDatabaseName("ux_documentos_rag_origem_chunk");
+
+                    NpgsqlIndexBuilderExtensions.AreNullsDistinct(b.HasIndex("ChamadoId", "ArtigoId", "ChunkIndice"), false);
+
+                    b.ToTable("documentos_rag", null, t =>
+                        {
+                            t.HasCheckConstraint("ck_documentos_rag_chunk_do_chamado", "chamado_id IS NULL OR chunk_indice = 0");
+
+                            t.HasCheckConstraint("ck_documentos_rag_chunk_indice", "chunk_indice >= 0");
+
+                            t.HasCheckConstraint("ck_documentos_rag_indexacao_coerente", "(embedding IS NULL) = (embedding_modelo IS NULL) AND (embedding IS NULL) = (indexado_em IS NULL)");
+
+                            t.HasCheckConstraint("ck_documentos_rag_uma_origem", "num_nonnulls(chamado_id, artigo_id) = 1");
                         });
                 });
 
@@ -488,6 +628,15 @@ namespace HelpDesk.Infrastructure.Migrations
                         .HasConstraintName("fk_historico_status_chamados_chamado_id");
                 });
 
+            modelBuilder.Entity("HelpDesk.Domain.Conhecimento.ArtigoConhecimento", b =>
+                {
+                    b.HasOne("HelpDesk.Domain.Categorias.Categoria", null)
+                        .WithMany()
+                        .HasForeignKey("CategoriaId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_artigos_conhecimento_categorias_categoria_id");
+                });
+
             modelBuilder.Entity("HelpDesk.Domain.Triagem.TriagemIA", b =>
                 {
                     b.HasOne("HelpDesk.Domain.Categorias.Categoria", null)
@@ -502,6 +651,21 @@ namespace HelpDesk.Infrastructure.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
                         .HasConstraintName("fk_triagens_ia_chamados_chamado_id");
+                });
+
+            modelBuilder.Entity("HelpDesk.Infrastructure.Persistencia.DocumentoRag", b =>
+                {
+                    b.HasOne("HelpDesk.Domain.Conhecimento.ArtigoConhecimento", null)
+                        .WithMany()
+                        .HasForeignKey("ArtigoId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .HasConstraintName("fk_documentos_rag_artigos_conhecimento_artigo_id");
+
+                    b.HasOne("HelpDesk.Domain.Chamados.Chamado", null)
+                        .WithMany()
+                        .HasForeignKey("ChamadoId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .HasConstraintName("fk_documentos_rag_chamados_chamado_id");
                 });
 
             modelBuilder.Entity("HelpDesk.Infrastructure.Persistencia.RegistroUsoLlm", b =>

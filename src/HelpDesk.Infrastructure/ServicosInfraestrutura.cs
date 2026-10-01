@@ -1,5 +1,7 @@
 using HelpDesk.Application.Categorias;
 using HelpDesk.Application.Chamados;
+using HelpDesk.Application.Conhecimento;
+using HelpDesk.Application.Dashboard;
 using HelpDesk.Application.Triagem;
 using HelpDesk.Infrastructure.Consultas;
 using HelpDesk.Infrastructure.Ia;
@@ -21,9 +23,34 @@ public static class ServicosInfraestrutura
         services.AddScoped<IConsultaCategorias, ConsultaCategorias>();
         services.AddScoped<IRepositorioChamados, RepositorioChamados>();
         services.AddScoped<IConsultaChamados, ConsultaChamados>();
+        services.AddScoped<IConsultaDashboard, ConsultaDashboard>();
         services.AddScoped<IRepositorioTriagens, RepositorioTriagens>();
         services.AddScoped<IFilaTriagem, FilaTriagem>();
         services.AddSingleton<ICatalogoPrompts, CatalogoPromptsArquivo>();
+        return services;
+    }
+
+    /// <summary>
+    /// Índice do RAG (ADR-0010), só para quem indexa (o Worker): depende do gerador de embeddings
+    /// (<see cref="AdicionarClienteLlm"/>) e do mascarador.
+    /// </summary>
+    public static IServiceCollection AdicionarIndiceRag(this IServiceCollection services)
+    {
+        services.TryAddSingleton<MascaradorDadosPessoais>();
+        services.AddScoped<IIndiceRag, IndiceRag>();
+        return services;
+    }
+
+    /// <summary>
+    /// Etapa "Recuperar" da triagem com RAG (ADR-0011): embedding da consulta + busca no pgvector. Depende do
+    /// gerador de embeddings (<see cref="AdicionarClienteLlm"/>).
+    /// </summary>
+    public static IServiceCollection AdicionarRecuperacaoRag(this IServiceCollection services, OpcoesRag opcoes)
+    {
+        services.TryAddSingleton<MascaradorDadosPessoais>();
+        services.AddSingleton(opcoes);
+        services.AddScoped<IBuscaSemantica, BuscaSemantica>();
+        services.AddScoped<IRecuperadorContexto, RecuperadorRag>();
         return services;
     }
 
@@ -35,7 +62,9 @@ public static class ServicosInfraestrutura
         services.AddSingleton(sp => FabricaClienteChat.Montar(
             opcoes, sp.GetRequiredService<ILoggerFactory>(), sp.GetRequiredService<IRegistroUsoLlm>()));
         services.AddSingleton<IClienteLlmTriagem, ClienteLlmTriagem>();
-        services.AddSingleton<IRecuperadorContexto, RecuperadorSemRag>();
+        services.AddSingleton(sp => FabricaGeradorEmbeddings.Montar(
+            opcoes, sp.GetRequiredService<ILoggerFactory>(), sp.GetRequiredService<IRegistroUsoLlm>()));
+        services.AddSingleton<IGeradorEmbeddings, GeradorEmbeddings>();
         return services;
     }
 }

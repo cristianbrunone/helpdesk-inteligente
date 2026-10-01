@@ -4,6 +4,16 @@ import type { ChamadoDetalhe, ChamadoVersionado } from './chamados';
 import { requisitar, requisitarComResposta } from './cliente';
 import type { Prioridade, StatusTriagem } from '../dominio/chamado';
 
+/** Documento que o RAG usou na sugestão: chamado resolvido (com número) ou artigo da base de conhecimento. */
+export interface FonteTriagem {
+  tipo: 'chamado' | 'artigo';
+  id: string;
+  numero: number | null;
+  titulo: string;
+  /** Similaridade de cosseno, de 0 a 1. */
+  similaridade: number;
+}
+
 /** Triagem vigente no detalhe do chamado (contrato: GET /api/chamados/{id}). */
 export interface TriagemDetalhe {
   id: string;
@@ -15,7 +25,7 @@ export interface TriagemDetalhe {
   confianca: number | null;
   modelo: string | null;
   promptVersao: string | null;
-  fontes: unknown[];
+  fontes: FonteTriagem[];
   /** Mensagem amigável quando a triagem falhou (nunca o detalhe técnico). */
   erro: string | null;
   criadoEm: string;

@@ -39,6 +39,42 @@ public sealed class TriagemPersistenciaTests(BancoFixture banco)
     }
 
     [Fact]
+    public async Task Salvar_TriagemComFontes_GuardaJsonbNoFormatoDoContrato()
+    {
+        var (chamado, triagem) = await CriarAsync();
+        var artigo = Guid.CreateVersion7();
+        await AlterarAsync(triagem.Id, chamado.Id, (_, t) => t.Concluir(
+            new SugestaoTriagem(2, Prioridade.Alta, "Erro 403 em boletos.", "Olá!", 0.8m), _execucao,
+            _inicio.AddSeconds(4),
+            [new FonteTriagem("artigo", artigo, null, "Erro 403 no módulo de boletos", 0.692),
+             new FonteTriagem("chamado", Guid.CreateVersion7(), 877, "Erro 403 ao abrir boletos", 0.649)]));
+
+        var (_, salva) = await LerAsync(chamado.Id, triagem.Id);
+        var json = await ConsultarAsync(db => db.Database
+            .SqlQuery<string>($"SELECT fontes::text AS \"Value\" FROM triagens_ia WHERE id = {triagem.Id}")
+            .SingleAsync(Ct));
+
+        salva.Fontes.Count.ShouldBe(2);
+        salva.Fontes[0].ShouldBe(new FonteTriagem("artigo", artigo, null, "Erro 403 no módulo de boletos", 0.692));
+        json.ShouldContain("\"tipo\": \"artigo\"");
+        json.ShouldContain("\"similaridade\": 0.692");
+        json.ShouldContain("\"numero\": 877");
+    }
+
+    [Fact]
+    public async Task Salvar_TriagemSemFontes_GravaListaVazia()
+    {
+        var (chamado, triagem) = await CriarAsync();
+
+        var json = await ConsultarAsync(db => db.Database
+            .SqlQuery<string>($"SELECT fontes::text AS \"Value\" FROM triagens_ia WHERE id = {triagem.Id}")
+            .SingleAsync(Ct));
+
+        json.ShouldBe("[]");
+        (await LerAsync(chamado.Id, triagem.Id)).Item2.Fontes.ShouldBeEmpty();
+    }
+
+    [Fact]
     public async Task Salvar_SegundaTriagemPendenteDoMesmoChamado_ERecusadaPeloIndiceUnico()
     {
         var (chamado, _) = await CriarAsync();

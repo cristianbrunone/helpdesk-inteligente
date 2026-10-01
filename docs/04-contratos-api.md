@@ -281,12 +281,14 @@ A ferramenta de histórico **não recebe ID** de propósito: o escopo é o chama
     "taxaAceitacao": 0.71,
     "aceitas": 60, "rejeitadas": 24, "pendentes": 3, "falhas": 5,
     "porCategoria": [{ "categoria": "Financeiro", "aceitas": 14, "rejeitadas": 3, "taxaAceitacao": 0.824 }],
-    "consumo30d": [{ "operacao": "triagem", "modelo": "...", "chamadas": 140, "tokensEntrada": 98000, "tokensSaida": 21000, "latenciaP95Ms": 3200 }]
+    "consumo30d": [{ "operacao": "triagem", "modelo": "...", "chamadas": 140, "falhas": 2, "tokensEntrada": 98000, "tokensSaida": 21000, "latenciaP95Ms": 3200 }]
   }
 }
 ```
 
 `tempoMedioHoras` é `null` para categorias sem chamados resolvidos. `taxaAceitacao` é `null` se ainda não houver decisões.
+
+Detalhes fixados na Sprint 3: `porStatus` e `porPrioridade` trazem todos os valores na ordem de negócio, mesmo com total zero. `aceitas` e `rejeitadas` contam todas as decisões (inclusive de triagens refeitas depois); `pendentes` é o tamanho da fila agora; `falhas` conta todas as triagens que falharam. Em `consumo30d`, cada tentativa ao provedor é uma chamada, e `falhas` são as que não tiveram sucesso. As cinco consultas rodam num mesmo instantâneo do banco (`REPEATABLE READ`), então os números batem entre si.
 
 ### `GET /health`
 

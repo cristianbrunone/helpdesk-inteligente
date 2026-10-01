@@ -1,4 +1,5 @@
 using System.Globalization;
+using HelpDesk.Application.Conhecimento;
 using HelpDesk.Application.Triagem;
 using HelpDesk.Infrastructure.Ia;
 
@@ -33,10 +34,43 @@ public sealed class LeitorAmbiente(Func<string, string?> ler)
         var valor => throw Invalida(chave, valor, $"um inteiro entre {minimo} e {maximo}"),
     };
 
+    public double Decimal(string chave, double padrao, double minimo, double maximo) => Texto(chave) switch
+    {
+        null => padrao,
+        var valor when double.TryParse(valor, NumberStyles.Float, CultureInfo.InvariantCulture, out var numero)
+            && numero >= minimo && numero <= maximo => numero,
+        var valor => throw Invalida(chave, valor,
+            $"um número entre {minimo.ToString(CultureInfo.InvariantCulture)} e " +
+            $"{maximo.ToString(CultureInfo.InvariantCulture)}, com ponto decimal"),
+    };
+
+    public const string TriagemPromptVersao = "TRIAGEM_PROMPT_VERSAO";
+
+    /// <summary>
+    /// Versão do prompt da triagem (<c>prompts/{versao}.md</c>). Uma versão nova só vira a padrão depois do harness de
+    /// evals (ADR-0018); esta variável permite comparar e voltar atrás sem rebuild.
+    /// </summary>
+    public string VersaoPromptTriagem() => Texto(TriagemPromptVersao) switch
+    {
+        null => MontadorPromptTriagem.VersaoPadrao,
+        var valor when System.Text.RegularExpressions.Regex.IsMatch(valor, @"^triagem\.v[0-9]+$") => valor,
+        var valor => throw Invalida(TriagemPromptVersao, valor, "uma versão no formato triagem.vN (ex.: triagem.v2)"),
+    };
+
+    public const string RagTopK = "RAG_TOP_K";
+    public const string RagMinSimilarity = "RAG_MIN_SIMILARITY";
+
+    /// <summary>Recuperação do RAG (ADR-0011): top-k por tipo de origem e similaridade mínima de cosseno.</summary>
+    public OpcoesRag OpcoesRag() => new(
+        Inteiro(RagTopK, Application.Conhecimento.OpcoesRag.TopKPadrao, 1, 20),
+        Decimal(RagMinSimilarity, Application.Conhecimento.OpcoesRag.SimilaridadeMinimaPadrao, 0, 1));
+
     public const string LlmProvider = "LLM_PROVIDER";
     public const string LlmBaseUrl = "LLM_BASE_URL";
     public const string LlmApiKey = "LLM_API_KEY";
     public const string LlmChatModel = "LLM_CHAT_MODEL";
+    public const string LlmEmbeddingModel = "LLM_EMBEDDING_MODEL";
+    public const string EmbeddingDimensions = "EMBEDDING_DIMENSIONS";
     public const string LlmTimeoutSeconds = "LLM_TIMEOUT_SECONDS";
     public const string LlmMaxRetries = "LLM_MAX_RETRIES";
     public const string TriagemMaxTokensSaida = "TRIAGEM_MAX_TOKENS_SAIDA";
@@ -77,12 +111,21 @@ public sealed class LeitorAmbiente(Func<string, string?> ler)
                 ?? throw new InvalidOperationException($"{LlmProvider}=openai-compatible exige {LlmApiKey} no .env.");
         }
 
+        // A dimensão é fixa na coluna vector(768) (ADR-0011): outro valor exige uma migration, não só a variável.
+        if (Texto(EmbeddingDimensions) is { } dimensoes && dimensoes != $"{IGeradorEmbeddings.Dimensoes}")
+        {
+            throw new InvalidOperationException(
+                $"A variável {EmbeddingDimensions} tem o valor '{dimensoes}', mas a coluna de embeddings tem " +
+                $"{IGeradorEmbeddings.Dimensoes} dimensões. Outra dimensão exige uma migration (veja o README).");
+        }
+
         return new OpcoesLlm
         {
             Provedor = provedor,
             BaseUrl = baseUrl,
             ChaveApi = chave,
             ModeloChat = Texto(LlmChatModel) ?? OpcoesLlmPadrao.ModeloChat,
+            ModeloEmbedding = Texto(LlmEmbeddingModel) ?? OpcoesLlmPadrao.ModeloEmbedding,
             Timeout = TimeSpan.FromSeconds(Inteiro(LlmTimeoutSeconds, OpcoesLlmPadrao.TimeoutSegundos, 1, 600)),
             MaxRetries = Inteiro(LlmMaxRetries, OpcoesLlmPadrao.MaxRetries, 0, 10),
             MaxTokensSaidaTriagem = Inteiro(TriagemMaxTokensSaida, OpcoesLlmPadrao.MaxTokensSaidaTriagem, 50, 8192),
@@ -120,6 +163,7 @@ public sealed class LeitorAmbiente(Func<string, string?> ler)
     {
         public const string Provedor = Ia.OpcoesLlm.NomeProvedorFake;
         public const string ModeloChat = "gemini-3.5-flash-lite";
+        public const string ModeloEmbedding = "gemini-embedding-001";
         public const int TimeoutSegundos = 60;
         public const int MaxRetries = 3;
         public const int MaxTokensSaidaTriagem = 800;

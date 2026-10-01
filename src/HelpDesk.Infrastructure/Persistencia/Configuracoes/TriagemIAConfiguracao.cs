@@ -1,7 +1,9 @@
+using System.Text.Json;
 using HelpDesk.Domain.Categorias;
 using HelpDesk.Domain.Chamados;
 using HelpDesk.Domain.Triagem;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.ChangeTracking;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
 namespace HelpDesk.Infrastructure.Persistencia.Configuracoes;
@@ -14,6 +16,8 @@ internal sealed class TriagemIAConfiguracao : IEntityTypeConfiguration<TriagemIA
 {
     public const string FiltroPendente = "status = 'pendente'";
     public const string IndiceUmaPendentePorChamado = "ux_triagens_ia_uma_pendente_por_chamado";
+
+    private static readonly JsonSerializerOptions _json = new(JsonSerializerDefaults.Web);
 
     public void Configure(EntityTypeBuilder<TriagemIA> builder)
     {
@@ -49,6 +53,19 @@ internal sealed class TriagemIAConfiguracao : IEntityTypeConfiguration<TriagemIA
         builder.Property(t => t.TraceParent).HasMaxLength(55);
         builder.Property(t => t.DecididaPor).HasMaxLength(TriagemIA.DecididaPorTamanhoMaximo);
         builder.Property(t => t.MotivoRejeicao).HasMaxLength(TriagemIA.MotivoRejeicaoTamanhoMaximo);
+
+        // RF-16 / ADR-0011: as fontes do RAG em jsonb, no formato do contrato (camelCase). Só leitura e exibição:
+        // nenhuma consulta filtra por elas, então não há índice.
+        builder.Property(t => t.Fontes)
+            .HasColumnType("jsonb")
+            .HasDefaultValueSql("'[]'::jsonb")
+            .HasConversion(
+                fontes => JsonSerializer.Serialize(fontes, _json),
+                json => JsonSerializer.Deserialize<List<FonteTriagem>>(json, _json) ?? new List<FonteTriagem>(),
+                new ValueComparer<IReadOnlyList<FonteTriagem>>(
+                    (a, b) => (a ?? new List<FonteTriagem>()).SequenceEqual(b ?? new List<FonteTriagem>()),
+                    fontes => fontes.Aggregate(0, (hash, f) => HashCode.Combine(hash, f)),
+                    fontes => fontes.ToList()));
 
         // Concorrência otimista nas decisões (como no chamado): aceitar e rejeitar ao mesmo tempo → o segundo, 412.
         builder.Property<uint>(HelpDeskDbContext.VersaoChamado).IsRowVersion().HasColumnName("xmin").HasColumnType("xid");

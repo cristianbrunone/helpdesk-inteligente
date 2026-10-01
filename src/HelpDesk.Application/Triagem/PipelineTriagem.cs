@@ -33,13 +33,13 @@ public sealed class PipelineTriagem(
     public async Task<ResultadoPipeline> ProcessarAsync(
         TriagemIA triagem, Chamado chamado, CancellationToken cancellationToken)
     {
-        var execucao = new ExecucaoTriagem(cliente.Provedor, cliente.Modelo, MontadorPromptTriagem.VersaoAtual);
+        var execucao = new ExecucaoTriagem(cliente.Provedor, cliente.Modelo, montador.Versao);
         try
         {
             var (titulo, descricao) = Mascarar(chamado);
-            await RecuperarAsync(titulo, descricao, cancellationToken);
+            var contexto = await RecuperarAsync(titulo, descricao, cancellationToken);
             var categoriasValidas = await categorias.ListarAsync(cancellationToken);
-            var prompt = await MontarAsync(titulo, descricao, categoriasValidas, cancellationToken);
+            var prompt = await MontarAsync(titulo, descricao, categoriasValidas, contexto, cancellationToken);
 
             ResultadoLlm resposta;
             using (_fonte.StartActivity("completar"))
@@ -66,7 +66,7 @@ public sealed class PipelineTriagem(
                 return Falhar(triagem, execucao, validacao.Codigo!, validacao.Mensagem!);
             }
 
-            triagem.Concluir(sugestao, execucao, relogio.GetUtcNow());
+            triagem.Concluir(sugestao, execucao, relogio.GetUtcNow(), contexto.Fontes);
             return new ResultadoPipeline(StatusTriagem.Concluida, null);
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
@@ -97,20 +97,35 @@ public sealed class PipelineTriagem(
         return (titulo, descricao);
     }
 
-    private async Task RecuperarAsync(TextoMascarado titulo, TextoMascarado descricao, CancellationToken ct)
+    /// <summary>
+    /// Só recupera se a versão do prompt usa contexto: com a linha de base (sem RAG), não há custo de embedding nem
+    /// fontes gravadas que o modelo não viu.
+    /// </summary>
+    private async Task<ContextoRecuperado> RecuperarAsync(
+        TextoMascarado titulo, TextoMascarado descricao, CancellationToken ct)
     {
         using var etapa = _fonte.StartActivity("recuperar");
-        var fontes = await recuperador.RecuperarAsync(titulo, descricao, ct);
-        etapa?.SetTag("rag.documentos", fontes.Count);
+        if (!await montador.UsaContextoAsync(ct))
+        {
+            etapa?.SetTag("rag.habilitado", false);
+            return ContextoRecuperado.Vazio;
+        }
+
+        var contexto = await recuperador.RecuperarAsync(titulo, descricao, ct);
+        etapa?.SetTag("rag.habilitado", true);
+        etapa?.SetTag("rag.documentos", contexto.Trechos.Count);
+        etapa?.SetTag("rag.fontes", contexto.Fontes.Count);
+        return contexto;
     }
 
     private async Task<PromptTriagem> MontarAsync(
         TextoMascarado titulo, TextoMascarado descricao, IReadOnlyList<CategoriaResumo> categoriasValidas,
-        CancellationToken ct)
+        ContextoRecuperado contexto, CancellationToken ct)
     {
         using var etapa = _fonte.StartActivity("montar_prompt");
-        var prompt = await montador.MontarAsync(titulo, descricao, categoriasValidas, ct);
+        var prompt = await montador.MontarAsync(titulo, descricao, categoriasValidas, contexto.Trechos, ct);
         etapa?.SetTag("prompt.versao", prompt.Versao);
+        etapa?.SetTag("prompt.trechos_contexto", prompt.Contexto.Count);
         return prompt;
     }
 

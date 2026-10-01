@@ -1,8 +1,12 @@
 using System.Text;
 using Bogus;
 using HelpDesk.Domain.Chamados;
+using HelpDesk.Domain.Triagem;
 
 namespace HelpDesk.Infrastructure.Persistencia.Seed;
+
+/// <summary>Chamados do seed e as triagens deles, gravados juntos na mesma transação.</summary>
+public sealed record DadosSeed(IReadOnlyList<Chamado> Chamados, IReadOnlyList<TriagemIA> Triagens);
 
 /// <summary>
 /// Gera os chamados de demonstração (modelo §7) com semente fixa: o mesmo conteúdo a cada execução, só as datas
@@ -28,11 +32,28 @@ public static class GeradorSeedChamados
     private static readonly Prioridade[] _prioridades = Enum.GetValues<Prioridade>();
     private static readonly float[] _pesosPrioridade = [0.25f, 0.40f, 0.25f, 0.10f];
 
+    // Triagem do seed (modelo §7): ~70% dos chamados, com status variados para o dashboard e o painel.
+    // Nunca "Pendente": o Worker processaria todas na subida, e com um provedor real isso consome a cota.
+    private enum DesfechoTriagem { SemTriagem, Aceita, Rejeitada, Concluida, Falhou }
+
+    private static readonly DesfechoTriagem[] _desfechos = Enum.GetValues<DesfechoTriagem>();
+    private static readonly float[] _pesosDesfecho = [0.30f, 0.385f, 0.14f, 0.105f, 0.07f];
+
+    // Processamento registrado como o do fake: os dados de demonstração não fingem ter passado por um modelo real.
+    private static readonly ExecucaoTriagem _execucaoSeed = new("fake", "fake-triagem-v1", "triagem.v1");
+
+    private static readonly string[] _motivosFalha =
+    [
+        "O provedor de IA não respondeu a tempo. Tente refazer a triagem.",
+        "A IA retornou uma resposta fora do formato esperado.",
+        "O provedor de IA atingiu o limite de uso. Tente refazer em alguns minutos.",
+    ];
+
     private sealed record Evento(TimeSpan Quando, bool ComComentario, Action<Chamado, DateTimeOffset> Aplicar);
 
     /// <param name="categorias">Id de cada categoria pelo nome (as do seed de categorias).</param>
     /// <param name="agora">Referência da janela de 90 dias; nenhum evento é gerado depois dela.</param>
-    public static IReadOnlyList<Chamado> Gerar(
+    public static DadosSeed Gerar(
         IReadOnlyDictionary<string, short> categorias,
         DateTimeOffset agora,
         int quantidade = Quantidade)
@@ -48,14 +69,20 @@ public static class GeradorSeedChamados
             select (status, prioridade)).ToArray();
 
         var chamados = new List<Chamado>(quantidade);
+        var triagens = new List<TriagemIA>();
         for (var i = 0; i < quantidade; i++)
         {
             var (status, prioridade) = i < combinacoes.Length ? combinacoes[i] : Sortear(faker);
-            chamados.Add(GerarChamado(faker, categorias, agora, status, prioridade));
+            var (chamado, triagem) = GerarChamado(faker, categorias, agora, status, prioridade);
+            chamados.Add(chamado);
+            if (triagem is not null)
+            {
+                triagens.Add(triagem);
+            }
         }
 
         // Ordem de criação: o número amigável (identity) cresce com a data.
-        return [.. chamados.OrderBy(c => c.CriadoEm)];
+        return new DadosSeed([.. chamados.OrderBy(c => c.CriadoEm)], triagens);
     }
 
     private static (StatusChamado, Prioridade) Sortear(Faker faker)
@@ -67,7 +94,7 @@ public static class GeradorSeedChamados
             : (status, prioridade);
     }
 
-    private static Chamado GerarChamado(
+    private static (Chamado Chamado, TriagemIA? Triagem) GerarChamado(
         Faker faker,
         IReadOnlyDictionary<string, short> categorias,
         DateTimeOffset agora,
@@ -86,8 +113,14 @@ public static class GeradorSeedChamados
         var sobrenome = faker.Name.LastName();
         var descricao = Preencher(modelo.Descricao)
             + (faker.Random.Bool(0.15f) ? DadoPessoalFalso(faker, primeiroNome) : string.Empty);
-        // ~75% já classificados (como se a triagem tivesse sido aceita); o resto sem categoria (P-02).
-        short? categoriaId = faker.Random.Bool(0.75f) && categorias.TryGetValue(nomeCategoria, out var id) ? id : null;
+        short? categoriaCorreta = categorias.TryGetValue(nomeCategoria, out var id) ? id : null;
+        var desfecho = categoriaCorreta is null
+            ? DesfechoTriagem.SemTriagem
+            : faker.Random.WeightedRandom(_desfechos, _pesosDesfecho);
+        // P-02: a categoria fica nula até o aceite. Com a triagem aceita, ela (e a prioridade) vêm do aceite, na linha
+        // do tempo; nos demais, metade dos solicitantes já escolheu a categoria ao abrir.
+        var aceita = desfecho == DesfechoTriagem.Aceita;
+        short? categoriaId = !aceita && faker.Random.Bool(0.5f) ? categoriaCorreta : null;
 
         var atendente = faker.PickRandom(_atendentes);
         var solicitante = $"{primeiroNome} {sobrenome}";
@@ -117,15 +150,73 @@ public static class GeradorSeedChamados
             solicitante,
             $"{Slug(primeiroNome)}.{Slug(sobrenome)}@example.com",
             categoriaId,
-            prioridade,
+            aceita ? null : prioridade,
             criadoEm);
+
+        var triagem = desfecho == DesfechoTriagem.SemTriagem
+            ? null
+            : GerarTriagem(faker, chamado, desfecho, categoriaCorreta!.Value, categorias, prioridade, atendente, eventos);
 
         foreach (var evento in eventos.OrderBy(e => e.Quando))
         {
             evento.Aplicar(chamado, criadoEm + evento.Quando);
         }
 
-        return chamado;
+        return (chamado, triagem);
+    }
+
+    /// <summary>
+    /// Triagem processada segundos depois da abertura. A decisão do atendente entra na linha do tempo do chamado
+    /// entre 1 e 3 minutos após a abertura: antes de qualquer mudança de status (a primeira acontece depois de 3 min),
+    /// porque chamado finalizado não aceita decisão (P-11). O aceite passa pelo domínio e aplica categoria e
+    /// prioridade ao chamado, como na API.
+    /// </summary>
+    private static TriagemIA GerarTriagem(
+        Faker faker,
+        Chamado chamado,
+        DesfechoTriagem desfecho,
+        short categoriaCorreta,
+        IReadOnlyDictionary<string, short> categorias,
+        Prioridade prioridade,
+        string atendente,
+        List<Evento> eventos)
+    {
+        var triagem = TriagemIA.Criar(chamado, chamado.CriadoEm);
+        var processadaEm = chamado.CriadoEm + Entre(faker, TimeSpan.FromSeconds(3), TimeSpan.FromSeconds(20));
+        var decisao = Entre(faker, TimeSpan.FromMinutes(1), TimeSpan.FromMinutes(3) - TimeSpan.FromSeconds(1));
+
+        if (desfecho == DesfechoTriagem.Falhou)
+        {
+            triagem.Falhar(faker.PickRandom(_motivosFalha), _execucaoSeed, processadaEm);
+            return triagem;
+        }
+
+        // Rejeitadas sugeriram outra categoria (o motivo mais comum de rejeição); as demais acertaram a categoria.
+        var (categoriaSugerida, prioridadeSugerida, confianca) = desfecho == DesfechoTriagem.Rejeitada
+            ? (faker.PickRandom(categorias.Values.Where(c => c != categoriaCorreta).ToArray()),
+                faker.PickRandom(_prioridades), faker.Random.Decimal(0.40m, 0.75m))
+            : (categoriaCorreta, prioridade, faker.Random.Decimal(0.70m, 0.97m));
+        triagem.Concluir(new SugestaoTriagem(
+                categoriaSugerida,
+                prioridadeSugerida,
+                $"Solicitante relata: {chamado.Titulo}.",
+                $"Olá! Recebemos seu chamado sobre \"{chamado.Titulo}\" e nossa equipe já está analisando. "
+                    + "Retornaremos assim que tivermos novidades.",
+                Math.Round(confianca, 2)),
+            _execucaoSeed,
+            processadaEm);
+
+        if (desfecho == DesfechoTriagem.Aceita)
+        {
+            eventos.Add(new Evento(decisao, ComComentario: false, (c, em) => triagem.Aceitar(c, atendente, em)));
+        }
+        else if (desfecho == DesfechoTriagem.Rejeitada)
+        {
+            var motivo = faker.Random.Bool() ? "A categoria sugerida não corresponde ao problema." : null;
+            eventos.Add(new Evento(decisao, ComComentario: false, (c, em) => triagem.Rejeitar(c, atendente, motivo, em)));
+        }
+
+        return triagem;
     }
 
     /// <summary>

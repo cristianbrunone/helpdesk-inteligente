@@ -1,5 +1,6 @@
 using System.Text.RegularExpressions;
 using HelpDesk.Domain.Chamados;
+using HelpDesk.Domain.Triagem;
 using HelpDesk.Infrastructure.Persistencia.Seed;
 
 namespace HelpDesk.UnitTests.Persistencia;
@@ -17,14 +18,16 @@ public sealed partial class GeradorSeedChamadosTests
         ["Infraestrutura"] = 5,
     };
 
-    private static readonly IReadOnlyList<Chamado> _chamados = GeradorSeedChamados.Gerar(_categorias, _agora);
+    private static readonly DadosSeed _seed = GeradorSeedChamados.Gerar(_categorias, _agora);
+    private static readonly IReadOnlyList<Chamado> _chamados = _seed.Chamados;
 
     [Fact]
     public void Gerar_MesmaSemente_ProduzOMesmoConteudo()
     {
         var outra = GeradorSeedChamados.Gerar(_categorias, _agora);
 
-        outra.Select(Assinatura).ShouldBe(_chamados.Select(Assinatura));
+        outra.Chamados.Select(Assinatura).ShouldBe(_chamados.Select(Assinatura));
+        outra.Triagens.Select(AssinaturaTriagem).ShouldBe(_seed.Triagens.Select(AssinaturaTriagem));
     }
 
     [Fact]
@@ -113,6 +116,65 @@ public sealed partial class GeradorSeedChamadosTests
         _chamados.ShouldContain(c => Telefone().IsMatch(c.Descricao));
         _chamados.ShouldContain(c => c.Descricao.Contains("e-mail alternativo"));
     }
+
+    [Fact]
+    public void Gerar_Triagens_CobremCercaDe70PorCentoComStatusVariadosESemPendentes()
+    {
+        var proporcao = (double)_seed.Triagens.Count / _chamados.Count;
+
+        proporcao.ShouldBeInRange(0.6, 0.8);
+        _seed.Triagens.Select(t => t.ChamadoId).ShouldBeUnique();
+        _seed.Triagens.Select(t => t.Status).Distinct().Order().ShouldBe(
+            [StatusTriagem.Concluida, StatusTriagem.Falhou, StatusTriagem.Aceita, StatusTriagem.Rejeitada]);
+        _seed.Triagens.ShouldAllBe(t => t.PromptVersao == "triagem.v1" && t.Modelo == "fake-triagem-v1");
+    }
+
+    [Fact]
+    public void Gerar_TriagemAceita_AplicouCategoriaEPrioridadeAntesDeQualquerMudancaDeStatus()
+    {
+        var chamados = _chamados.ToDictionary(c => c.Id);
+        var aceitas = _seed.Triagens.Where(t => t.Status == StatusTriagem.Aceita).ToList();
+
+        aceitas.ShouldNotBeEmpty();
+        foreach (var triagem in aceitas)
+        {
+            var chamado = chamados[triagem.ChamadoId];
+            chamado.CategoriaId.ShouldBe(triagem.CategoriaSugeridaId);
+            chamado.Prioridade.ShouldBe(triagem.PrioridadeSugerida!.Value);
+            triagem.ConcluidaEm.ShouldNotBeNull().ShouldBeLessThan(triagem.DecididaEm!.Value);
+            if (chamado.Historico.Count > 1)
+            {
+                triagem.DecididaEm!.Value.ShouldBeLessThan(chamado.Historico[1].AlteradoEm);
+            }
+        }
+    }
+
+    [Fact]
+    public void Gerar_TriagemRejeitada_SugeriuOutraCategoriaENaoAlterouOChamado()
+    {
+        var chamados = _chamados.ToDictionary(c => c.Id);
+        var rejeitadas = _seed.Triagens.Where(t => t.Status == StatusTriagem.Rejeitada).ToList();
+
+        rejeitadas.ShouldNotBeEmpty();
+        foreach (var triagem in rejeitadas)
+        {
+            var chamado = chamados[triagem.ChamadoId];
+            chamado.CategoriaId.ShouldNotBe(triagem.CategoriaSugeridaId);
+            triagem.DecididaPor.ShouldNotBeNullOrWhiteSpace();
+        }
+    }
+
+    [Fact]
+    public void Gerar_TriagemFalha_TemMotivoAmigavelESemSugestao()
+    {
+        var falhas = _seed.Triagens.Where(t => t.Status == StatusTriagem.Falhou).ToList();
+
+        falhas.ShouldNotBeEmpty();
+        falhas.ShouldAllBe(t => t.ErroMotivo != null && t.CategoriaSugeridaId == null && t.DecididaEm == null);
+    }
+
+    private static string AssinaturaTriagem(TriagemIA t) =>
+        $"{t.CriadoEm:O}|{t.Status}|{t.CategoriaSugeridaId}|{t.PrioridadeSugerida}|{t.Confianca}|{t.DecididaEm:O}";
 
     private static string Assinatura(Chamado c) =>
         $"{c.Titulo}|{c.SolicitanteEmail}|{c.Status}|{c.Prioridade}|{c.CategoriaId}|{c.CriadoEm:O}|{c.Comentarios.Count}";

@@ -30,7 +30,7 @@ public sealed record ChamadoDetalhe(
 
 /// <summary>
 /// Triagem vigente no detalhe. <see cref="Erro"/> é a mensagem amigável da falha, nunca o detalhe técnico.
-/// <see cref="Fontes"/> fica vazia até o RAG (Sprint 3).
+/// <see cref="Fontes"/> são os documentos que o RAG recuperou para a sugestão (vazia sem RAG).
 /// </summary>
 public sealed record TriagemDetalhe(
     Guid Id,
@@ -49,9 +49,6 @@ public sealed record TriagemDetalhe(
     string? DecididaPor,
     DateTimeOffset? DecididaEm,
     int TotalTriagens);
-
-/// <summary>Documento usado pelo RAG na sugestão (contrato do detalhe). Preenchido a partir da Sprint 3.</summary>
-public sealed record FonteTriagem(string Tipo, Guid Id, long? Numero, string Titulo, double Similaridade);
 
 public sealed record ComentarioDetalhe(Guid Id, string Autor, string Texto, DateTimeOffset CriadoEm);
 

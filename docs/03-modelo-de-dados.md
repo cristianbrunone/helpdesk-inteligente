@@ -186,6 +186,11 @@ Ajustes feitos na implementação da Sprint 2 (sem mudar nenhuma regra acima):
 - `uso_llm.triagem_id` usa `ON DELETE SET NULL`: o livro-razão de consumo sobrevive à triagem.
 - `fontes` entra na Sprint 3, junto com o RAG que a preenche.
 
+Ajustes feitos na implementação da Sprint 3 (também sem mudar as regras acima):
+
+- `documentos_rag.origem_atualizada_em` guarda o `atualizado_em` da origem quando o documento foi conferido. O reconciliador (ADR-0010) só remonta e recalcula o hash das origens alteradas depois disso, em vez de todos os chamados resolvidos a cada passada. O padrão `'-infinity'` faz um documento gravado fora do reconciliador ser conferido de novo.
+- Mais dois CHECKs em `documentos_rag`: o documento de chamado é sempre o chunk 0 (`chamado_id IS NULL OR chunk_indice = 0`), e `chunk_indice >= 0`. A coerência da indexação inclui o `indexado_em`, além do vetor e do modelo.
+
 Política de exclusão: `ON DELETE CASCADE` de `chamados` para comentários, histórico, triagens e documentos, e de `artigos_conhecimento` para documentos. `categorias` usa `ON DELETE RESTRICT`, porque não se apaga uma categoria em uso.
 
 **A máquina de estados (RN-01) não está no banco.** Um trigger duplicaria a regra do domínio em outra linguagem. O banco garante as *consequências* verificáveis (`resolvido_em` coerente, Crítica nunca cancelada), e o domínio garante as *transições*. Os testes cobrem as duas camadas.

@@ -1,3 +1,4 @@
+using HelpDesk.Application.Conhecimento;
 using HelpDesk.Application.Triagem;
 using HelpDesk.Infrastructure.Ia;
 using Microsoft.Extensions.DependencyInjection;
@@ -19,9 +20,15 @@ public static class Tracing
     /// <summary>Fonte dos spans GenAI do <c>IChatClient</c> (uma por tentativa, com modelo e tokens).</summary>
     public const string FonteChat = "HelpDesk.IA.Chat";
 
+    /// <summary>Fonte dos spans GenAI do gerador de embeddings (um por lote enviado ao provedor).</summary>
+    public const string FonteEmbeddings = "HelpDesk.IA.Embeddings";
+
     /// <summary>Todas as fontes de atividades da aplicação, para exportar e para os testes ouvirem.</summary>
     public static readonly string[] Fontes =
-        [PipelineTriagem.NomeFonteAtividades, ResilienciaChatClient.NomeFonteAtividades, FonteChat];
+    [
+        PipelineTriagem.NomeFonteAtividades, ReconciliarIndiceRag.NomeFonteAtividades,
+        ResilienciaChatClient.NomeFonteAtividades, FonteChat, FonteEmbeddings,
+    ];
 
     public static IServiceCollection AdicionarTracing(
         this IServiceCollection services,

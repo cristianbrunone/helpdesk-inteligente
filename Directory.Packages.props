@@ -25,6 +25,8 @@
 
   <ItemGroup Label="Persistência">
     <PackageVersion Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="10.0.3" />
+    <!-- Tipo vector do pgvector no EF Core e no Npgsql (ADR-0007). -->
+    <PackageVersion Include="Pgvector.EntityFrameworkCore" Version="0.3.0" />
     <PackageVersion Include="Microsoft.EntityFrameworkCore.Design" Version="10.0.12" />
     <!-- Pinos transitivos: mesma versão do EF Core em todos os projetos. -->
     <PackageVersion Include="Microsoft.EntityFrameworkCore" Version="10.0.12" />

@@ -1,6 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <ItemGroup>
     <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" />
+    <PackageReference Include="Pgvector.EntityFrameworkCore" />
     <PackageReference Include="Bogus" />
     <!-- Abstração de LLM e adaptador OpenAI-compatível (ADR-0005). -->
     <PackageReference Include="Microsoft.Extensions.AI" />
@@ -22,9 +23,16 @@
   </ItemGroup>
 
   <ItemGroup>
+    <!-- Consultas analíticas do dashboard (ADR-0009): arquivos .sql versionados, embutidos no assembly. -->
+    <EmbeddedResource Include="Consultas\Sql\*.sql" />
+  </ItemGroup>
+
+  <ItemGroup>
     <!-- Os testes de integração exercitam as consultas diretamente (ex.: EXPLAIN da busca). -->
     <InternalsVisibleTo Include="HelpDesk.IntegrationTests" />
     <!-- Cálculo do backoff e classificação de falhas da resiliência, testados sem I/O. -->
     <InternalsVisibleTo Include="HelpDesk.UnitTests" />
+    <!-- O harness de evals (ADR-0018) monta o pipeline real com os adaptadores internos. -->
+    <InternalsVisibleTo Include="HelpDesk.Evals" />
   </ItemGroup>
 </Project>

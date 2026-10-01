@@ -14,6 +14,7 @@ public sealed class ProcessarTriagemPendente(
     IRepositorioChamados chamados,
     PipelineTriagem pipeline,
     IClienteLlmTriagem cliente,
+    MontadorPromptTriagem montador,
     TimeProvider relogio)
 {
     public const string CodigoInterrompida = "interrompida";
@@ -36,7 +37,7 @@ public sealed class ProcessarTriagemPendente(
         if (triagem.Tentativas > maxReservas)
         {
             triagem.Falhar("O processamento desta triagem foi interrompido várias vezes. Tente refazer.",
-                new ExecucaoTriagem(cliente.Provedor, cliente.Modelo, MontadorPromptTriagem.VersaoAtual),
+                new ExecucaoTriagem(cliente.Provedor, cliente.Modelo, montador.Versao),
                 relogio.GetUtcNow());
             resultado = new ResultadoPipeline(StatusTriagem.Falhou, CodigoInterrompida);
         }

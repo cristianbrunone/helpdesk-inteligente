@@ -1,5 +1,6 @@
 import { Navigate, type RouteObject } from 'react-router';
 import { LayoutBase } from './componentes/LayoutBase';
+import { Dashboard } from './paginas/Dashboard';
 import { DetalheChamado } from './paginas/DetalheChamado';
 import { ListaChamados } from './paginas/ListaChamados';
 import { NaoEncontrada } from './paginas/NaoEncontrada';
@@ -14,6 +15,7 @@ export const rotas: RouteObject[] = [
       { path: 'chamados', element: <ListaChamados /> },
       { path: 'chamados/novo', element: <NovoChamado /> },
       { path: 'chamados/:id', element: <DetalheChamado /> },
+      { path: 'dashboard', element: <Dashboard /> },
       { path: '*', element: <NaoEncontrada /> },
     ],
   },

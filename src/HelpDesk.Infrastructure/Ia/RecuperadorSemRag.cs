@@ -1,15 +1,14 @@
-using HelpDesk.Application.Chamados;
 using HelpDesk.Application.Triagem;
 
 namespace HelpDesk.Infrastructure.Ia;
 
 /// <summary>
-/// Etapa "Recuperar" sem RAG (decisão da Sprint 2): o pipeline já tem as cinco etapas do ADR-0004, e a busca no
-/// pgvector substitui esta implementação na Sprint 3 sem mexer no pipeline.
+/// Etapa "Recuperar" sem RAG: nenhum contexto. É a linha de base dos evals (<c>--rag off</c>, ADR-0018), que medem
+/// o efeito do RAG comparando com o <see cref="RecuperadorRag"/>.
 /// </summary>
 internal sealed class RecuperadorSemRag : IRecuperadorContexto
 {
-    public Task<IReadOnlyList<FonteTriagem>> RecuperarAsync(
+    public Task<ContextoRecuperado> RecuperarAsync(
         TextoMascarado titulo, TextoMascarado descricao, CancellationToken cancellationToken) =>
-        Task.FromResult<IReadOnlyList<FonteTriagem>>([]);
+        Task.FromResult(ContextoRecuperado.Vazio);
 }

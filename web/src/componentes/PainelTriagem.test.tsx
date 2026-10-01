@@ -213,6 +213,52 @@ describe('PainelTriagem', () => {
     );
   });
 
+  it('mostra as fontes do RAG: chamado com link para o detalhe e artigo pelo título', async () => {
+    servirDetalhe(
+      chamado({
+        triagem: triagem({
+          promptVersao: 'triagem.v2',
+          fontes: [
+            {
+              tipo: 'artigo',
+              id: 'a1',
+              numero: null,
+              titulo: 'Erro 403 no módulo de boletos',
+              similaridade: 0.692,
+            },
+            {
+              tipo: 'chamado',
+              id: '0192f0c1-0000-7000-8000-000000000877',
+              numero: 877,
+              titulo: 'Erro 403 ao abrir boletos',
+              similaridade: 0.649,
+            },
+          ],
+        }),
+      }),
+    );
+    renderizarApp(`/chamados/${ID}`);
+
+    const lista = await screen.findByRole('list', { name: 'Baseado em' });
+    expect(lista.querySelectorAll('li')).toHaveLength(2);
+    expect(screen.getByText('Erro 403 no módulo de boletos')).toBeInTheDocument();
+    expect(screen.getByText('69%')).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: '#877 Erro 403 ao abrir boletos' })).toHaveAttribute(
+      'href',
+      '/chamados/0192f0c1-0000-7000-8000-000000000877',
+    );
+    // O artigo não tem página: aparece sem link.
+    expect(screen.queryByRole('link', { name: /módulo de boletos/ })).not.toBeInTheDocument();
+  });
+
+  it('sem fontes (sem RAG ou nada parecido), não mostra a seção', async () => {
+    servirDetalhe(chamado());
+    renderizarApp(`/chamados/${ID}`);
+
+    expect(await screen.findByText('Gerado por IA')).toBeInTheDocument();
+    expect(screen.queryByText('Baseado em')).not.toBeInTheDocument();
+  });
+
   it('chamado finalizado não oferece refazer', async () => {
     servirDetalhe(
       chamado({

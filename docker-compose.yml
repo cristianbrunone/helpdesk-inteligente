@@ -79,15 +79,25 @@ services:
       LLM_BASE_URL: ${LLM_BASE_URL:-}
       LLM_API_KEY: ${LLM_API_KEY:-}
       LLM_CHAT_MODEL: ${LLM_CHAT_MODEL:-}
+      # Embeddings do RAG (ADR-0011): trocar o modelo reindexa tudo; a dimensão é fixa em 768.
+      LLM_EMBEDDING_MODEL: ${LLM_EMBEDDING_MODEL:-}
+      EMBEDDING_DIMENSIONS: ${EMBEDDING_DIMENSIONS:-}
       LLM_TIMEOUT_SECONDS: ${LLM_TIMEOUT_SECONDS:-}
       LLM_MAX_RETRIES: ${LLM_MAX_RETRIES:-}
       LLM_FAKE_MODO: ${LLM_FAKE_MODO:-}
       LLM_FAKE_ATRASO_MS: ${LLM_FAKE_ATRASO_MS:-}
       TRIAGEM_MAX_TOKENS_SAIDA: ${TRIAGEM_MAX_TOKENS_SAIDA:-}
+      # Versão do prompt da triagem (vazio = triagem.v2, com RAG; triagem.v1 = sem RAG). Nova versão só após o eval.
+      TRIAGEM_PROMPT_VERSAO: ${TRIAGEM_PROMPT_VERSAO:-}
       # Fila (ADR-0003)
       WORKER_POLL_INTERVAL_MS: ${WORKER_POLL_INTERVAL_MS:-}
       WORKER_BATCH_SIZE: ${WORKER_BATCH_SIZE:-}
       WORKER_LEASE_SECONDS: ${WORKER_LEASE_SECONDS:-}
+      # Reconciliador do índice do RAG (ADR-0010)
+      WORKER_RECONCILE_INTERVAL_SECONDS: ${WORKER_RECONCILE_INTERVAL_SECONDS:-}
+      # Recuperação do RAG na triagem (ADR-0011): top-k por tipo e similaridade mínima (ponto decimal)
+      RAG_TOP_K: ${RAG_TOP_K:-}
+      RAG_MIN_SIMILARITY: ${RAG_MIN_SIMILARITY:-}
       WORKER_HEARTBEAT_INTERVAL_SECONDS: ${WORKER_HEARTBEAT_INTERVAL_SECONDS:-30}
       OTEL_EXPORTER_OTLP_ENDPOINT: ${OTEL_EXPORTER_OTLP_ENDPOINT:-}
     depends_on:

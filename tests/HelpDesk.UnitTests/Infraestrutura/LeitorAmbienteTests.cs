@@ -1,3 +1,4 @@
+using HelpDesk.Application.Conhecimento;
 using HelpDesk.Infrastructure.Configuracao;
 using HelpDesk.Infrastructure.Ia;
 using Microsoft.Extensions.AI;
@@ -169,5 +170,79 @@ public sealed class LeitorAmbienteTests
         var metadados = cliente.GetService<ChatClientMetadata>()!;
         metadados.DefaultModelId.ShouldBe("modelo-x");
         metadados.ProviderUri!.Host.ShouldBe("exemplo.local");
+    }
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("768")]
+    public void OpcoesLlm_DimensaoAusenteOu768_SobeComOModeloDeEmbeddingPadrao(string? dimensoes)
+    {
+        var opcoes = ComVariaveis(("EMBEDDING_DIMENSIONS", dimensoes ?? "")).OpcoesLlm();
+
+        opcoes.ModeloEmbedding.ShouldBe("gemini-embedding-001");
+        opcoes.ModeloEmbeddingEfetivo.ShouldBe(OpcoesLlm.ModeloEmbeddingFake);
+    }
+
+    [Theory]
+    [InlineData("1536")]
+    [InlineData("abc")]
+    public void OpcoesLlm_DimensaoDiferenteDaColuna_ImpedeASubidaExplicandoAMigration(string dimensoes)
+    {
+        Should.Throw<InvalidOperationException>(() => ComVariaveis(("EMBEDDING_DIMENSIONS", dimensoes)).OpcoesLlm())
+            .Message.ShouldContain("exige uma migration");
+    }
+
+    [Fact]
+    public void FabricaGeradorEmbeddings_OpenAiCompativel_UsaOModeloDeEmbeddingConfigurado()
+    {
+        var opcoes = ComVariaveis(("LLM_PROVIDER", "openai-compatible"), ("LLM_BASE_URL", "https://exemplo.local/v1/"),
+            ("LLM_API_KEY", ChaveFicticia), ("LLM_EMBEDDING_MODEL", "embedding-x")).OpcoesLlm();
+
+        using var gerador = FabricaGeradorEmbeddings.Criar(opcoes);
+
+        opcoes.ModeloEmbeddingEfetivo.ShouldBe("embedding-x");
+        gerador.GetService<EmbeddingGeneratorMetadata>()!.DefaultModelId.ShouldBe("embedding-x");
+    }
+
+    [Fact]
+    public void OpcoesRag_SemVariaveis_UsaOsPadroesDoAdr0011()
+    {
+        ComVariaveis().OpcoesRag().ShouldBe(new OpcoesRag(3, 0.35));
+    }
+
+    [Fact]
+    public void OpcoesRag_ValoresValidos_SaoLidosComPontoDecimal()
+    {
+        ComVariaveis(("RAG_TOP_K", "5"), ("RAG_MIN_SIMILARITY", "0.5")).OpcoesRag().ShouldBe(new OpcoesRag(5, 0.5));
+    }
+
+    [Theory]
+    [InlineData("RAG_TOP_K", "0")]
+    [InlineData("RAG_TOP_K", "50")]
+    [InlineData("RAG_MIN_SIMILARITY", "0,5")]
+    [InlineData("RAG_MIN_SIMILARITY", "1.5")]
+    public void OpcoesRag_ValorInvalido_ImpedeASubida(string chave, string valor)
+    {
+        Should.Throw<InvalidOperationException>(() => ComVariaveis((chave, valor)).OpcoesRag())
+            .Message.ShouldStartWith($"A variável {chave}");
+    }
+
+    [Theory]
+    [InlineData(null, "triagem.v2")]
+    [InlineData("triagem.v1", "triagem.v1")]
+    [InlineData("triagem.v2", "triagem.v2")]
+    public void VersaoPromptTriagem_AusenteOuValida_UsaOPadraoOuAInformada(string? valor, string esperada)
+    {
+        ComVariaveis(("TRIAGEM_PROMPT_VERSAO", valor ?? "")).VersaoPromptTriagem().ShouldBe(esperada);
+    }
+
+    [Theory]
+    [InlineData("../segredo")]
+    [InlineData("copiloto.v1")]
+    [InlineData("triagem.v2-teste")]
+    public void VersaoPromptTriagem_ForaDoFormato_ImpedeASubida(string valor)
+    {
+        Should.Throw<InvalidOperationException>(() => ComVariaveis(("TRIAGEM_PROMPT_VERSAO", valor)).VersaoPromptTriagem())
+            .Message.ShouldStartWith("A variável TRIAGEM_PROMPT_VERSAO");
     }
 }

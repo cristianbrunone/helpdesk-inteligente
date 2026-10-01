@@ -1,0 +1,17 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <RootNamespace>HelpDesk.Evals</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- O harness monta o pipeline real de produção (ADR-0018): mesmas classes, mesmo prompt, mesmo validador. -->
+    <ProjectReference Include="..\..\src\HelpDesk.Infrastructure\HelpDesk.Infrastructure.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Cálculo das métricas e montagem do relatório, testados sem I/O; a execução, com o PostgreSQL real. -->
+    <InternalsVisibleTo Include="HelpDesk.UnitTests" />
+    <InternalsVisibleTo Include="HelpDesk.IntegrationTests" />
+  </ItemGroup>
+</Project>

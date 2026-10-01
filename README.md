@@ -8,7 +8,7 @@ Gestão de chamados de suporte com **triagem assistida por IA** (RAG com pgvecto
 
 > 🚧 **Em desenvolvimento.** O projeto é construído em sprints incrementais, e este README cresce a cada entrega. O plano está em [`docs/05-sprints.md`](docs/05-sprints.md).
 >
-> **Entregue até agora:** Sprint 0 (Walking Skeleton + PoC de IA), Sprint 1 (chamados de ponta a ponta) e Sprint 2 (triagem por IA). Veja [o que já existe](#o-que-já-existe).
+> **Entregue até agora:** Sprint 0 (Walking Skeleton + PoC de IA), Sprint 1 (chamados de ponta a ponta), Sprint 2 (triagem por IA) e Sprint 3 (RAG, dashboard e evals). Veja [o que já existe](#o-que-já-existe).
 
 ## Documentação
 
@@ -80,28 +80,109 @@ cd web && npm ci && npm run lint && npm test && npm run build
 
 # Smoke test do ambiente completo (com o docker compose de pé)
 docker compose up --build -d --wait && bash scripts/smoke-compose.sh
+
+# Smoke do harness de evals da IA com o provedor fake (a medição real está em "Evals", na Sprint 3)
+LLM_PROVIDER=fake dotnet run --project tools/HelpDesk.Evals -- --rag off --repeticoes 1
 ```
 
-O mesmo conjunto roda no **CI** (GitHub Actions) a cada push, em três jobs paralelos: backend, frontend e smoke do `docker compose up` sem `.env` (ADR-0022).
+O mesmo conjunto roda no **CI** (GitHub Actions) a cada push, em três jobs paralelos: backend (com o smoke do harness de evals), frontend e smoke do `docker compose up` sem `.env` (ADR-0022).
 
 | Suíte | Testes | O que cobrem |
 |---|---|---|
 | Arquitetura | 6 | Regra de dependência entre camadas, nos tipos (NetArchTest) e nos `.csproj` |
-| Unitários | 270 | Máquina de estados do chamado e da triagem; **mascaramento** (positivos, negativos e falsos positivos aceitos); **validador da saída da IA**; fake e seus modos de falha; **resiliência** (timeout, retry, backoff, `Retry-After`); leitura e validação das variáveis de ambiente; validação da listagem; seed; heartbeat |
-| Integração | 175 | PostgreSQL real: `CHECK`s, índices, seed e concorrência. API de chamados e de triagem (refazer, aceitar, rejeitar, 409/412/503). **Pipeline com spy** (nenhum dado pessoal chega ao provedor). **Fila**: conclusão, falhas, timeout com retries, dois Workers sem duplicar nem bloquear, lease retomado, kill switch e criação abaixo de 300 ms com provedor lento. `uso_llm`. **Tracing** sem conteúdo. `/health` com a fila |
-| Frontend | 41 | Filtros na URL; busca com debounce; paginação; formulário e erros 422; botões só das `transicoesPermitidas`; 412; **painel da triagem** (concluída, falhou, pendente com polling, aceitar, rejeitar, refazer, IA desativada); estados de carregando, vazio e erro |
-| Smoke (Compose) | 16 | Critérios de aceite contra o ambiente de pé: seed, busca sem acento, ciclo com `If-Match` e 412, **triagem concluída pelo Worker e aceita pelo Nginx**, `/api/config/ia`, e dados pessoais fora dos logs da API **e do Worker** |
+| Unitários | 365 | Máquina de estados do chamado e da triagem; **mascaramento** (positivos, negativos e falsos positivos aceitos); **validador da saída da IA**; fake e seus modos de falha; **resiliência** (timeout, retry, backoff, `Retry-After`) do chat e dos embeddings; **embedding fake** (norma 1, determinismo, proximidade) e normalização do provedor real; **montagem dos documentos do RAG** (mascaramento, corte, chunking, hash); prompt v1/v2 e injeção pelo contexto; **métricas do harness de evals** com resultados simulados; o **conjunto rotulado** (composição e independência do seed); variáveis de ambiente; seed; heartbeat |
+| Integração | 219 | PostgreSQL real: `CHECK`s, índices, seed e concorrência. API de chamados, de triagem e do dashboard. **Pipeline com spy** (nenhum dado pessoal chega ao provedor, com e sem contexto). **Fila** da triagem. **Reconciliador do RAG** (indexar, reabrir, comentar, fechar sem reindexar, trocar o modelo, desativar artigo, dois reconciliadores e provedor fora). **Busca semântica** ("erro 403 em boletos" recupera o artigo financeiro; `EXPLAIN` com o índice HNSW). **Cada consulta do dashboard** com massa controlada. **Harness de evals** de ponta a ponta com o fake. **Tracing** sem conteúdo. `/health` com a fila |
+| Frontend | 50 | Filtros na URL; busca com debounce; paginação; formulário e erros 422; botões só das `transicoesPermitidas`; 412; **painel da triagem** (concluída, falhou, pendente com polling, aceitar, rejeitar, refazer, IA desativada, **fontes do RAG**); **dashboard** (cartões, tabelas acessíveis dos gráficos, consumo de IA); estados de carregando, vazio e erro |
+| Smoke (Compose) | 18 | Critérios de aceite contra o ambiente de pé: seed, busca sem acento, ciclo com `If-Match` e 412, **triagem concluída pelo Worker e aceita pelo Nginx**, **seed indexado no RAG sem ação manual**, **dashboard batendo com a listagem**, `/api/config/ia`, e dados pessoais fora dos logs da API **e do Worker** |
 
 ---
 
 ## O que já existe
+
+### Sprint 3: RAG, dashboard e evals
+
+- **A triagem passou a se apoiar no que já foi resolvido (RAG).** Antes de perguntar ao modelo, o sistema busca os chamados resolvidos e os trechos da base de conhecimento mais parecidos com o chamado novo e os entrega no prompt. O painel da IA mostra **em que a sugestão se apoiou** ("Baseado em"), com link para os chamados semelhantes.
+- **Dashboard** em `/dashboard`: totais por status e por prioridade, tempo médio de resolução por categoria, aceitas × rejeitadas pela IA e o consumo do provedor nos últimos 30 dias, tudo agregado no banco em SQL explícito.
+- **Evals da IA:** um conjunto rotulado de 30 chamados e um harness que roda o pipeline real e mede a qualidade. A primeira medição comparou a triagem sem RAG e com RAG no Gemini, e decidiu o prompt padrão.
+- **Seed completo para demonstração:** 25 artigos de base de conhecimento (5 por categoria) e triagens decididas em ~70% dos chamados.
+
+#### Como funciona o RAG
+
+| Pergunta | Resposta |
+|---|---|
+| **O que é indexado** | Chamados **Resolvidos e Fechados** (título, descrição e comentários, inclusive o de resolução; até ~2.000 caracteres) e os **artigos ativos** da base de conhecimento, um trecho por seção `##` (até ~1.500 caracteres, com 1 parágrafo de sobreposição). Tudo **mascarado antes** de virar vetor: o que fica em `documentos_rag` é exatamente o que pode ir para o prompt (ADR-0011). |
+| **Quando** | Um **reconciliador** no Worker compara o estado desejado com o índice (ADR-0010): logo na subida e a cada `WORKER_RECONCILE_INTERVAL_SECONDS` (30 s). Chamado resolvido entra; chamado **reaberto sai**; artigo desativado sai; conteúdo alterado (hash diferente) é reindexado. Não há fila nem evento que possa se perder: qualquer divergência se resolve na passada seguinte. |
+| **Como é buscado** | Cosseno no **pgvector** com índice HNSW (ADR-0007): até `RAG_TOP_K` chamados **e** até `RAG_TOP_K` trechos de artigo (padrão 3 de cada), acima de `RAG_MIN_SIMILARITY` (padrão 0,35). Só vetores do modelo configurado são comparados. |
+| **Como trocar o modelo de embedding** | Mude `LLM_EMBEDDING_MODEL` (ou o provedor) e reinicie o Worker: o reconciliador **reindexa tudo sozinho**, e a busca ignora os vetores antigos enquanto isso. A dimensão é fixa em **768** (`vector(768)`); outra dimensão exige uma migration nova, e o Worker não sobe com `EMBEDDING_DIMENSIONS` diferente. |
+| **Sem chave** | O embedding **fake** (feature hashing, determinístico) aproxima textos com palavras em comum: a recuperação funciona e é testável, mas mede sobreposição de palavras, não de significado. |
+| **Se o provedor de embeddings cair** | A triagem segue **sem contexto**, em vez de falhar (o span registra), e a indexação pendente é retomada na passada seguinte. |
+
+#### O prompt com contexto (`triagem.v2`)
+
+[`prompts/triagem.v2.md`](prompts/triagem.v2.md) é a v1 com uma seção sobre o bloco `<contexto>`. Os trechos recuperados vão na **mensagem do usuário**, numerados, antes do `<chamado>`, e **não** no prompt de sistema: eles também foram escritos por usuários (outros chamados) e são tratados como dados não confiáveis, com as tags neutralizadas contra injeção. O prompt diz para usar o contexto como referência, classificar o chamado atual pelo que ele descreve e não citar números de chamados na resposta.
+
+Só uma versão de prompt que descreve o `<contexto>` aciona a recuperação. Com `TRIAGEM_PROMPT_VERSAO=triagem.v1`, a triagem volta à linha de base sem RAG, sem custo de embedding. **A padrão é a `triagem.v2`**, adotada depois do eval abaixo.
+
+#### Consultas do dashboard
+
+As consultas ficam em arquivos versionados em [`src/HelpDesk.Infrastructure/Consultas/Sql/`](src/HelpDesk.Infrastructure/Consultas/Sql/), comentadas, executadas com `Database.SqlQuery` (ADR-0009). Nenhum chamado individual chega à aplicação: tudo é agregado no banco.
+
+| Arquivo | O que calcula | Detalhe |
+|---|---|---|
+| `totais_por_status_e_prioridade.sql` | Totais por status e por prioridade | Duas agregações em uma ida ao banco (`UNION ALL`); o `GROUP BY status` usa o índice `(status, criado_em)` |
+| `tempo_medio_por_categoria.sql` | Horas médias de resolução por categoria | `LEFT JOIN` a partir de categorias (toda categoria aparece); só Resolvido e Fechado (RN-13) |
+| `aceitacao_por_categoria.sql` | Aceitas × rejeitadas e taxa de aceitação | `COUNT(*) FILTER`, `ROLLUP` para o total geral e `NULLIF` contra divisão por zero |
+| `situacao_triagens.sql` | Triagens na fila e com falha | Uma varredura com `FILTER` |
+| `consumo_ia_30_dias.sql` | Chamadas, falhas, tokens e latência p95 do provedor | Janela de 30 dias pelo índice `uso_llm (criado_em)`; `PERCENTILE_CONT` |
+
+```sql
+-- Tempo médio de resolução (horas) por categoria — RN-13
+SELECT c.id                AS categoria_id,
+       c.nome              AS categoria,
+       COUNT(ch.id)::int   AS resolvidos,
+       ROUND(AVG(EXTRACT(EPOCH FROM (ch.resolvido_em - ch.criado_em)) / 3600.0)::numeric, 1)
+                           AS tempo_medio_horas
+FROM categorias c
+LEFT JOIN chamados ch
+       ON ch.categoria_id = c.id
+      AND ch.resolvido_em IS NOT NULL
+GROUP BY c.id, c.nome
+ORDER BY c.nome;
+```
+
+As cinco rodam numa **mesma transação `REPEATABLE READ` somente leitura**, então todas veem o mesmo instantâneo do banco e os totais batem entre si. Cada uma tem um teste de integração com uma massa controlada, com os números calculados à mão. Na tela, cada gráfico vem acompanhado de uma tabela com os mesmos dados para leitores de tela.
+
+#### Evals: sem RAG × com RAG
+
+O harness [`tools/HelpDesk.Evals`](tools/HelpDesk.Evals) roda o **pipeline real de produção** sobre o [conjunto rotulado](evals/triagem/LEIAME.md) (15 casos claros, 6 ambíguos, 4 de prioridade, 3 de injeção de prompt e 2 de dados pessoais; 10 deles *held-out*), três vezes por caso, e grava um relatório em [`docs/evals/`](docs/evals/LEIAME.md) (ADR-0018). Primeira medição, no Gemini (`gemini-3.5-flash-lite` + `gemini-embedding-001`):
+
+| Métrica | `triagem.v1` sem RAG | `triagem.v2` com RAG |
+|---|---|---|
+| Acurácia de categoria | 95,6% (86/90) | **100% (90/90)** |
+| Categoria certa nas 3 execuções (pass^3) | 28/30 | **30/30** |
+| Acurácia de prioridade | **91,1% (82/90)** | 86,7% (78/90) |
+| Saída válida (JSON + validação de domínio) | 100% | 100% |
+| Segurança (injeção e dados pessoais) | 5/5 | 5/5 |
+| Latência p50 / p95 | 1,2 s / **4,0 s** | 1,7 s / 19,8 s |
+| Tokens por triagem | **881** | 1.674 |
+
+O RAG acertou todas as categorias, inclusive os casos ambíguos e os held-out, e manteve a segurança intacta. A prioridade piorou num padrão claro: em chamados com contorno, o esperado é Média, e a v2 escolhe Baixa com mais frequência. O p95 da v2 inclui as novas tentativas por limite de requisições do free tier (são duas chamadas por triagem). **Decisão:** a v2 virou a padrão, e a regra "problema real com contorno = Média" é o alvo de uma `triagem.v3`, medida pelo mesmo harness. Análise completa em [`docs/evals/LEIAME.md`](docs/evals/LEIAME.md).
+
+```bash
+# Medição real (as mesmas variáveis do Worker; com RAG, o banco precisa estar indexado pelo mesmo modelo de embedding)
+dotnet run --project tools/HelpDesk.Evals -- --rag off --repeticoes 3 --intervalo-ms 4500
+ConnectionStrings__Default="Host=localhost;Port=55432;Database=helpdesk;Username=helpdesk;Password=helpdesk_dev" \
+  dotnet run --project tools/HelpDesk.Evals -- --rag on --repeticoes 3 --intervalo-ms 4500
+```
+
+O relatório só tem rótulos e números (nenhum texto de chamado). Os casos de dados pessoais conferem, com um espião no lugar do provedor, que nada do texto pessoal saiu do sistema. No CI, o harness roda com o fake e uma repetição: não mede qualidade, garante que continua funcionando.
 
 ### Sprint 2: triagem por IA
 
 Todo chamado novo recebe uma **sugestão da IA** (categoria, prioridade, resumo, resposta ao solicitante e confiança), processada em segundo plano. A decisão é sempre do atendente: **aceitar** aplica categoria e prioridade ao chamado, **rejeitar** registra o motivo sem alterar nada, e **refazer** pede uma nova triagem.
 
 - **Assíncrona:** criar o chamado responde em milissegundos, mesmo com um provedor que leve 30 s (há teste para isso). A triagem nasce `Pendente` na mesma transação, e o **Worker** a processa pela fila (`FOR UPDATE SKIP LOCKED`, lease e backoff; dois Workers nunca pegam a mesma triagem).
-- **Pipeline determinístico** (ADR-0004): `Mascarar → Recuperar → MontarPrompt → Completar → Validar`. A etapa *Recuperar* já existe e devolve zero fontes; o RAG a preenche na Sprint 3.
+- **Pipeline determinístico** (ADR-0004): `Mascarar → Recuperar → MontarPrompt → Completar → Validar`. Na Sprint 2, a etapa *Recuperar* devolvia zero fontes; a Sprint 3 a preencheu com o RAG.
 - **A saída da IA é tratada como não confiável:** parse tolerante, schema e validação de domínio (a categoria precisa existir, a prioridade precisa ser válida, o resumo tem no máximo 200 caracteres e a confiança fica entre 0 e 1). Qualquer falha vira triagem **`Falhou`** com uma mensagem amigável, e a API segue saudável.
 - **Resiliente:** timeout por tentativa e novas tentativas com backoff + jitter para 429, 5xx, timeout e falhas de rede, respeitando o `Retry-After` (ADR-0024).
 - **Rastreável:** cada chamada ao LLM (inclusive as tentativas que falharam) vira uma linha em `uso_llm` com provedor, modelo, latência e tokens, e cada triagem guarda o modelo e a versão do prompt usados.
@@ -290,7 +371,9 @@ src/
   HelpDesk.Worker/          BackgroundServices
   HelpDesk.Migrator/        aplica migrations e seed e termina
 tests/                      unitários, integração (Testcontainers) e arquitetura
-prompts/                    prompts versionados (triagem.v1.md)
+tools/HelpDesk.Evals/       harness de evals offline da IA (ADR-0018)
+evals/                      conjunto rotulado (evals/triagem/casos.jsonl)
+prompts/                    prompts versionados (triagem.v1.md, triagem.v2.md)
 web/                        React + TypeScript (src/api/ isola todo acesso HTTP)
 scripts/                    smoke test do ambiente completo
 ```
@@ -307,6 +390,7 @@ O enunciado pede que cada biblioteca seja justificada. As versões ficam fixadas
 |---|---|
 | ASP.NET Core Minimal APIs | Endpoints finos por construção, `TypedResults` e OpenAPI melhor (ADR-0013) |
 | Npgsql.EntityFrameworkCore.PostgreSQL | EF Core para PostgreSQL, com enums nativos e extensões |
+| Pgvector.EntityFrameworkCore | O tipo `vector` do pgvector no EF Core e no Npgsql (ADR-0007): embeddings gravados e lidos como qualquer coluna |
 | Microsoft.EntityFrameworkCore.Design | Ferramenta de migrations (`dotnet ef`), só em tempo de desenvolvimento |
 | Microsoft.AspNetCore.OpenApi + Swashbuckle.AspNetCore.SwaggerUI | Documento OpenAPI nativo do .NET e só a interface do Swagger por cima |
 | Microsoft.Extensions.Hosting | Host genérico (DI, configuração e logs) para o Worker e o Migrator |
@@ -335,6 +419,7 @@ A convenção snake_case, o health check do banco e a validação dos dados de e
 | React Router | Rotas e os filtros da lista na URL |
 | TanStack Query | Cache, estados de carregamento e erro e novas tentativas para os dados da API |
 | Mantine (`core`, `hooks`, `notifications`) | Componentes acessíveis e responsivos (AppShell, chips, timeline, modal), o debounce da busca e o aviso de conflito no 412 (ADR-0017) |
+| @mantine/charts + recharts | Gráficos do dashboard no mesmo tema da Mantine; o Recharts é a dependência que desenha o SVG (ADR-0017) |
 | React Hook Form + Zod + @hookform/resolvers | Formulários sem re-render a cada tecla e esquema de validação tipado, com as mesmas regras e mensagens da API. O resolver é o adaptador oficial entre os dois |
 | ESLint (typescript-eslint strict) + Prettier | Qualidade e formatação; proíbe `any` |
 | Vitest + Testing Library + MSW | Testes de componente com a API simulada no nível da rede |

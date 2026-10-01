@@ -78,7 +78,7 @@ internal sealed class ConsultaChamados(HelpDeskDbContext db) : IConsultaChamados
             t.Confianca,
             t.Modelo,
             t.PromptVersao,
-            [],
+            t.Fontes,
             t.Status == StatusTriagem.Falhou ? t.ErroMotivo : null,
             t.CriadoEm,
             t.ConcluidaEm,

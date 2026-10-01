@@ -44,6 +44,18 @@ public sealed class TriagemIATests
         triagem.PromptVersao.ShouldBe("triagem.v1");
         triagem.ConcluidaEm.ShouldBe(_inicio.AddSeconds(5));
         triagem.LockExpiraEm.ShouldBeNull();
+        triagem.Fontes.ShouldBeEmpty(); // sem RAG
+    }
+
+    [Fact]
+    public void Concluir_ComFontesDoRag_GuardaAsFontesDaSugestao()
+    {
+        var triagem = TriagemIA.Criar(NovoChamado(), _inicio);
+        FonteTriagem[] fontes = [new("artigo", Guid.CreateVersion7(), null, "Erro 403 no módulo de boletos", 0.69)];
+
+        triagem.Concluir(_sugestao, _execucao, _inicio.AddSeconds(5), fontes);
+
+        triagem.Fontes.ShouldBe(fontes);
     }
 
     [Fact]
