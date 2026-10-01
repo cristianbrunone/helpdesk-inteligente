@@ -1,0 +1,96 @@
+# HelpDesk Inteligente — ambiente completo com um comando (NFR-08, ADD §12):
+#   docker compose up --build
+# Sobe SEM arquivo .env: todo valor tem padrão aqui. O .env (opcional, fora do git) só sobrescreve.
+# A IA usa o provedor fake por padrão; nenhuma chave de API é necessária.
+
+name: helpdesk
+
+# GSS Encryption Mode=Disable: sem Kerberos no projeto, e a imagem Alpine não tem a libgssapi (evita um
+# aviso fora do JSON nos logs a cada conexão nova).
+x-banco: &banco
+  ConnectionStrings__Default: >-
+    Host=db;Port=5432;Database=${POSTGRES_DB:-helpdesk};Username=${POSTGRES_USER:-helpdesk};Password=${POSTGRES_PASSWORD:-helpdesk_dev};GSS Encryption Mode=Disable
+
+services:
+  db:
+    image: pgvector/pgvector:0.8.6-pg18
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-helpdesk}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-helpdesk_dev}
+      POSTGRES_DB: ${POSTGRES_DB:-helpdesk}
+    volumes:
+      # PostgreSQL 18+: o volume vai em /var/lib/postgresql (o PGDATA fica num subdiretório por versão).
+      - pgdata:/var/lib/postgresql
+    ports:
+      # Exposto só para inspeção local (psql, IDE). Porta alternativa para não colidir com um Postgres local.
+      - "${DB_PORTA_HOST:-55432}:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  migrator:
+    build:
+      context: .
+      target: migrator
+      secrets: [ca_extra]
+    environment:
+      <<: *banco
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: "no"
+
+  api:
+    build:
+      context: .
+      target: api
+      secrets: [ca_extra]
+    environment:
+      <<: *banco
+      LLM_PROVIDER: ${LLM_PROVIDER:-fake}
+    ports:
+      - "${API_PORTA_HOST:-5080}:8080"
+    depends_on:
+      migrator:
+        condition: service_completed_successfully
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:8080/health > /dev/null || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+      start_period: 15s
+    restart: unless-stopped
+
+  worker:
+    build:
+      context: .
+      target: worker
+      secrets: [ca_extra]
+    environment:
+      LLM_PROVIDER: ${LLM_PROVIDER:-fake}
+      WORKER_HEARTBEAT_INTERVAL_SECONDS: ${WORKER_HEARTBEAT_INTERVAL_SECONDS:-30}
+    depends_on:
+      migrator:
+        condition: service_completed_successfully
+    restart: unless-stopped
+
+  web:
+    build:
+      context: ./web
+      secrets: [ca_extra]
+    ports:
+      - "${WEB_PORTA_HOST:-8080}:8080"
+    depends_on:
+      api:
+        condition: service_healthy
+    restart: unless-stopped
+
+volumes:
+  pgdata:
+
+# CA extra opcional para redes com inspeção TLS (veja o README). Sem CA_EXTRA_PEM, usa um arquivo vazio.
+secrets:
+  ca_extra:
+    file: ${CA_EXTRA_PEM:-./docker/ca-extra-vazia.pem}

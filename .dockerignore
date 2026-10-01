@@ -1,0 +1,12 @@
+# Contexto do Dockerfile do backend: só o necessário para compilar src/.
+.git
+.github
+.vs
+.vscode
+**/bin
+**/obj
+tests
+web
+docs
+.env
+.env.*
