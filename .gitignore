@@ -11,6 +11,8 @@ appsettings.*.local.json
 *.pfx
 *.key
 *.pem
+# Exceção: placeholder vazio da CA extra opcional do build (docker-compose.yml). Não contém certificado.
+!docker/ca-extra-vazia.pem
 
 # ---------- .NET ----------
 [Bb]in/

@@ -1,0 +1,3 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- Domínio: sem nenhuma dependência (ADR-0002). -->
+</Project>

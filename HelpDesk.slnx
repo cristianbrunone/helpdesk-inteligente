@@ -1,0 +1,15 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/HelpDesk.Api/HelpDesk.Api.csproj" />
+    <Project Path="src/HelpDesk.Application/HelpDesk.Application.csproj" />
+    <Project Path="src/HelpDesk.Domain/HelpDesk.Domain.csproj" />
+    <Project Path="src/HelpDesk.Infrastructure/HelpDesk.Infrastructure.csproj" />
+    <Project Path="src/HelpDesk.Migrator/HelpDesk.Migrator.csproj" />
+    <Project Path="src/HelpDesk.Worker/HelpDesk.Worker.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/HelpDesk.ArchitectureTests/HelpDesk.ArchitectureTests.csproj" />
+    <Project Path="tests/HelpDesk.IntegrationTests/HelpDesk.IntegrationTests.csproj" />
+    <Project Path="tests/HelpDesk.UnitTests/HelpDesk.UnitTests.csproj" />
+  </Folder>
+</Solution>

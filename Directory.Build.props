@@ -1,0 +1,11 @@
+<Project>
+  <!-- Configuração comum a todos os projetos .NET (src/ e tests/). -->
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <!-- Aplica as regras de estilo do .editorconfig também no build (não só no IDE). -->
+    <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
+    <IsPackable>false</IsPackable>
+  </PropertyGroup>
+</Project>

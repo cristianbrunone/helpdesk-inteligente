@@ -45,7 +45,7 @@ Semântica dos códigos:
 | **422** | O corpo é bem formado, mas **viola regras de validação** (obrigatório, formato de e-mail, tamanho). Inclui `errors: { campo: [mensagens] }`. | `validacao` |
 | **429** | O limite de requisições do copiloto foi excedido. | `limite_excedido` |
 | **500** | Erro inesperado. Sem stack trace; com `correlationId` para rastrear nos logs. | `erro_interno` |
-| **503** | O provedor de LLM está indisponível para o copiloto (a triagem nunca devolve 503: ela vira `Falhou`). | `ia_indisponivel` |
+| **503** | O provedor de LLM está indisponível para o copiloto, ou a funcionalidade de IA foi desativada pelo kill switch (ADR-0021). Uma falha do provedor **na triagem** nunca devolve 503: ela vira `Falhou`. | `ia_indisponivel` |
 
 Catálogo de conflitos (**409**):
 
@@ -233,9 +233,14 @@ data: {"texto":"Sim, encontrei 3 casos parecidos. No chamado #877..."}
 event: fontes
 data: {"itens":[{"tipo":"chamado","id":"...","numero":877,"titulo":"Erro 403 em boletos"}]}
 
+event: aviso
+data: {"tipo":"referencia_nao_verificada","referencias":["#912"]}
+
 event: fim
 data: {"tokensEntrada":1840,"tokensSaida":212}
 ```
+
+- *(revisão 30/09)* O evento `aviso` é emitido pelo guardrail de saída (ADR-0020) quando a resposta cita um chamado que nenhuma ferramenta retornou (`referencia_nao_verificada`), e pelo orçamento de tokens (ADR-0021) quando a resposta foi cortada (`resposta_truncada`). O evento `fontes` contém **só** fontes verificadas. Todo `delta` já sai com os dados pessoais mascarados.
 
 Se ocorrer um erro **depois** que o stream já começou, o servidor envia `event: erro` com o payload de ProblemDetails e encerra. Se o erro ocorrer **antes**, a resposta é um HTTP normal (404/409/422/429/503).
 
@@ -255,6 +260,10 @@ A ferramenta de histórico **não recebe ID** de propósito: o escopo é o chama
 ### `GET /api/categorias`
 
 **200**: `[{ "id": 1, "nome": "Acesso/Login" }, ...]`. É usado nos filtros e no formulário.
+
+### `GET /api/config/ia` *(revisão 30/09)*
+
+**200**: `{ "triagem": true, "copiloto": true }`. Indica ao frontend quais funcionalidades de IA estão ativas (ADR-0021). Com a triagem desativada, o chamado é criado com `triagem: null`, e `POST /triagem` devolve **503** `ia_indisponivel`. Com o copiloto desativado, `POST /copiloto` devolve **503** `ia_indisponivel`.
 
 ### `GET /api/dashboard/resumo`
 
@@ -294,3 +303,4 @@ Usa os health checks do ASP.NET Core:
 - `banco` indisponível → **503** `Unhealthy`.
 - A fila com uma triagem pendente há mais de 5 minutos → `Degraded` (**200**). Isso indica que o Worker está parado ou que o provedor está lento, sem derrubar a API.
 - O provedor de LLM **não** entra no health check de propósito: a API funciona sem ele (D1).
+- **Entrega incremental:** nas Sprints 0 e 1, o `/health` tem apenas o check `banco`. O `filaTriagem` entra na Sprint 2, junto com a tabela `triagens_ia`.

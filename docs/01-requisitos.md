@@ -54,7 +54,10 @@ A vaga é de **IA Engineer conversacional**. Por isso, além do mínimo pedido, 
 | Correlation id + logs estruturados | M (logs) / S (correlation id) |
 | E2E com Playwright | C |
 | Autenticação JWT com perfis | C |
-| OpenTelemetry (tracing/métricas) | C |
+| OpenTelemetry (tracing) | ~~C~~ → **S** *(revisão 30/09, ADR-0019)* |
+| Evals offline da IA (conjunto rotulado + harness) | **S** *(revisão 30/09, ADR-0018)* |
+| Guardrail de saída do copiloto | **S** *(revisão 30/09, ADR-0020)* |
+| Kill switches e orçamentos de IA | **S** *(revisão 30/09, ADR-0021)* |
 | App Flutter, deploy em nuvem | W |
 
 ---
@@ -85,6 +88,7 @@ A vaga é de **IA Engineer conversacional**. Por isso, além do mínimo pedido, 
 | RF-15 | Recuperar chamados resolvidos semelhantes e artigos da base de conhecimento para enriquecer o prompt (RAG). | S |
 | RF-16 | Exibir no painel da IA as fontes usadas pelo RAG (chamados/artigos semelhantes). | S |
 | RF-17 | Registrar tokens de entrada/saída e modelo usado em cada chamada ao LLM. | S |
+| RF-18 | *(revisão 30/09)* A triagem por IA pode ser desativada por configuração (kill switch). Desativada, o chamado é criado sem triagem e o sistema continua funcionando (ADR-0021). | S |
 
 ### Copiloto do atendente
 
@@ -93,6 +97,8 @@ A vaga é de **IA Engineer conversacional**. Por isso, além do mínimo pedido, 
 | RF-20 | Chat no detalhe do chamado, com o contexto do chamado atual. | S |
 | RF-21 | O LLM pode chamar **ferramentas somente leitura**: buscar chamados semelhantes, buscar artigos, obter histórico do chamado e obter métricas da categoria. | S |
 | RF-22 | O copiloto **não executa ações de escrita** (mudar status, aceitar triagem). Ele pode sugerir, mas quem executa é o atendente, pela UI. | S |
+| RF-23 | *(revisão 30/09)* A resposta do copiloto passa por um guardrail de saída: dados pessoais são mascarados e as citações de chamados são verificadas contra os resultados das ferramentas. Uma citação sem fonte é sinalizada ao atendente (ADR-0020). | S |
+| RF-24 | *(revisão 30/09)* O copiloto pode ser desativado por configuração (kill switch), e cada resposta tem um limite de tokens (ADR-0021). | S |
 
 ### Base de conhecimento e indexação
 
@@ -199,6 +205,8 @@ Os alvos abaixo servem como referência para decisões de design. Eles valem par
 | NFR-13 | **Escalabilidade** | O worker de IA é separável da API (escala independente). Não é alvo desta versão escalar horizontalmente, mas o desenho não pode impedir isso. |
 | NFR-14 | **Usabilidade** | Estados de loading, vazio e erro em todas as telas. Layout responsivo. Conteúdo de IA claramente sinalizado. |
 | NFR-15 | **Manutenibilidade** | Separação em camadas (API / aplicação / domínio / infraestrutura). Prompts versionados em arquivo. Decisões registradas em ADRs. |
+| NFR-16 | **Avaliação da IA** *(revisão 30/09)* | Um conjunto rotulado de ~30 casos (incluindo injeção e PII) e um harness que mede acurácia de categoria e de prioridade, pass^k, taxa de saída válida, segurança, latência p95 e custo por triagem bem-sucedida. Toda nova versão de prompt passa pelo harness antes de virar a padrão (ADR-0018). |
+| NFR-17 | **Rastreabilidade de execução** *(revisão 30/09)* | Traces OpenTelemetry com um span por etapa do pipeline de triagem e por rodada de ferramenta do copiloto, sem nenhum conteúdo de usuário nos atributos (ADR-0019). |
 
 ---
 

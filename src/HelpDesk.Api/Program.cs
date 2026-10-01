@@ -1,0 +1,41 @@
+using HelpDesk.Api.Endpoints;
+using HelpDesk.Api.Erros;
+using HelpDesk.Api.Observabilidade;
+using HelpDesk.Application.Categorias;
+using HelpDesk.Infrastructure;
+
+var builder = WebApplication.CreateBuilder(args);
+
+// Logs em JSON no stdout: configurados em appsettings.json (ADR-0016).
+var connectionString = builder.Configuration.GetConnectionString("Default")
+    ?? throw new InvalidOperationException("A variável ConnectionStrings__Default não foi configurada.");
+
+builder.Services.AdicionarInfraestrutura(connectionString);
+builder.Services.AddScoped<ListarCategorias>();
+builder.Services.AdicionarProblemDetails();
+builder.Services.AdicionarSaude();
+builder.Services.AddOpenApi();
+
+var app = builder.Build();
+
+// A correlação vem primeiro, para que até os erros tratados abaixo saiam com CorrelationId.
+app.UseMiddleware<CorrelacaoMiddleware>();
+app.UseExceptionHandler();
+app.UseStatusCodePages();
+
+// Documento OpenAPI nativo + Swagger UI (só a UI) apontando para ele (ADR-0013).
+app.MapOpenApi();
+app.UseSwaggerUI(options =>
+{
+    options.SwaggerEndpoint("/openapi/v1.json", "HelpDesk API v1");
+    options.RoutePrefix = "swagger";
+    options.DocumentTitle = "HelpDesk Inteligente — API";
+});
+
+app.MapSaude();
+app.MapCategorias();
+
+app.Run();
+
+// Exposto para o WebApplicationFactory dos testes de integração.
+public partial class Program;

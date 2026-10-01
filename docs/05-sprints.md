@@ -2,6 +2,7 @@
 
 > **Fase do checklist:** fechamento da 3 (planejamento), que prepara a 4 (Walking Skeleton = Sprint 0)
 > **Base:** [`01-requisitos.md`](01-requisitos.md), [`02-add.md`](02-add.md), [`03-modelo-de-dados.md`](03-modelo-de-dados.md), [`04-contratos-api.md`](04-contratos-api.md)
+> **Versão do plano:** 1.1 (30/09). As mudanças estão no [histórico de revisões](#5-histórico-de-revisões-do-plano).
 
 ## 1. Estratégia
 
@@ -17,13 +18,13 @@
 |---|---|---|---|---|
 | **0** | Walking Skeleton + PoC de IA | Compose sobe os 5 serviços, `/health` verde, CI verde, relatório da PoC | M | 3 h |
 | **1** | Chamados de ponta a ponta | Criar, listar (filtros na URL), detalhar, mudar status e comentar | M | 4,5 h |
-| **2** | Triagem por IA (sem RAG) | Chamado criado → triagem assíncrona → aceitar/rejeitar/refazer no painel | M | 3,5 h |
-| **3** | RAG + Dashboard | Triagem com fontes (chamados/artigos semelhantes) + dashboard com gráficos | M (dashboard) / S (RAG) | 3 h |
-| **4** | Copiloto conversacional | Chat com tool calling e streaming no detalhe do chamado | S | 2,5 h |
+| **2** | Triagem por IA (sem RAG) | Chamado criado → triagem assíncrona → aceitar/rejeitar/refazer no painel, **com trace por etapa** | M | 4,25 h |
+| **3** | RAG + Dashboard + Evals | Triagem com fontes + dashboard com gráficos + **relatório de eval sem RAG × com RAG** | M (dashboard) / S (RAG, evals) | 4,5 h |
+| **4** | Copiloto conversacional | Chat com tool calling e streaming no detalhe do chamado, **com guardrail de saída** | S | 3,25 h |
 | **5** | Hardening e entrega | README completo, E2E, cobertura, revisão final, padrões (Fase 5) | M (docs) / C (E2E) | 2 h |
-| | | | **Total** | **~18,5 h** |
+| | | | **Total** | **~21,5 h** |
 
-O enunciado estima de 10 a 14 h para o **obrigatório**. As Sprints 0, 1, 2 e a parte de dashboard da 3 somam ~12–13 h. As ~6 h restantes são o investimento consciente nos diferenciais de IA conversacional (RAG + copiloto).
+O enunciado estima de 10 a 14 h para o **obrigatório**. As Sprints 0, 1, 2 e a parte de dashboard da 3 somam ~13 h. As ~8,5 h restantes são o investimento consciente nos diferenciais de IA conversacional: RAG, evals, copiloto e os controles de produção vindos da [revisão de 30/09](revisoes/2026-09-30-padroes-agenticos.md).
 
 ### Calendário sugerido
 
@@ -44,10 +45,12 @@ Considerando o recebimento em 30/09 e a entrega até 07/10:
 
 Os cortes acontecem nesta ordem, do primeiro ao último:
 
-1. E2E com Playwright (Sprint 5).
-2. Streaming do copiloto: o contrato já prevê a degradação para um único `delta` (ADR-0012).
-3. O copiloto inteiro (Sprint 4). O RAG da triagem continua sendo o diferencial de IA.
-4. **Nunca se corta:** testes obrigatórios, README e DECISOES.md, e o `docker compose up` funcionando.
+1. A nova tentativa corretiva da triagem (opcional, L5 da revisão): só entra se houver folga.
+2. E2E com Playwright (Sprint 5).
+3. Streaming do copiloto: o contrato já prevê a degradação para um único `delta` (ADR-0012).
+4. O copiloto inteiro (Sprint 4), junto com o guardrail de saída dele. O RAG da triagem continua sendo o diferencial de IA.
+5. **Os evals (ADR-0018) só são cortados depois do copiloto.** Para uma vaga de IA, medir a qualidade vale mais que uma funcionalidade a mais. Se o tempo for curto, reduzir para os 15 casos claros + os 5 de segurança, em vez de eliminar.
+6. **Nunca se corta:** testes obrigatórios, README e DECISOES.md, e o `docker compose up` funcionando.
 
 ---
 
@@ -141,7 +144,7 @@ Os cortes acontecem nesta ordem, do primeiro ao último:
 
 **Objetivo:** cumprir **todo** o requisito obrigatório de IA: assíncrona, resiliente, validada e com LGPD.
 
-**Requisitos:** RF-02, RF-10..14, RF-17, RN-07..10, NFR-04..06, NFR-09..11.
+**Requisitos:** RF-02, RF-10..14, RF-17, RF-18, RN-07..10, NFR-04..06, NFR-09..11, NFR-17.
 
 **Escopo:**
 
@@ -154,7 +157,9 @@ Os cortes acontecem nesta ordem, do primeiro ao último:
 - Worker: fila com `SKIP LOCKED`, lease e backoff (ADR-0003, ADR-0010).
 - API: refazer (202), aceitar e rejeitar (200/404/409).
 - Web: painel da IA com selo "Gerado por IA", estados Pendente (polling com backoff), Concluída, Falhou (mensagem + Refazer) e Aceita/Rejeitada.
-- **README:** como ativar um provedor real (Gemini, OpenAI, Ollama), como o prompt foi construído (estrutura, decisões, versionamento) e como os dados pessoais são protegidos.
+- **Tracing** (ADR-0019): OpenTelemetry na API e no Worker; spans do pipeline (`mascarar`, `completar`, `validar`...) e o middleware `UseOpenTelemetry()` no `IChatClient`; link entre a criação e o processamento via `traceparent` gravado na triagem; serviço `aspire-dashboard` no profile `observabilidade` do Compose. **Nenhum conteúdo nos atributos.**
+- **Kill switch e orçamento da triagem** (ADR-0021): `IA_TRIAGEM_HABILITADA`, `TRIAGEM_MAX_TOKENS_SAIDA` e `GET /api/config/ia`. Com a triagem desativada, o chamado nasce sem triagem e a UI mostra "Triagem por IA desativada".
+- **README:** como ativar um provedor real (Gemini, OpenAI, Ollama), como o prompt foi construído (estrutura, decisões, versionamento), como os dados pessoais são protegidos, **como ver os traces** e o **procedimento de emergência** (qual flag desligar).
 
 **Critérios de aceite:**
 
@@ -163,20 +168,22 @@ Os cortes acontecem nesta ordem, do primeiro ao último:
 - [ ] Nenhum CPF, telefone ou e-mail chega ao provedor (teste com um spy no `IChatClient`). O nome e o e-mail do solicitante nunca são enviados.
 - [ ] Aceitar aplica a categoria e a prioridade. Rejeitar não altera o chamado. Refazer com uma triagem pendente → 409.
 - [ ] `LLM_PROVIDER=openai-compatible` + chave do Gemini no `.env` → triagem real funcionando.
+- [ ] Com o profile `observabilidade`, o trace de uma triagem mostra as etapas do pipeline e as tentativas ao provedor, sem nenhum texto do chamado.
+- [ ] `IA_TRIAGEM_HABILITADA=false` → o chamado é criado sem triagem, "Refazer" devolve 503 e o Worker não consome a fila.
 
 **Testes:**
 
 - **Unitários:** mascaramento (mais de 10 casos, positivos e negativos); parsing e validação (resposta válida, JSON inválido, JSON em cerca Markdown, categoria inexistente, prioridade inválida, resumo longo, confiança fora da faixa).
-- **Integração:** criação → worker processa → `Concluida`; timeout → retries → `Falhou`; dois workers concorrentes não duplicam; aceitar/rejeitar/refazer com os códigos do contrato.
+- **Integração:** criação → worker processa → `Concluida`; timeout → retries → `Falhou`; dois workers concorrentes não duplicam; aceitar/rejeitar/refazer com os códigos do contrato; os spans esperados são emitidos (`ActivityListener`) e um CPF injetado **não** aparece em nenhum atributo; comportamento com a triagem desativada.
 - **Frontend:** painel nos estados Concluída e Falhou; botões Aceitar e Rejeitar chamam a API.
 
 ---
 
-## Sprint 3: RAG + Dashboard
+## Sprint 3: RAG + Dashboard + Evals
 
-**Objetivo:** fundamentar a triagem em conhecimento existente e entregar o dashboard obrigatório.
+**Objetivo:** fundamentar a triagem em conhecimento existente, entregar o dashboard obrigatório e **medir** o efeito do RAG.
 
-**Requisitos:** RF-15, RF-16, RF-30, RF-31, RF-40..43, RN-11..13.
+**Requisitos:** RF-15, RF-16, RF-30, RF-31, RF-40..43, RN-11..13, NFR-16.
 
 **Escopo:**
 
@@ -187,7 +194,13 @@ Os cortes acontecem nesta ordem, do primeiro ao último:
 - A etapa `Recuperar` entra no pipeline. O prompt passa a ser `triagem.v2`, com o contexto recuperado, e as `fontes` são gravadas.
 - Painel da IA: lista de fontes, com link para o chamado semelhante.
 - Dashboard: as 4 consultas SQL (modelo §6), o endpoint e a tela com cartões, gráfico por status, gráfico por prioridade, tempo médio por categoria, e aceitas × rejeitadas por categoria.
-- **README:** como funciona o RAG (o que é indexado, quando, e como trocar o modelo de embedding) e as consultas do dashboard.
+- **Evals offline** (ADR-0018):
+  - conjunto `evals/triagem/casos.jsonl` com ~30 casos: 15 claros, 6 ambíguos, 4 de prioridade, 3 de injeção e 2 de PII, sendo 10 marcados como held-out;
+  - harness `tools/HelpDesk.Evals`, que executa o pipeline real N vezes por caso e gera um relatório em `docs/evals/`;
+  - smoke do harness com o fake no CI.
+  - **Primeira medição:** `triagem.v1` (sem RAG) × `triagem.v2` (com RAG), no Gemini.
+- *(Opcional, L5 da revisão)* Uma nova tentativa corretiva quando a validação falhar: reenviar ao modelo o erro de validação, no máximo 1 vez. Só com folga, e com ADR próprio.
+- **README:** como funciona o RAG (o que é indexado, quando, e como trocar o modelo de embedding), as consultas do dashboard e o **resultado dos evals** (tabela sem RAG × com RAG e como rodar o harness).
 
 **Critérios de aceite:**
 
@@ -195,10 +208,13 @@ Os cortes acontecem nesta ordem, do primeiro ao último:
 - [ ] Um chamado sobre "erro 403 em boletos" recupera chamados e artigos financeiros semelhantes (com o fake).
 - [ ] Reabrir um chamado o remove do índice. Trocar `LLM_EMBEDDING_MODEL` reindexa tudo.
 - [ ] Os números do dashboard batem com consultas de conferência sobre dados controlados.
+- [ ] O relatório de evals comparando sem RAG × com RAG está em `docs/evals/`, com acurácia de categoria e de prioridade, pass^k, taxa de JSON válido, aprovação nos casos de segurança, latência p95 e custo por triagem bem-sucedida.
+- [ ] O harness roda com o fake no CI (smoke).
 
 **Testes:**
 
 - **Integração:** reconciliação (indexar, remover, reindexar); busca semântica com o fake; cada consulta do dashboard com massa controlada.
+- **Unitários:** o cálculo das métricas do harness (acurácia, pass^k, custo por sucesso) com resultados simulados.
 - **Frontend:** dashboard nos estados de carregamento, vazio e erro.
 
 ---
@@ -207,16 +223,18 @@ Os cortes acontecem nesta ordem, do primeiro ao último:
 
 **Objetivo:** o diferencial de IA conversacional: um agente com ferramentas, transparente e seguro.
 
-**Requisitos:** RF-20..22, P-08, ADR-0004, ADR-0012.
+**Requisitos:** RF-20..24, P-08, ADR-0004, ADR-0012, ADR-0020, ADR-0021.
 
 **Escopo:**
 
 - As 4 ferramentas somente leitura (contrato §copiloto), com parâmetros validados, resultados mascarados e limitados.
-- `ICopilotoLlm` com `UseFunctionInvocation`, até 3 rodadas de ferramentas e prompt de sistema versionado (`prompts/copiloto.v1.md`).
-- Endpoint SSE (`ferramenta`, `delta`, `fontes`, `fim`, `erro`), com rate limit, cancelamento propagado e telemetria.
-- Fake com uma sequência roteirizada: tool call → resultado → resposta em pedaços.
-- Web: painel de chat no detalhe (histórico em memória), indicador "Consultando…" por ferramenta, fontes clicáveis e botão de parar.
-- **README:** o copiloto, as ferramentas disponíveis e os limites de segurança (somente leitura, escopo no chamado atual, rate limit).
+- `ICopilotoLlm` com `UseFunctionInvocation`, até 3 rodadas de ferramentas e prompt de sistema versionado (`prompts/copiloto.v1.md`), que exige citar chamados como `#numero`.
+- Endpoint SSE (`ferramenta`, `delta`, `fontes`, `aviso`, `fim`, `erro`), com rate limit, cancelamento propagado e telemetria (spans por rodada de ferramenta).
+- **Guardrail de saída** (ADR-0020): `FiltroSaidaCopiloto`, com buffer de retenção no stream, mascaramento de PII na saída e verificação das citações contra os resultados das ferramentas. Uma citação sem fonte gera o evento `aviso`.
+- **Kill switch e orçamento do copiloto** (ADR-0021): `IA_COPILOTO_HABILITADO` e `COPILOTO_MAX_TOKENS_SAIDA`. Uma resposta truncada gera `aviso`.
+- Fake com uma sequência roteirizada: tool call → resultado → resposta em pedaços, e um modo que "vaza" um CPF e cita um chamado inexistente, para testar o guardrail.
+- Web: painel de chat no detalhe (histórico em memória), indicador "Consultando…" por ferramenta, fontes clicáveis, selo "Contém referências não verificadas" e botão de parar. O painel fica oculto quando o copiloto está desativado.
+- **README:** o copiloto, as ferramentas disponíveis e os limites de segurança: somente leitura, escopo no chamado atual, rate limit, guardrail de saída e o *lethal trifecta* com a perna de comunicação externa removida.
 
 **Critérios de aceite:**
 
@@ -224,12 +242,14 @@ Os cortes acontecem nesta ordem, do primeiro ao último:
 - [ ] Fechar o painel durante a geração cancela a chamada ao provedor.
 - [ ] Mais de 10 requisições por minuto → 429 com mensagem amigável.
 - [ ] Nenhuma ferramenta permite escrita. Uma instrução do tipo "mude o status para fechado" é recusada pelo copiloto, que orienta o atendente a usar a UI.
+- [ ] Um CPF gerado pelo modelo chega mascarado ao cliente, mesmo dividido entre dois pedaços do stream. Uma citação a um chamado que nenhuma ferramenta retornou gera `aviso` e o selo na UI.
+- [ ] `IA_COPILOTO_HABILITADO=false` → o endpoint devolve 503 e a UI esconde o painel.
 
 **Testes:**
 
-- **Integração:** sequência de eventos SSE com o fake; ferramenta executada com o chamado correto; 429.
-- **Unitários:** validação dos parâmetros de ferramenta; mascaramento dos resultados.
-- **Frontend:** o parser de SSE e a renderização incremental.
+- **Integração:** sequência de eventos SSE com o fake; ferramenta executada com o chamado correto; 429; o fake que vaza CPF e cita uma fonte inexistente produz a saída mascarada com `aviso`; copiloto desativado → 503.
+- **Unitários:** validação dos parâmetros de ferramenta; mascaramento dos resultados; `FiltroSaidaCopiloto` (PII dividida entre pedaços, texto limpo intacto e em ordem, citação válida × inventada).
+- **Frontend:** o parser de SSE, a renderização incremental e o selo de referência não verificada.
 
 ---
 
@@ -260,7 +280,16 @@ Os cortes acontecem nesta ordem, do primeiro ao último:
 |---|---|
 | RF-44, NFR-08, NFR-11 (base), NFR-15 | 0 |
 | RF-01, RF-03..07, RN-01..06, NFR-01, NFR-02 (listagem), NFR-14 | 1 |
-| RF-02, RF-10..14, RF-17, RN-07..10, NFR-03..07, NFR-09, NFR-10 | 2 |
-| RF-15, RF-16, RF-30, RF-31, RF-40..43, RN-11..13, NFR-02 (dashboard), NFR-12 | 3 |
-| RF-20..22 | 4 |
+| RF-02, RF-10..14, RF-17, RF-18, RN-07..10, NFR-03..07, NFR-09, NFR-10, NFR-17 | 2 |
+| RF-15, RF-16, RF-30, RF-31, RF-40..43, RN-11..13, NFR-02 (dashboard), NFR-12, NFR-16 | 3 |
+| RF-20..24 | 4 |
 | Entrega (README, DECISOES, E2E, cobertura) | 5 |
+
+---
+
+## 5. Histórico de revisões do plano
+
+| Versão | Data | Motivo | Mudanças |
+|---|---|---|---|
+| 1.0 | 30/09 | Plano inicial (fechamento da Fase 3) | Sprints 0 a 5, ~18,5 h. |
+| 1.1 | 30/09 | [Revisão de arquitetura: padrões agênticos](revisoes/2026-09-30-padroes-agenticos.md), feita com a Sprint 0 em andamento e **antes** de qualquer código de IA | **S2:** tracing com OpenTelemetry (ADR-0019), kill switch e orçamento da triagem (ADR-0021). **S3:** evals offline com comparação sem RAG × com RAG (ADR-0018); nova tentativa corretiva como opcional. **S4:** guardrail de saída do copiloto (ADR-0020), kill switch e orçamento do copiloto (ADR-0021). Linha de corte: os evals passam a ficar acima do copiloto e do E2E. Total: ~21,5 h. A Sprint 0 não mudou. |
