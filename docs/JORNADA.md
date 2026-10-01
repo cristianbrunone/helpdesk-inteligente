@@ -257,3 +257,42 @@ Com `LLM_PROVIDER=openai-compatible` e a chave do Gemini no `.env`, um chamado "
 - **Mascaramento conservador tem custo, e ele foi documentado.** Um protocolo `2026-0001` vira `[TELEFONE]` e um sobrenome como "Exemplo" é mascarado no texto todo. Cada falso positivo aceito tem teste próprio.
 - **O fake também tem bugs.** "fora do ar para todos os usuários" caía em Acesso/Login por causa da palavra "usuario". Como o fake passa pelo validador real nos testes, o erro apareceu na hora.
 - **Testes de `/health` precisaram de banco isolado.** Com a fila no health, as pendentes antigas criadas por outros testes deixavam o check `Degraded` no banco compartilhado.
+
+---
+
+## Sprint 3 — RAG, dashboard e evals
+
+**Artefatos:** artigos e documentos do RAG em `src/HelpDesk.Domain/Conhecimento/` e `src/HelpDesk.Infrastructure/Persistencia/` (`IndiceRag`, `DocumentoRag`); montagem dos documentos e reconciliação em `src/HelpDesk.Application/Conhecimento/`; embeddings (fake e real) e `RecuperadorRag` em `src/HelpDesk.Infrastructure/Ia/`; busca e dashboard em `src/HelpDesk.Infrastructure/Consultas/` (as consultas em `Sql/*.sql`); reconciliador em `src/HelpDesk.Worker/`; [`prompts/triagem.v2.md`](../prompts/triagem.v2.md); tela `web/src/paginas/Dashboard.tsx`; harness em `tools/HelpDesk.Evals/`; conjunto em [`evals/triagem/`](../evals/triagem/LEIAME.md); relatórios em [`docs/evals/`](evals/LEIAME.md).
+
+**O que foi entregue:**
+
+- **RAG na triagem.** Os chamados resolvidos e os 25 artigos do seed são indexados sozinhos na subida, por um reconciliador que também remove os reabertos e reindexa quando o modelo de embedding muda. A busca usa cosseno no pgvector com HNSW, e o painel mostra as fontes da sugestão.
+- **Dashboard** obrigatório, com as consultas em SQL explícito e testadas uma a uma com massa controlada.
+- **Evals:** um conjunto rotulado de 30 casos, o harness e a **primeira medição real**, que decidiu o prompt padrão com números.
+- **Seed** com triagens decididas, para o dashboard nascer com dados.
+- **Testes:** de 451 para 590 no backend, de 41 para 50 no frontend, e o smoke do Compose passou de 16 para 18 verificações.
+
+**Como foi feito:** 14 commits, na ordem banco → seed → embeddings → montagem dos documentos → reconciliador → busca → prompt v2 e fontes → painel → dashboard (API e tela) → conjunto → harness → medição → documentação. Antes de começar, quatro pontos foram decididos com o desenvolvedor: o harness usa o banco do Compose com RAG; a nova tentativa corretiva (L5) fica de fora; a medição roda sem que a chave seja lida; o reconciliador roda mesmo com a triagem desligada.
+
+### O que mudou em relação ao plano
+
+- **Uma coluna a mais em `documentos_rag`** (`origem_atualizada_em`), para o reconciliador não recalcular o hash de todos os resolvidos a cada passada. Está registrada como ajuste no modelo de dados.
+- **A coluna `fontes` entrou com o prompt v2**, e não com as tabelas do RAG: sem quem a preenchesse, seria uma coluna morta por quatro commits.
+- **A versão do prompt virou configuração.** O ADR-0018 pede que uma versão nova passe pelo eval antes de virar padrão; para isso, a v2 precisou existir sem ser a padrão, e o eval a promoveu.
+- **A v2 virou a padrão mesmo piorando a prioridade.** O eval não deu uma vitória limpa: categoria 100%, prioridade de 91% para 87%. A decisão foi do desenvolvedor, com o trade-off escrito em [`docs/evals/LEIAME.md`](evals/LEIAME.md), e a regra de prioridade virou o alvo da próxima versão.
+
+### Validação com o provedor real
+
+O eval rodou no Gemini: 180 triagens, 90 por versão, sem nenhuma falha que não fosse recuperada. Para a v2, o índice precisou ser refeito com o `gemini-embedding-001`: o Worker rodou no host (por causa da inspeção TLS da máquina) com a triagem desligada, só para reindexar. No meio da reindexação, o Gemini respondeu **429** e a resiliência nova dos embeddings repetiu com backoff até terminar: o primeiro uso real dela.
+
+### Aprendizados
+
+- **Um teste de concorrência achou um deadlock real.** Dois reconciliadores sincronizando o mesmo artigo travavam o índice único em ordens diferentes, porque o EF grava os INSERTs pela chave e Guids v7 gerados no mesmo milissegundo não têm ordem garantida. A trava por origem (`pg_advisory_xact_lock`) resolveu sem perder o paralelismo entre origens diferentes.
+- **O fake de chat lia "categorias" demais.** Ele tratava como categoria toda linha `- …` do prompt; a v2 tem listas antes das categorias, e o fake passou a devolver uma "categoria" inexistente quando nenhuma palavra-chave casava (8 falhas em 30 no harness). Sem o harness, o problema só apareceria no ambiente de demonstração.
+- **`0,10` virava 10.** O parser do preço por milhão de tokens aceitava a vírgula como separador de milhar: um custo informado no formato brasileiro sairia cem vezes maior. Um teste de argumento inválido pegou.
+- **Uma resposta que nunca termina quebra os testes seguintes.** No front, o `delay('infinite')` do MSW deixava o interceptador num estado em que a requisição de outro teste escapava para a rede real ("fetch failed"), de forma intermitente. A prova veio rodando sem o teste suspeito: 0 falhas em 8.
+- **O relógio do contêiner não é o da máquina.** Um teste criava a triagem com `DateTimeOffset.UtcNow`, e o banco do Testcontainers estava cerca de 1 s atrás: para a fila, a triagem estava "no futuro". Os testes que envolvem a fila usam data fixa.
+- **Comando em segundo plano com `&` sobrevive.** Um smoke disparado assim continuou rodando em paralelo e derrubou outras execuções com o próprio `down -v`. Os smokes passaram a rodar num projeto Compose separado (`helpdesk-smoke`), sem tocar no ambiente do desenvolvedor.
+- **Um teste de SQL que passava por acaso.** Ao tirar de propósito o filtro de status da consulta de aceitação, o teste continuou verde: na massa, o `JOIN` já excluía as pendentes. Uma triagem concluída e não decidida na massa tornou a regra observável.
+- **Medir mudou a conversa.** "O RAG melhora a triagem?" virou uma tabela: melhora a categoria, piora a prioridade num padrão identificável, dobra os tokens. A próxima versão do prompt já tem alvo e régua.
+

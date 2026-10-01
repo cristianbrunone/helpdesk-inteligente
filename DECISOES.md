@@ -48,6 +48,23 @@ Resumo das principais decisões técnicas. Cada linha aponta para um ADR complet
 | Em rede com inspeção TLS, provedor real só com o Worker fora do contêiner (ou Ollama) | As imagens continuam sem CA corporativa (decisão da Sprint 0); a limitação é da rede, não do projeto |
 | A imagem `aspire-dashboard:13.6.0` roda com o `entrypoint` sobrescrito no Compose | A própria imagem aponta para um `.dll` que não existe mais na 13.x |
 
+### Decisões da Sprint 3 (RAG, dashboard e evals)
+
+Nenhum ADR novo: as decisões abaixo aplicam os ADRs 0007, 0009, 0010, 0011 e 0018 e ficam registradas para quem lê o código.
+
+| Decisão | Motivo |
+|---|---|
+| **A `triagem.v2` (com RAG) virou o prompt padrão** depois do eval no Gemini: categoria 86/90 → 90/90, prioridade 82/90 → 78/90, segurança 5/5 nas duas | A categoria é o que o atendente mais aceita, e as fontes no painel entregam o RF-16. A queda na prioridade (casos "com contorno") fica como alvo da `triagem.v3` ([docs/evals](docs/evals/LEIAME.md)) |
+| Os trechos recuperados vão na **mensagem do usuário**, num bloco `<contexto>` separado do `<chamado>`, e não no prompt de sistema | Vêm de chamados escritos por outros usuários: são dados não confiáveis, como o próprio chamado, e as tags dos dois blocos são neutralizadas contra injeção |
+| A versão do prompt é configurável (`TRIAGEM_PROMPT_VERSAO`) e só a que descreve o `<contexto>` aciona a recuperação | A v1 continua sendo a linha de base sem RAG (sem custo de embedding) e dá para voltar atrás sem rebuild; o Worker não sobe com um prompt inexistente |
+| `documentos_rag.origem_atualizada_em` registra a versão da origem que o documento reflete | O reconciliador só remonta e recalcula o hash das origens alteradas, em vez de todos os resolvidos a cada passada (o "hash diferente → reindexar" do ADR-0010 com um filtro barato antes) |
+| A sincronização de uma origem é serializada com `pg_advisory_xact_lock` | Duas instâncias gravando os mesmos chunks entravam em deadlock (o EF ordena os INSERTs por Guid v7, sem ordem garantida no mesmo milissegundo); a segunda agora espera e só confirma |
+| Fonte exibida = uma por documento de origem, com a similaridade do melhor trecho; o prompt recebe os trechos | O atendente vê "o artigo X" uma vez; o modelo recebe o texto mais relevante |
+| Sem o provedor de embeddings, a triagem segue **sem contexto** | Uma sugestão sem fontes é melhor que nenhuma (NFR-04); o span registra a falha |
+| O dashboard executa as cinco consultas numa transação `REPEATABLE READ` somente leitura | Todas veem o mesmo instantâneo, então os totais batem entre si mesmo com escritas no meio |
+| O harness de evals usa um registro de uso **em memória**, e não o `uso_llm` | Medir a IA não pode sujar o dashboard de produção; o custo do eval sai no relatório |
+| Os tokens dos embeddings do Gemini não entram no custo | O endpoint OpenAI-compatível do Gemini não os devolve; o relatório registra a limitação |
+
 ### Decisões de implementação (Sprint 1)
 
 Decisões menores, que não contrariam nem acrescentam ADR, registradas para quem lê o código.

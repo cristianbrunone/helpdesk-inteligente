@@ -112,6 +112,8 @@ dotnet build                               # build do backend
 dotnet test --filter "Category!=ProvedorReal"   # todos os testes do backend (exige Docker); sintaxe válida no MTP
 dotnet test --project tests/HelpDesk.IntegrationTests --filter "Category=ProvedorReal"   # PoC com provedor real (exige chave no .env; nunca no CI)
 OTEL_EXPORTER_OTLP_ENDPOINT=http://aspire-dashboard:18889 docker compose --profile observabilidade up -d   # traces em http://localhost:18888
+LLM_PROVIDER=fake dotnet run --project tools/HelpDesk.Evals -- --rag off --repeticoes 1   # smoke do harness de evals (o mesmo do CI)
+dotnet run --project tools/HelpDesk.Evals -- --rag on --repeticoes 3 --intervalo-ms 4500  # eval real: variáveis do provedor + ConnectionStrings__Default (banco indexado pelo mesmo modelo)
 dotnet format --verify-no-changes          # lint do backend
 dotnet ef migrations add <Nome> -p src/HelpDesk.Infrastructure -s src/HelpDesk.Migrator
 cd web && npm run lint && npm test && npm run build   # Node 24 (web/.nvmrc)
