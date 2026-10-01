@@ -9,7 +9,16 @@ public interface IRepositorioChamados
 
     void Adicionar(Chamado chamado);
 
-    /// <summary>Grava o agregado inteiro (chamado, histórico e comentários) numa única transação (RN-02).</summary>
+    /// <summary>Carrega o agregado completo (com histórico e comentários) para alteração.</summary>
+    Task<Chamado?> ObterParaAlteracaoAsync(Guid id, CancellationToken cancellationToken);
+
+    /// <summary>Versão do chamado no momento em que foi carregado (o mesmo valor do <c>ETag</c>).</summary>
+    string Versao(Chamado chamado);
+
+    /// <summary>
+    /// Grava o agregado inteiro (chamado, histórico e comentários) numa única transação (RN-02). Se outra gravação
+    /// alterou o chamado depois da leitura, lança <see cref="VersaoDesatualizadaException"/>.
+    /// </summary>
     Task SalvarAsync(CancellationToken cancellationToken);
 }
 

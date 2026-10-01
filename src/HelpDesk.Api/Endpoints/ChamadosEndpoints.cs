@@ -27,6 +27,14 @@ internal static class ChamadosEndpoints
             .ProducesValidationProblem(StatusCodes.Status422UnprocessableEntity)
             .ProducesProblem(StatusCodes.Status400BadRequest);
 
+        grupo.MapPatch("/{id:guid}/status", MudarStatus)
+            .WithName("MudarStatusChamado")
+            .WithSummary("Muda o status pela máquina de estados. If-Match opcional (412 se desatualizado).")
+            .ProducesProblem(StatusCodes.Status404NotFound)
+            .ProducesProblem(StatusCodes.Status409Conflict)
+            .ProducesProblem(StatusCodes.Status412PreconditionFailed)
+            .ProducesValidationProblem(StatusCodes.Status422UnprocessableEntity);
+
         return app;
     }
 
@@ -40,6 +48,14 @@ internal static class ChamadosEndpoints
         var encontrado = await casoDeUso.ExecutarAsync(id, cancellationToken);
         http.Response.Headers.ETag = ETag.De(encontrado.Versao);
         return TypedResults.Ok(encontrado.Chamado);
+    }
+
+    private static async Task<Ok<ChamadoDetalhe>> MudarStatus(
+        Guid id, MudancaDeStatus corpo, MudarStatusChamado casoDeUso, HttpContext http, CancellationToken cancellationToken)
+    {
+        var alterado = await casoDeUso.ExecutarAsync(id, corpo, ETag.VersoesDoIfMatch(http.Request), cancellationToken);
+        http.Response.Headers.ETag = ETag.De(alterado.Versao);
+        return TypedResults.Ok(alterado.Chamado);
     }
 
     private static async Task<Created<ChamadoDetalhe>> Criar(

@@ -1,3 +1,4 @@
+using HelpDesk.Application;
 using HelpDesk.Domain.Chamados;
 using HelpDesk.Infrastructure.Persistencia;
 using HelpDesk.IntegrationTests.Infraestrutura;
@@ -72,6 +73,29 @@ public sealed class ChamadoPersistenciaTests(BancoFixture banco)
 
         await Should.ThrowAsync<DbUpdateConcurrencyException>(() => dbB.SaveChangesAsync(Ct));
         dbA.Entry(doAtendenteA).Property<uint>(HelpDeskDbContext.VersaoChamado).CurrentValue.ShouldNotBe(versaoInicial);
+    }
+
+    [Fact]
+    public async Task Repositorio_GravacaoQuePerdeACorrida_LancaVersaoDesatualizada()
+    {
+        var chamado = await CriarAsync();
+        await using var servicos = banco.CriarServicos();
+        await using var escopoA = servicos.CreateAsyncScope();
+        await using var escopoB = servicos.CreateAsyncScope();
+        var repositorioA = new RepositorioChamados(escopoA.ServiceProvider.GetRequiredService<HelpDeskDbContext>());
+        var repositorioB = new RepositorioChamados(escopoB.ServiceProvider.GetRequiredService<HelpDeskDbContext>());
+
+        // Sem If-Match: os dois leem a mesma versão e gravam em sequência.
+        var lidoPorA = (await repositorioA.ObterParaAlteracaoAsync(chamado.Id, Ct))!;
+        var lidoPorB = (await repositorioB.ObterParaAlteracaoAsync(chamado.Id, Ct))!;
+        repositorioA.Versao(lidoPorA).ShouldBe(repositorioB.Versao(lidoPorB));
+        lidoPorA.MudarStatus(StatusChamado.EmAndamento, "Ana", null, _inicio.AddHours(1));
+        await repositorioA.SalvarAsync(Ct);
+        lidoPorB.Comentar("Bruno", "Comentário que perdeu a corrida.", _inicio.AddHours(1));
+
+        await Should.ThrowAsync<VersaoDesatualizadaException>(() => repositorioB.SalvarAsync(Ct));
+        var salvo = await ConsultarAsync(db => db.Chamados.Include(c => c.Comentarios).SingleAsync(c => c.Id == chamado.Id, Ct));
+        salvo.Comentarios.ShouldBeEmpty();
     }
 
     [Theory]

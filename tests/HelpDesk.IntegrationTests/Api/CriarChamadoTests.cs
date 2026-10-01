@@ -105,6 +105,7 @@ public sealed class CriarChamadoTests(ApiFactory api) : IClassFixture<ApiFactory
     [InlineData("{ \"titulo\": ")]
     [InlineData("{ \"titulo\": \"Erro no boleto\", \"prioridade\": \"Urgente\" }")]
     [InlineData("{ \"titulo\": 123 }")]
+    [InlineData("{ \"titulo\": \"Erro no boleto\", \"prioridade\": 2 }")]
     public async Task Criar_JsonMalformadoOuTipoErrado_Retorna400(string corpo)
     {
         using var conteudo = new StringContent(corpo, Encoding.UTF8, "application/json");

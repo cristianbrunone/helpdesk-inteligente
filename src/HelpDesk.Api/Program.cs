@@ -13,9 +13,9 @@ var connectionString = builder.Configuration.GetConnectionString("Default")
 
 builder.Services.AdicionarInfraestrutura(connectionString);
 builder.Services.AdicionarCasosDeUso();
-// Enums como texto em PascalCase ASCII (contrato §1): "EmAndamento", "Critica".
+// Enums só como texto em PascalCase ASCII (contrato §1): "EmAndamento", "Critica". Número é tipo errado (400).
 builder.Services.ConfigureHttpJsonOptions(options =>
-    options.SerializerOptions.Converters.Add(new JsonStringEnumConverter()));
+    options.SerializerOptions.Converters.Add(new JsonStringEnumConverter(allowIntegerValues: false)));
 builder.Services.AdicionarProblemDetails();
 builder.Services.AdicionarSaude();
 builder.Services.AddOpenApi();
