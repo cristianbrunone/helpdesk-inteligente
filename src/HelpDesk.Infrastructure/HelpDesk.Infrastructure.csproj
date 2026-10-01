@@ -19,5 +19,7 @@
   <ItemGroup>
     <!-- Os testes de integração exercitam as consultas diretamente (ex.: EXPLAIN da busca). -->
     <InternalsVisibleTo Include="HelpDesk.IntegrationTests" />
+    <!-- Cálculo do backoff e classificação de falhas da resiliência, testados sem I/O. -->
+    <InternalsVisibleTo Include="HelpDesk.UnitTests" />
   </ItemGroup>
 </Project>

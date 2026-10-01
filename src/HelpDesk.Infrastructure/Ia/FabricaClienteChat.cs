@@ -2,6 +2,7 @@ using System.ClientModel;
 using System.ClientModel.Primitives;
 using HelpDesk.Infrastructure.Ia.Fake;
 using Microsoft.Extensions.AI;
+using Microsoft.Extensions.Logging;
 using OpenAI;
 
 namespace HelpDesk.Infrastructure.Ia;
@@ -12,6 +13,12 @@ namespace HelpDesk.Infrastructure.Ia;
 /// </summary>
 public static class FabricaClienteChat
 {
+    /// <summary>O cliente que a aplicação usa: o provedor com a resiliência por cima (timeout, retry, backoff).</summary>
+    public static IChatClient CriarComResiliencia(OpcoesLlm opcoes, ILoggerFactory logs) =>
+        new ChatClientBuilder(Criar(opcoes))
+            .Use(interno => new ResilienciaChatClient(interno, opcoes, logs.CreateLogger<ResilienciaChatClient>()))
+            .Build();
+
     public static IChatClient Criar(OpcoesLlm opcoes) => opcoes.Provedor switch
     {
         TipoProvedorLlm.Fake => new FakeChatClient(opcoes.ModoFake, opcoes.AtrasoFake),
