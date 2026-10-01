@@ -1,17 +1,21 @@
-import { screen } from '@testing-library/react';
+import { screen, waitFor } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 import { renderizarApp } from '../testes/renderizar';
 
 describe('LayoutBase', () => {
-  it('monta a casca da aplicação com o título, o menu móvel e as categorias da API', async () => {
-    renderizarApp('/');
+  it('abre na lista de chamados, com o título, o menu móvel e a navegação', async () => {
+    const { roteador } = renderizarApp('/');
 
+    await waitFor(() => expect(roteador.state.location.pathname).toBe('/chamados'));
     expect(
       screen.getByRole('heading', { level: 1, name: 'HelpDesk Inteligente' }),
     ).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Abrir menu' })).toBeInTheDocument();
-    expect(screen.getByRole('heading', { level: 2, name: 'Bem-vindo' })).toBeInTheDocument();
-    expect(await screen.findByText('Acesso/Login')).toBeInTheDocument();
+    expect(screen.getByRole('heading', { level: 2, name: 'Chamados' })).toBeInTheDocument();
+    const navegacao = screen.getByRole('navigation', { name: 'Navegação' });
+    expect(navegacao).toContainElement(
+      screen.getByRole('link', { name: 'Chamados', current: 'page' }),
+    );
   });
 
   it('mostra a página de não encontrada para uma rota inexistente', async () => {
@@ -20,6 +24,9 @@ describe('LayoutBase', () => {
     expect(
       await screen.findByRole('heading', { name: 'Página não encontrada' }),
     ).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: 'Voltar ao início' })).toHaveAttribute('href', '/');
+    expect(screen.getByRole('link', { name: 'Voltar para os chamados' })).toHaveAttribute(
+      'href',
+      '/chamados',
+    );
   });
 });
