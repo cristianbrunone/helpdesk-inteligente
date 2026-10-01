@@ -1,3 +1,4 @@
+using System.ClientModel;
 using System.Text.Json;
 using HelpDesk.Application.Triagem;
 using Microsoft.Extensions.AI;
@@ -62,12 +63,14 @@ internal sealed partial class ClienteLlmTriagem(
         }
         catch (Exception erro) when (!cancellationToken.IsCancellationRequested)
         {
-            // Ex.: 401 (chave inválida), 400. Só o tipo vai para o log: a mensagem pode ter conteúdo.
-            LogFalhaDefinitiva(logger, erro.GetType().Name, contexto.TriagemId);
+            // Ex.: 401 (chave inválida), 400. Só o tipo e o status HTTP vão para o log: a mensagem pode ter conteúdo.
+            LogFalhaDefinitiva(logger, erro.GetType().Name, (erro as ClientResultException)?.Status ?? 0,
+                contexto.TriagemId);
             return ResultadoLlm.Falha("erro", Modelo);
         }
     }
 
-    [LoggerMessage(Level = LogLevel.Error, Message = "Falha definitiva do provedor de IA ({TipoErro}) na triagem {TriagemId}")]
-    private static partial void LogFalhaDefinitiva(ILogger logger, string tipoErro, Guid triagemId);
+    [LoggerMessage(Level = LogLevel.Error,
+        Message = "Falha definitiva do provedor de IA ({TipoErro}, HTTP {StatusHttp}) na triagem {TriagemId}")]
+    private static partial void LogFalhaDefinitiva(ILogger logger, string tipoErro, int statusHttp, Guid triagemId);
 }

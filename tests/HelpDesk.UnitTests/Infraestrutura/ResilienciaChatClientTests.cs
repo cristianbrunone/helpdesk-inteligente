@@ -92,6 +92,20 @@ public sealed class ResilienciaChatClientTests
     }
 
     [Fact]
+    public async Task Responder_FalhaDeTransporteSemRespostaHttp_ETransitoriaERepete()
+    {
+        // O SDK embrulha TLS recusado, conexão caída e DNS numa ClientResultException sem resposta (status 0).
+        var transporte = new ClientResultException("SSL connection could not be established",
+            innerException: new HttpRequestException("certificate verify failed"));
+        var interno = new ClienteRoteirizado(_ => throw transporte, Ok);
+
+        var resposta = await Criar(interno).GetResponseAsync(_mensagens, cancellationToken: Ct);
+
+        resposta.Text.ShouldBe("ok");
+        interno.Chamadas.ShouldBe(2);
+    }
+
+    [Fact]
     public async Task Responder_RetryAfterDoHttp429_EUsadoNaEspera()
     {
         var interno = new ClienteRoteirizado(_ => throw Http(429, retryAfter: "12"), Ok);

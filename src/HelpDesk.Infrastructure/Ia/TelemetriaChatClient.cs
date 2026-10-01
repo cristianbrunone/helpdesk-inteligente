@@ -45,6 +45,7 @@ public sealed partial class TelemetriaChatClient(
         ProvedorIndisponivelException indisponivel => indisponivel.Tipo,
         // O tempo de cada tentativa é cortado pela resiliência (token cancelado aqui dentro).
         OperationCanceledException => ProvedorIndisponivelException.TipoTimeout,
+        ClientResultException { Status: 0 } => ProvedorIndisponivelException.TipoIndisponivel, // sem resposta HTTP
         ClientResultException { Status: 401 or 403 } => "autenticacao",
         ClientResultException { Status: 429 } => ProvedorIndisponivelException.TipoRateLimit,
         ClientResultException { Status: >= 500 } => ProvedorIndisponivelException.TipoIndisponivel,

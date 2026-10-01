@@ -110,8 +110,9 @@ public sealed partial class ResilienciaChatClient(
         ClientResultException { Status: 500 or 502 or 503 or 504 } http => new(
             ProvedorIndisponivelException.TipoIndisponivel,
             $"O provedor está indisponível (HTTP {http.Status}).", RetryAfterDe(http)),
-        HttpRequestException => new(ProvedorIndisponivelException.TipoIndisponivel,
-            "Falha de rede ao chamar o provedor."),
+        // Sem resposta HTTP (status 0): o SDK embrulha falhas de transporte (conexão, DNS, TLS) nesta exceção.
+        ClientResultException { Status: 0 } or HttpRequestException => new(
+            ProvedorIndisponivelException.TipoIndisponivel, "Falha de rede ao chamar o provedor."),
         _ => null,
     };
 

@@ -32,8 +32,9 @@ public sealed class TelemetriaChatClientTests
     }
 
     [Fact]
-    public void TipoDoErro_ClientResultSemResposta_ERecusadaOuErro()
+    public void TipoDoErro_ClientResultSemRespostaHttp_EIndisponivel()
     {
-        TelemetriaChatClient.TipoDoErro(new ClientResultException("sem resposta")).ShouldBe("erro");
+        // Falha de transporte (TLS, conexão, DNS): não houve resposta do provedor.
+        TelemetriaChatClient.TipoDoErro(new ClientResultException("sem resposta")).ShouldBe("indisponivel");
     }
 }
