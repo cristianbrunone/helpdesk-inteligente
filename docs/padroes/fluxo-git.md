@@ -115,7 +115,7 @@ docs(adr): ADR-0015 migrations em serviço one-shot
 - Não misture refatoração com feature no mesmo commit.
 - Não faça commit de código que não compila, nem de testes quebrados.
 - O `.env` **nunca** é commitado. Só o `.env.example` vai para o repositório.
-- Commits feitos com ajuda de assistente de IA mantêm o trailer `Co-Authored-By`, por transparência (o README descreve onde e como a IA foi usada).
+- Os commits **não** levam o trailer `Co-Authored-By` do assistente (decisão do desenvolvedor na Sprint 0). A transparência sobre o uso de IA fica documentada na [`JORNADA.md`](../JORNADA.md#como-a-ia-é-usada-no-desenvolvimento): quais ferramentas, para quê e com quais limites.
 
 ## Proteção da `main` (configurar no fim da Sprint 0)
 

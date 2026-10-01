@@ -1,4 +1,5 @@
 import { MantineProvider } from '@mantine/core';
+import { Notifications } from '@mantine/notifications';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { render } from '@testing-library/react';
 import type { ReactElement } from 'react';
@@ -15,7 +16,8 @@ function criarQueryClientDeTeste(): QueryClient {
 /** Renderiza um componente com os mesmos providers da aplicação. */
 export function renderizar(ui: ReactElement, { rota = '/' }: { rota?: string } = {}) {
   return render(
-    <MantineProvider theme={tema}>
+    <MantineProvider theme={tema} env="test">
+      <Notifications />
       <QueryClientProvider client={criarQueryClientDeTeste()}>
         <MemoryRouter initialEntries={[rota]}>{ui}</MemoryRouter>
       </QueryClientProvider>
@@ -23,14 +25,16 @@ export function renderizar(ui: ReactElement, { rota = '/' }: { rota?: string } =
   );
 }
 
-/** Renderiza a aplicação inteira (rotas reais) a partir de uma URL. */
+/** Renderiza a aplicação inteira (rotas reais) a partir de uma URL; o roteador expõe a URL atual. */
 export function renderizarApp(rota = '/') {
   const roteador = createMemoryRouter(rotas, { initialEntries: [rota] });
-  return render(
-    <MantineProvider theme={tema}>
+  const resultado = render(
+    <MantineProvider theme={tema} env="test">
+      <Notifications />
       <QueryClientProvider client={criarQueryClientDeTeste()}>
         <RouterProvider router={roteador} />
       </QueryClientProvider>
     </MantineProvider>,
   );
+  return { ...resultado, roteador };
 }

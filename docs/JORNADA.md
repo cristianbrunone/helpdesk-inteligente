@@ -178,3 +178,41 @@ O plano dizia "melhor descobrir no dia 2 do que no dia 6", e foi exatamente o qu
   - O jsdom 30 exige Node 22.22+ ou 24, o que levou o projeto para o Node 24 LTS.
 - **A imagem Alpine tem diferenças em relação à máquina local.** O Npgsql tenta Kerberos por padrão e a imagem não tem a `libgssapi`, o que gerava um aviso fora do JSON a cada conexão; foi desligado na connection string. O SDK Alpine também não traz o `update-ca-certificates`.
 - **Testes que passam pelo motivo errado.** Duas verificações passavam mesmo com o sistema quebrado: o modo estrito do MSW (opção com nome errado) e a checagem de logs do smoke test (ID fixo que existia de uma execução anterior). As duas foram descobertas provocando a falha de propósito. Desde então, cada teste novo é "quebrado" uma vez para provar que detecta o problema.
+
+---
+
+## Sprint 1 — Chamados de ponta a ponta
+
+**Artefatos:** domínio em `src/HelpDesk.Domain/Chamados/`; migration `Chamados` (tabelas, `CHECK`s, índices 1 a 7 e `f_unaccent`); seed em `src/HelpDesk.Infrastructure/Persistencia/Seed/`; casos de uso em `src/HelpDesk.Application/Chamados/`; endpoints em `src/HelpDesk.Api/Endpoints/ChamadosEndpoints.cs`; telas em `web/src/paginas/`; [`DECISOES.md`](../DECISOES.md#decisões-de-implementação-sprint-1).
+
+**O que foi entregue:** o ciclo completo de um chamado, sem IA.
+
+- Criar, com validação no cliente e no servidor.
+- Listar, com filtros na URL, busca sem acento, ordenação e paginação.
+- Detalhar, com comentários e histórico.
+- Mudar status, só pelas transições permitidas.
+- Comentar.
+- Tudo com concorrência otimista (`ETag`/`If-Match` → 412).
+- 200 chamados de demonstração no seed.
+- Testes: de 35 para 203 no backend, de 9 para 31 no frontend, e o smoke do Compose cresceu de 8 para 12 verificações.
+
+**Como foi feito:** 13 commits, na ordem domínio → banco → seed → um endpoint por commit → smoke → uma tela por commit → documentação. Cada commit levou build, testes e lint rodados antes da mensagem. Os únicos pacotes novos foram os já aprovados (Bogus, React Hook Form, Zod e `@mantine/notifications`) mais o `@hookform/resolvers`, justificado e aprovado antes de entrar.
+
+### O que mudou em relação ao plano
+
+- **Uma divergência entre documentos foi pega antes do código.** O modelo de dados dizia que uma escrita concorrente detectada pelo `xmin` gerava **409**, enquanto o contrato e o critério de aceite diziam **412**. A decisão foi um código só, o 412, para os dois caminhos: `If-Match` velho e corrida no `SaveChanges`. O modelo foi alinhado ao contrato.
+- **O detalhe entrou junto com a criação, e não no próprio commit.** O contrato manda o 201 devolver o detalhe completo, então a consulta do detalhe nasceu no `POST`, e o commit do `GET /{id}` ficou só com o endpoint, o 404 e os testes.
+- **O seed passa pelo domínio.** Em vez de montar linhas "coerentes" à mão, o gerador chama `Abrir`, `MudarStatus` e `Comentar` em ordem cronológica. Se o seed tentasse algo proibido, o próprio domínio recusaria.
+- **Os placeholders da Sprint 0 saíram.** A página "Bem-vindo" e o painel de categorias deram lugar à lista de chamados.
+- **O campo `triagem` do detalhe e o `triagemStatus` da lista ficaram para a Sprint 2**, junto com a tabela `triagens_ia`. O contrato registra a entrega incremental.
+
+### Aprendizados
+
+- **O `EXPLAIN` com 200 linhas escolhe *Seq Scan*.** É o comportamento certo do planner com tabela pequena, mas deixa o teste do índice sem prova. Com o `seqscan` desligado, o teste roda o `EXPLAIN` da **consulta que o próprio EF gera** (via interceptor), e não de um SQL escrito à mão. O teste também mostrou que, na consulta da página, o planner pode preferir o índice 1, que já entrega a ordem com `LIMIT`. Isso é legítimo; por isso o teste afirma o uso do trigram na consulta de filtro.
+- **O mesmo teste achou SQL ruim que ninguém tinha pedido para olhar.** O nome da categoria com `FirstOrDefault` virava uma janela (`WindowAgg`) sobre a tabela inteira de categorias. Uma subconsulta escalar por PK resolveu.
+- **O `JsonStringEnumConverter` aceita números por padrão.** `"prioridade": 2` passava em silêncio. Agora dá 400, e há teste para isso.
+- **Comentar também muda a versão do chamado.** O `xmin` muda porque `atualizado_em` muda, então o `POST` de comentário devolve o novo `ETag`. Sem isso, comentar e logo depois mudar o status daria um 412 falso.
+- **O `If-Match` usa comparação forte (RFC 9110).** Um ETag fraco (`W/"..."`) nunca confere e resulta em 412; um teste cobre o caso.
+- **O tamanho do texto é contado em caracteres Unicode, como o `char_length` do PostgreSQL.** Contando em UTF-16, um título de 5 emojis passaria na API e cairia no `CHECK` do banco com erro 500.
+- **Ferramentas de teste no front.** O jsdom não tem `document.fonts`, que o `Textarea` com autosize usa, e precisou de polyfill. No MSW, o handler registrado **por último** tem precedência, o que inverteu um cenário de erro até a ordem ser corrigida.
+- **O bundle passou de 500 kB minificado** (~160 kB com gzip) depois do Zod. Fica registrado para o *code-splitting* por rota na Sprint 5, e não para agora.

@@ -55,16 +55,41 @@ public sealed class InicializadorBancoTests(BancoFixture banco)
         rotulos.ShouldBe(esperados);
     }
 
-    private async Task ExecutarInicializadorAsync()
+    [Fact]
+    public async Task MigrarEAplicarSeed_BancoVazioExecutadoDuasVezes_InsereOs200ChamadosUmaUnicaVez()
     {
-        await using var servicos = banco.CriarServicos();
+        var bancoIsolado = await banco.CriarBancoVazioAsync(Ct);
+
+        await ExecutarInicializadorAsync(bancoIsolado);
+        await ExecutarInicializadorAsync(bancoIsolado);
+
+        var totais = await ConsultarAsync(db => db.Database
+            .SqlQuery<int>($"""
+                SELECT (SELECT count(*) FROM chamados)::int AS "Value"
+                UNION ALL
+                -- chamados cujo último registro de histórico não bate com o status atual (deve ser zero)
+                SELECT count(*)::int FROM chamados c
+                WHERE c.status <> (SELECT h.status_novo FROM historico_status h
+                                   WHERE h.chamado_id = c.id ORDER BY h.alterado_em DESC LIMIT 1)
+                UNION ALL
+                SELECT count(*)::int FROM chamados c
+                WHERE NOT EXISTS (SELECT 1 FROM comentarios m WHERE m.chamado_id = c.id)
+                """)
+            .ToListAsync(Ct), bancoIsolado);
+
+        totais.ShouldBe([200, 0, 0]);
+    }
+
+    private async Task ExecutarInicializadorAsync(string? connectionString = null)
+    {
+        await using var servicos = banco.CriarServicos(connectionString);
         await using var escopo = servicos.CreateAsyncScope();
         await escopo.ServiceProvider.GetRequiredService<InicializadorBanco>().MigrarEAplicarSeedAsync(Ct);
     }
 
-    private async Task<T> ConsultarAsync<T>(Func<HelpDeskDbContext, Task<T>> consulta)
+    private async Task<T> ConsultarAsync<T>(Func<HelpDeskDbContext, Task<T>> consulta, string? connectionString = null)
     {
-        await using var servicos = banco.CriarServicos();
+        await using var servicos = banco.CriarServicos(connectionString);
         await using var escopo = servicos.CreateAsyncScope();
         return await consulta(escopo.ServiceProvider.GetRequiredService<HelpDeskDbContext>());
     }

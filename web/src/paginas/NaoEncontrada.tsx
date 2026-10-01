@@ -6,8 +6,8 @@ export function NaoEncontrada() {
     <Stack gap="sm">
       <Title order={2}>Página não encontrada</Title>
       <Text>O endereço acessado não existe.</Text>
-      <Anchor component={Link} to="/">
-        Voltar ao início
+      <Anchor component={Link} to="/chamados">
+        Voltar para os chamados
       </Anchor>
     </Stack>
   );

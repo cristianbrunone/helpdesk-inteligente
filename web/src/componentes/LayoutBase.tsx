@@ -1,16 +1,21 @@
-import { AppShell, Burger, Group, Title } from '@mantine/core';
+import { AppShell, Burger, Group, NavLink, Title } from '@mantine/core';
 import { useDisclosure } from '@mantine/hooks';
-import { Outlet } from 'react-router';
-import { PainelCategorias } from './PainelCategorias';
+import { Link, Outlet, useLocation } from 'react-router';
+
+const ITENS_DO_MENU = [
+  { rotulo: 'Chamados', destino: '/chamados' },
+  { rotulo: 'Novo chamado', destino: '/chamados/novo' },
+];
 
 /** Casca responsiva: no celular (< sm) a navegação vira um menu aberto pelo botão hambúrguer. */
 export function LayoutBase() {
-  const [menuAberto, { toggle }] = useDisclosure();
+  const [menuAberto, { toggle, close }] = useDisclosure();
+  const { pathname } = useLocation();
 
   return (
     <AppShell
       header={{ height: 56 }}
-      navbar={{ width: 260, breakpoint: 'sm', collapsed: { mobile: !menuAberto } }}
+      navbar={{ width: 240, breakpoint: 'sm', collapsed: { mobile: !menuAberto } }}
       padding="md"
     >
       <AppShell.Header>
@@ -28,11 +33,18 @@ export function LayoutBase() {
         </Group>
       </AppShell.Header>
 
-      <AppShell.Navbar p="md" aria-label="Navegação">
-        <Title order={2} size="xs" c="dimmed" tt="uppercase" mb="sm">
-          Categorias
-        </Title>
-        <PainelCategorias />
+      <AppShell.Navbar p="sm" component="nav" aria-label="Navegação">
+        {ITENS_DO_MENU.map(({ rotulo, destino }) => (
+          <NavLink
+            key={destino}
+            component={Link}
+            to={destino}
+            label={rotulo}
+            active={pathname === destino}
+            aria-current={pathname === destino ? 'page' : undefined}
+            onClick={close}
+          />
+        ))}
       </AppShell.Navbar>
 
       <AppShell.Main>

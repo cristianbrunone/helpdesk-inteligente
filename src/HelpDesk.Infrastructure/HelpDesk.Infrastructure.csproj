@@ -1,9 +1,15 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <ItemGroup>
     <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" />
+    <PackageReference Include="Bogus" />
   </ItemGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\HelpDesk.Application\HelpDesk.Application.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Os testes de integração exercitam as consultas diretamente (ex.: EXPLAIN da busca). -->
+    <InternalsVisibleTo Include="HelpDesk.IntegrationTests" />
   </ItemGroup>
 </Project>

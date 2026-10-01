@@ -76,6 +76,7 @@ Catálogo de conflitos (**409**):
 - **201 Created**, com `Location: /api/chamados/{id}` e o corpo = detalhe do chamado (seção abaixo), com `triagem.status = "Pendente"`.
 - **422**: título com 5–150 caracteres, descrição com 10–5000, nome obrigatório (até 120), e-mail válido, categoria existente (quando informada).
 - É **sempre** rápido: grava o chamado, o histórico (`null → Aberto`) e a triagem pendente numa transação (ADR-0003).
+- **Entrega incremental:** na Sprint 1, sem a tabela `triagens_ia`, o detalhe ainda não tem o campo `triagem` e a listagem não tem `triagemStatus`. Os dois entram na Sprint 2.
 
 ### `GET /api/chamados`: listar
 
