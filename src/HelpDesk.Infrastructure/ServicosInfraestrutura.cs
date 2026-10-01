@@ -1,5 +1,6 @@
 using HelpDesk.Application.Categorias;
 using HelpDesk.Application.Chamados;
+using HelpDesk.Application.Triagem;
 using HelpDesk.Infrastructure.Consultas;
 using HelpDesk.Infrastructure.Persistencia;
 using Microsoft.Extensions.DependencyInjection;
@@ -17,6 +18,7 @@ public static class ServicosInfraestrutura
         services.AddScoped<IConsultaCategorias, ConsultaCategorias>();
         services.AddScoped<IRepositorioChamados, RepositorioChamados>();
         services.AddScoped<IConsultaChamados, ConsultaChamados>();
+        services.AddScoped<IRepositorioTriagens, RepositorioTriagens>();
         return services;
     }
 }

@@ -50,6 +50,8 @@ services:
     environment:
       <<: *banco
       LLM_PROVIDER: ${LLM_PROVIDER:-fake}
+      IA_TRIAGEM_HABILITADA: ${IA_TRIAGEM_HABILITADA:-true}
+      IA_COPILOTO_HABILITADO: ${IA_COPILOTO_HABILITADO:-true}
     ports:
       - "${API_PORTA_HOST:-5080}:8080"
     depends_on:
@@ -70,6 +72,7 @@ services:
       secrets: [ca_extra]
     environment:
       LLM_PROVIDER: ${LLM_PROVIDER:-fake}
+      IA_TRIAGEM_HABILITADA: ${IA_TRIAGEM_HABILITADA:-true}
       WORKER_HEARTBEAT_INTERVAL_SECONDS: ${WORKER_HEARTBEAT_INTERVAL_SECONDS:-30}
     depends_on:
       migrator:

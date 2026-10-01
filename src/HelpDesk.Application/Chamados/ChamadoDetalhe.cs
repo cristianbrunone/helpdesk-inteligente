@@ -1,11 +1,13 @@
 using HelpDesk.Application.Categorias;
 using HelpDesk.Domain.Chamados;
+using HelpDesk.Domain.Triagem;
 
 namespace HelpDesk.Application.Chamados;
 
 /// <summary>
 /// Detalhe do chamado (contrato: <c>GET /api/chamados/{id}</c>). <see cref="TransicoesPermitidas"/> e
-/// <see cref="PodeComentar"/> vêm do domínio: o front só renderiza. A <c>triagem</c> entra na Sprint 2.
+/// <see cref="PodeComentar"/> vêm do domínio: o front só renderiza. <see cref="Triagem"/> é a vigente (a mais
+/// recente, P-04), ou <c>null</c> se nunca houve triagem (por exemplo, com a triagem desativada).
 /// </summary>
 public sealed record ChamadoDetalhe(
     Guid Id,
@@ -23,7 +25,33 @@ public sealed record ChamadoDetalhe(
     IReadOnlyList<StatusChamado> TransicoesPermitidas,
     bool PodeComentar,
     IReadOnlyList<ComentarioDetalhe> Comentarios,
-    IReadOnlyList<HistoricoDetalhe> Historico);
+    IReadOnlyList<HistoricoDetalhe> Historico,
+    TriagemDetalhe? Triagem);
+
+/// <summary>
+/// Triagem vigente no detalhe. <see cref="Erro"/> é a mensagem amigável da falha, nunca o detalhe técnico.
+/// <see cref="Fontes"/> fica vazia até o RAG (Sprint 3).
+/// </summary>
+public sealed record TriagemDetalhe(
+    Guid Id,
+    StatusTriagem Status,
+    CategoriaResumo? CategoriaSugerida,
+    Prioridade? PrioridadeSugerida,
+    string? Resumo,
+    string? RespostaSugerida,
+    decimal? Confianca,
+    string? Modelo,
+    string? PromptVersao,
+    IReadOnlyList<FonteTriagem> Fontes,
+    string? Erro,
+    DateTimeOffset CriadoEm,
+    DateTimeOffset? ConcluidaEm,
+    string? DecididaPor,
+    DateTimeOffset? DecididaEm,
+    int TotalTriagens);
+
+/// <summary>Documento usado pelo RAG na sugestão (contrato do detalhe). Preenchido a partir da Sprint 3.</summary>
+public sealed record FonteTriagem(string Tipo, Guid Id, long? Numero, string Titulo, double Similaridade);
 
 public sealed record ComentarioDetalhe(Guid Id, string Autor, string Texto, DateTimeOffset CriadoEm);
 

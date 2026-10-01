@@ -1,5 +1,8 @@
+using System.Diagnostics;
+using HelpDesk.Application.Triagem;
 using HelpDesk.Domain.Chamados;
 using HelpDesk.Domain.Erros;
+using HelpDesk.Domain.Triagem;
 
 namespace HelpDesk.Application.Chamados;
 
@@ -13,10 +16,16 @@ public sealed record NovoChamado(
     Prioridade? Prioridade);
 
 /// <summary>
-/// Abre um chamado (RF-01). Grava o chamado e o histórico inicial numa transação e responde na hora: a triagem
-/// por IA (Sprint 2) nunca é aguardada aqui.
+/// Abre um chamado (RF-01). Grava o chamado, o histórico inicial e a triagem pendente numa transação e responde na
+/// hora (RF-02): a triagem por IA é processada pelo Worker e nunca é aguardada aqui. Com a triagem desativada
+/// (ADR-0021), o chamado nasce sem triagem e nada fica acumulado na fila.
 /// </summary>
-public sealed class CriarChamado(IRepositorioChamados repositorio, IConsultaChamados consulta, TimeProvider relogio)
+public sealed class CriarChamado(
+    IRepositorioChamados repositorio,
+    IRepositorioTriagens triagens,
+    IConsultaChamados consulta,
+    OpcoesIA opcoesIA,
+    TimeProvider relogio)
 {
     private const string Categoria = nameof(NovoChamado.CategoriaId);
     private const string CategoriaInexistente = "A categoria informada não existe.";
@@ -50,6 +59,12 @@ public sealed class CriarChamado(IRepositorioChamados repositorio, IConsultaCham
         }
 
         repositorio.Adicionar(chamado);
+        if (opcoesIA.TriagemHabilitada)
+        {
+            // O trace da criação fica gravado na triagem: o processamento no Worker se vincula a ele (ADR-0019).
+            triagens.Adicionar(TriagemIA.Criar(chamado, chamado.CriadoEm, Activity.Current?.Id));
+        }
+
         await repositorio.SalvarAsync(cancellationToken);
 
         return await consulta.ObterDetalheAsync(chamado.Id, cancellationToken)

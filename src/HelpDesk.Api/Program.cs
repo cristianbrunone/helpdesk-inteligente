@@ -4,6 +4,7 @@ using HelpDesk.Api.Endpoints;
 using HelpDesk.Api.Erros;
 using HelpDesk.Api.Observabilidade;
 using HelpDesk.Infrastructure;
+using HelpDesk.Infrastructure.Configuracao;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -12,6 +13,8 @@ var connectionString = builder.Configuration.GetConnectionString("Default")
     ?? throw new InvalidOperationException("A variável ConnectionStrings__Default não foi configurada.");
 
 builder.Services.AdicionarInfraestrutura(connectionString);
+// Kill switches de IA (ADR-0021): lidos uma vez na subida; valor inválido impede a API de subir.
+builder.Services.AddSingleton(new LeitorAmbiente(chave => builder.Configuration[chave]).OpcoesIA());
 builder.Services.AdicionarCasosDeUso();
 // Enums só como texto em PascalCase ASCII (contrato §1): "EmAndamento", "Critica". Número é tipo errado (400).
 builder.Services.ConfigureHttpJsonOptions(options =>
@@ -39,6 +42,7 @@ app.UseSwaggerUI(options =>
 app.MapSaude();
 app.MapCategorias();
 app.MapChamados();
+app.MapConfiguracao();
 
 app.Run();
 

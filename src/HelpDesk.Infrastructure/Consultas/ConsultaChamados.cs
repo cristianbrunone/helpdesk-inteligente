@@ -2,6 +2,7 @@ using System.Globalization;
 using HelpDesk.Application.Categorias;
 using HelpDesk.Application.Chamados;
 using HelpDesk.Domain.Chamados;
+using HelpDesk.Domain.Triagem;
 using HelpDesk.Infrastructure.Persistencia;
 using Microsoft.EntityFrameworkCore;
 
@@ -33,11 +34,57 @@ internal sealed class ConsultaChamados(HelpDeskDbContext db) : IConsultaChamados
             })
             .SingleOrDefaultAsync(cancellationToken);
 
-        return encontrado is null
-            ? null
-            : new ChamadoVersionado(
-                Mapear(encontrado.Chamado, encontrado.Categoria),
-                encontrado.Versao.ToString(CultureInfo.InvariantCulture));
+        if (encontrado is null)
+        {
+            return null;
+        }
+
+        var triagem = await ObterTriagemVigenteAsync(id, cancellationToken);
+        return new ChamadoVersionado(
+            Mapear(encontrado.Chamado, encontrado.Categoria, triagem),
+            encontrado.Versao.ToString(CultureInfo.InvariantCulture));
+    }
+
+    /// <summary>A vigente é a mais recente (P-04, índice 8); o total mostra quantas vezes o chamado foi triado.</summary>
+    private async Task<TriagemDetalhe?> ObterTriagemVigenteAsync(Guid chamadoId, CancellationToken cancellationToken)
+    {
+        var doChamado = db.Triagens.AsNoTracking().Where(t => t.ChamadoId == chamadoId);
+        var vigente = await doChamado
+            .OrderByDescending(t => t.CriadoEm)
+            .ThenByDescending(t => t.Id)
+            .Select(t => new
+            {
+                Triagem = t,
+                CategoriaNome = db.Categorias
+                    .Where(k => k.Id == t.CategoriaSugeridaId)
+                    .Select(k => k.Nome)
+                    .FirstOrDefault(),
+            })
+            .FirstOrDefaultAsync(cancellationToken);
+        if (vigente is null)
+        {
+            return null;
+        }
+
+        var total = await doChamado.CountAsync(cancellationToken);
+        var t = vigente.Triagem;
+        return new TriagemDetalhe(
+            t.Id,
+            t.Status,
+            t.CategoriaSugeridaId is { } categoriaId ? new CategoriaResumo(categoriaId, vigente.CategoriaNome!) : null,
+            t.PrioridadeSugerida,
+            t.Resumo,
+            t.RespostaSugerida,
+            t.Confianca,
+            t.Modelo,
+            t.PromptVersao,
+            [],
+            t.Status == StatusTriagem.Falhou ? t.ErroMotivo : null,
+            t.CriadoEm,
+            t.ConcluidaEm,
+            t.DecididaPor,
+            t.DecididaEm,
+            total);
     }
 
     public async Task<ResultadoPaginado<ChamadoResumo>> ListarAsync(
@@ -62,6 +109,12 @@ internal sealed class ConsultaChamados(HelpDeskDbContext db) : IConsultaChamados
                 c.SolicitanteNome,
                 c.CriadoEm,
                 c.AtualizadoEm,
+                // Status da triagem vigente: subconsulta pelo índice 8, só para as linhas da página.
+                TriagemStatus = db.Triagens
+                    .Where(t => t.ChamadoId == c.Id)
+                    .OrderByDescending(t => t.CriadoEm)
+                    .Select(t => (StatusTriagem?)t.Status)
+                    .FirstOrDefault(),
             })
             .ToListAsync(cancellationToken);
 
@@ -74,7 +127,8 @@ internal sealed class ConsultaChamados(HelpDeskDbContext db) : IConsultaChamados
                 l.CategoriaId is { } categoriaId ? new CategoriaResumo(categoriaId, l.CategoriaNome!) : null,
                 l.SolicitanteNome,
                 l.CriadoEm,
-                l.AtualizadoEm))
+                l.AtualizadoEm,
+                l.TriagemStatus))
             .ToList();
 
         var totalPaginas = (int)Math.Ceiling(total / (double)filtro.TamanhoPagina);
@@ -149,7 +203,7 @@ internal sealed class ConsultaChamados(HelpDeskDbContext db) : IConsultaChamados
 
     private static DateTimeOffset InicioDoDia(DateOnly dia) => new(dia.ToDateTime(TimeOnly.MinValue), TimeSpan.Zero);
 
-    private static ChamadoDetalhe Mapear(Chamado c, CategoriaResumo? categoria) => new(
+    private static ChamadoDetalhe Mapear(Chamado c, CategoriaResumo? categoria, TriagemDetalhe? triagem) => new(
         c.Id,
         c.Numero,
         c.Titulo,
@@ -166,5 +220,6 @@ internal sealed class ConsultaChamados(HelpDeskDbContext db) : IConsultaChamados
         c.PodeComentar,
         [.. c.Comentarios.OrderBy(m => m.CriadoEm).Select(m => new ComentarioDetalhe(m.Id, m.Autor, m.Texto, m.CriadoEm))],
         [.. c.Historico.OrderBy(h => h.AlteradoEm).ThenBy(h => h.Id)
-            .Select(h => new HistoricoDetalhe(h.StatusAnterior, h.StatusNovo, h.AlteradoEm, h.AlteradoPor))]);
+            .Select(h => new HistoricoDetalhe(h.StatusAnterior, h.StatusNovo, h.AlteradoEm, h.AlteradoPor))],
+        triagem);
 }
