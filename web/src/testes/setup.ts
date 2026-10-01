@@ -26,6 +26,16 @@ class ResizeObserverFalso {
 }
 window.ResizeObserver = ResizeObserverFalso;
 
+// O Textarea com autosize recalcula a altura quando as fontes carregam (document.fonts), também ausente no jsdom.
+Object.defineProperty(document, 'fonts', {
+  configurable: true,
+  value: {
+    addEventListener: () => undefined,
+    removeEventListener: () => undefined,
+    ready: Promise.resolve(),
+  },
+});
+
 // Requisição sem handler é erro: nenhum teste depende de rede real.
 beforeAll(() => servidor.listen({ onUnhandledFrame: 'error' }));
 afterEach(() => {

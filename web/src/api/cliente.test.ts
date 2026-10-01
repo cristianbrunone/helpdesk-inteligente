@@ -53,3 +53,26 @@ describe('requisitar', () => {
     expect(mensagemDeErro(erro)).toMatch(/Não foi possível conectar ao servidor/);
   });
 });
+
+describe('requisitar com corpo', () => {
+  it('envia o corpo como JSON e expõe os erros por campo do 422', async () => {
+    let recebido: { tipo: string | null; corpo: unknown } | undefined;
+    servidor.use(
+      http.post('/api/teste', async ({ request }) => {
+        recebido = { tipo: request.headers.get('content-type'), corpo: await request.json() };
+        return HttpResponse.json(
+          { codigo: 'validacao', errors: { titulo: ['Informe o título.'] } },
+          { status: 422, headers: { 'Content-Type': 'application/problem+json' } },
+        );
+      }),
+    );
+
+    const erro = await requisitar('/api/teste', { method: 'POST', corpo: { titulo: '' } }).catch(
+      (e: unknown) => e,
+    );
+
+    expect(recebido).toEqual({ tipo: 'application/json', corpo: { titulo: '' } });
+    expect(erro).toBeInstanceOf(ErroApi);
+    expect((erro as ErroApi).errosPorCampo).toEqual({ titulo: ['Informe o título.'] });
+  });
+});
