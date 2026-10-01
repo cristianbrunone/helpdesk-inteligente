@@ -17,7 +17,8 @@ public sealed class MontadorPromptTriagemTests
 
         var prompt = await montador.MontarAsync(Mascarar("Título"), Mascarar("Descrição"), _categorias, [], Ct);
 
-        prompt.Versao.ShouldBe("triagem.v1");
+        // Sem versão informada, vale a padrão: a triagem.v2, adotada após o eval de 01/10 (docs/evals).
+        prompt.Versao.ShouldBe("triagem.v2");
         prompt.Sistema.ShouldBe("Categorias:\n- Financeiro\n- Dúvida\nFim.");
     }
 

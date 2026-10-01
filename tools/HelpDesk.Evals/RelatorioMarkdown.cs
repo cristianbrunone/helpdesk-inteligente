@@ -109,7 +109,8 @@ internal static class RelatorioMarkdown
             }
         }
 
-        return md.ToString();
+        // LF sempre (o repositório guarda texto com LF; no Windows o AppendLine usaria CRLF).
+        return md.ToString().ReplaceLineEndings("\n");
     }
 
     private static bool Errada(CasoEval caso, ExecucaoEval execucao) =>

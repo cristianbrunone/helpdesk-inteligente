@@ -60,6 +60,7 @@ public sealed class RelatorioEOpcoesEvalTests
         var md = RelatorioMarkdown.Gerar(_cabecalho with { Repeticoes = 1 }, [_casos[0]], execucoes);
 
         md.ShouldContain("Nenhum: todas as execuções acertaram");
+        md.ShouldNotContain("\r"); // LF sempre, mesmo gerado no Windows
         md.ShouldContain("Categoria certa na única execução (pass^1)");
     }
 

@@ -223,9 +223,13 @@ public sealed class PipelineTriagemTests
 
     // ---------- Apoio ----------
 
+    /// <summary>
+    /// Por padrão, a linha de base sem RAG (triagem.v1 + RecuperadorSemRag): estes testes cobrem o pipeline em si.
+    /// A v2 com contexto é exercitada explicitamente.
+    /// </summary>
     private static (PipelineTriagem, TriagemIA, Chamado) Montar(
         IChatClient chat, IConsultaCategorias? categorias = null, IRecuperadorContexto? recuperador = null,
-        string versao = MontadorPromptTriagem.VersaoPadrao)
+        string versao = "triagem.v1")
     {
         var opcoes = new OpcoesLlm
         {

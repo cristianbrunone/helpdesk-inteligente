@@ -20,7 +20,7 @@ public interface ICatalogoPrompts
 /// </summary>
 public sealed class MontadorPromptTriagem(ICatalogoPrompts catalogo, string versao = MontadorPromptTriagem.VersaoPadrao)
 {
-    public const string VersaoPadrao = "triagem.v1";
+    public const string VersaoPadrao = "triagem.v2";
     public const string MarcadorCategorias = "{{CATEGORIAS}}";
     public const string BlocoContexto = "<contexto>";
 

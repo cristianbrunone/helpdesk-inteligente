@@ -228,7 +228,8 @@ public sealed class LeitorAmbienteTests
     }
 
     [Theory]
-    [InlineData(null, "triagem.v1")]
+    [InlineData(null, "triagem.v2")]
+    [InlineData("triagem.v1", "triagem.v1")]
     [InlineData("triagem.v2", "triagem.v2")]
     public void VersaoPromptTriagem_AusenteOuValida_UsaOPadraoOuAInformada(string? valor, string esperada)
     {
