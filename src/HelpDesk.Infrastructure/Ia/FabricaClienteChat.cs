@@ -13,10 +13,14 @@ namespace HelpDesk.Infrastructure.Ia;
 /// </summary>
 public static class FabricaClienteChat
 {
-    /// <summary>O cliente que a aplicação usa: o provedor com a resiliência por cima (timeout, retry, backoff).</summary>
-    public static IChatClient CriarComResiliencia(OpcoesLlm opcoes, ILoggerFactory logs) =>
+    /// <summary>
+    /// O cliente que a aplicação usa: resiliência (timeout, retry, backoff) → telemetria (<c>uso_llm</c> e log, uma
+    /// por tentativa) → provedor. No <see cref="ChatClientBuilder"/>, o primeiro <c>Use</c> é a camada mais externa.
+    /// </summary>
+    public static IChatClient Montar(OpcoesLlm opcoes, ILoggerFactory logs, IRegistroUsoLlm registro) =>
         new ChatClientBuilder(Criar(opcoes))
             .Use(interno => new ResilienciaChatClient(interno, opcoes, logs.CreateLogger<ResilienciaChatClient>()))
+            .Use(interno => new TelemetriaChatClient(interno, opcoes, registro, logs.CreateLogger<TelemetriaChatClient>()))
             .Build();
 
     public static IChatClient Criar(OpcoesLlm opcoes) => opcoes.Provedor switch
