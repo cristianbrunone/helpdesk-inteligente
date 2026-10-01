@@ -47,8 +47,10 @@ public sealed class ReferenciasDeProjetoTests
             string[] Valores(string elemento) =>
                 [.. xml.Descendants(elemento).Select(e => (string?)e.Attribute("Include") ?? "")];
 
+            // Os .csproj usam "\" nos caminhos; no Linux (CI) "\" não é separador, então normalizamos antes.
             return new Csproj(
-                [.. Valores("ProjectReference").Select(Path.GetFileNameWithoutExtension).OfType<string>()],
+                [.. Valores("ProjectReference")
+                    .Select(caminho => Path.GetFileNameWithoutExtension(caminho.Replace('\\', '/')))],
                 Valores("PackageReference"),
                 Valores("FrameworkReference"));
         }
