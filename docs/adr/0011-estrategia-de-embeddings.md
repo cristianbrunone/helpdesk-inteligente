@@ -1,6 +1,6 @@
 # ADR-0011 — Estratégia de embeddings: documentos por origem, dimensão fixa e reconciliação por modelo
 
-- **Status:** Aceita (a dimensão será validada na PoC da Fase 4)
+- **Status:** Aceita (validada na PoC de 2026-10-01; ver "Resultado da PoC")
 - **Data:** 2026-09-30
 - **Fase:** 3 — Modelagem de dados
 - **Requisitos relacionados:** RF-15, RF-16, RF-21, RF-31, RN-11, NFR-06, NFR-10, NFR-12
@@ -56,3 +56,11 @@ Escolhemos **B**, com estas regras:
 - **PoC na Fase 4:** confirmar que o endpoint compatível com OpenAI aceita o parâmetro `dimensions` para o modelo de embedding do Gemini. Se não aceitar, o plano B é truncar e renormalizar o vetor no adaptador (válido para modelos treinados com Matryoshka) ou usar a API nativa para embeddings.
 - As fontes recuperadas (tipo, id, similaridade) são gravadas em `triagens_ia.fontes` (jsonb) e exibidas no painel da IA (RF-16).
 - **Gatilho de reavaliação:** qualidade de recuperação baixa (medida pela taxa de rejeição por categoria). Nesse caso, avaliar chunking semântico, busca híbrida ou re-ranking.
+
+## Resultado da PoC (Sprint 0, 2026-10-01)
+
+Teste `Embeddings_ComDimensions768_RetornaVetorDe768Posicoes` (`Category=ProvedorReal`), com o `gemini-embedding-001` pelo endpoint OpenAI-compatível:
+
+- **`dimensions = 768` é respeitado:** o vetor vem com exatamente 768 posições, em 0,3 a 0,8 s. O plano B (truncar no adaptador ou usar a API nativa) **não é necessário**.
+- **O vetor reduzido não vem normalizado** (norma L2 ≈ 0,588). A regra "normalizar antes de gravar" desta decisão é, portanto, **obrigatória** no adaptador real, e não só no fake. Um teste unitário da Sprint 3 garante norma 1.
+- **Cota do free tier:** 100 RPM / 1.000 RPD para o Gemini Embedding 1. Folga suficiente para indexar o seed (~200 chamados resolvidos + artigos) e para o embedding da pergunta em cada triagem e no copiloto.

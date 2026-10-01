@@ -211,13 +211,13 @@ sequenceDiagram
 | [ADR-0002](adr/0002-clean-architecture-pragmatica.md) | Clean Architecture pragmática em vez de Vertical Slice pura | Aceita |
 | [ADR-0003](adr/0003-fila-em-tabela-postgres.md) | Fila de trabalho em tabela PostgreSQL (SKIP LOCKED) em vez de broker externo | Aceita |
 | [ADR-0004](adr/0004-triagem-pipeline-rag-deterministico.md) | Triagem como pipeline RAG determinístico; tool calling só no copiloto | Aceita |
-| [ADR-0005](adr/0005-abstracao-provedor-llm.md) | Microsoft.Extensions.AI + adaptador OpenAI-compatível em vez de SDKs nativos por provedor | Aceita (validar na PoC) |
+| [ADR-0005](adr/0005-abstracao-provedor-llm.md) | Microsoft.Extensions.AI + adaptador OpenAI-compatível em vez de SDKs nativos por provedor | Aceita (validada; plano B para tool calling no Gemini 3) |
 | [ADR-0006](adr/0006-gemini-free-tier-e-lgpd.md) | Gemini free tier como provedor real de demonstração, com mascaramento obrigatório | Aceita |
 | [ADR-0007](adr/0007-pgvector-no-postgres.md) | pgvector no próprio PostgreSQL em vez de banco vetorial dedicado | Aceita |
 | [ADR-0008](adr/0008-busca-textual-pg-trgm.md) | Busca textual com `pg_trgm` (substring, sem acento) em vez de full-text search | Aceita |
 | [ADR-0009](adr/0009-sql-explicito-no-dashboard.md) | SQL explícito nas leituras analíticas; EF Core nas escritas | Aceita |
 | [ADR-0010](adr/0010-filas-derivadas-do-estado.md) | Filas derivadas do estado das entidades em vez de tabela genérica de jobs | Aceita |
-| [ADR-0011](adr/0011-estrategia-de-embeddings.md) | Tabela única de documentos RAG, dimensão fixa (768) e reconciliação por modelo | Aceita (validar na PoC) |
+| [ADR-0011](adr/0011-estrategia-de-embeddings.md) | Tabela única de documentos RAG, dimensão fixa (768) e reconciliação por modelo | Aceita (validada) |
 | [ADR-0012](adr/0012-copiloto-com-streaming-sse.md) | Copiloto com streaming SSE em vez de resposta completa | Aceita |
 | [ADR-0013](adr/0013-minimal-apis.md) | Minimal APIs com route groups em vez de Controllers | Aceita |
 | [ADR-0014](adr/0014-fluxo-git-trunk-based.md) | Fluxo Git trunk-based com uma branch por sprint em vez de GitFlow | Aceita |
@@ -239,11 +239,11 @@ As decisões de plataforma da Sprint 0 usam os ADRs 0015 a 0017 (migrations, log
 
 | Risco | Prob. | Impacto | Mitigação |
 |---|---|---|---|
-| O endpoint OpenAI-compatível do Gemini não suportar bem `json_schema` ou tools em algum modelo | Média | Alto | Validar na PoC (Fase 4). O fallback é `json_object` + validação própria, ou um adaptador nativo (ADR-0005). |
-| Rate limit do free tier durante a demonstração | Alta | Médio | O fake é o padrão. Retry com backoff para 429. O estado `falhou` é visível e há o botão "Refazer". |
+| O endpoint OpenAI-compatível do Gemini não suportar bem `json_schema` ou tools em algum modelo | Média | Alto | **PoC (2026-10-01):** `json_schema` funciona; tool calling no Gemini 3 exige devolver a `thought_signature`, resolvido no adaptador por uma `PipelinePolicy` (ADR-0005). Fallback restante: adaptador nativo (ADR-0005). |
+| Rate limit e cota diária do free tier (PoC: 20 RPD nos Flash, 500 RPD no Flash Lite) | Alta | Médio | O fake é o padrão. Modelo padrão `gemini-3.5-flash-lite` (500 RPD). Retry com backoff para 429. O estado `falhou` é visível e há o botão "Refazer". |
 | Escopo (RAG + copiloto) estourar o prazo | Média | Alto | Ordem de entrega: obrigatório → RAG na triagem → copiloto. O copiloto pode cair para Could. |
 | Embeddings de modelos diferentes misturados no índice | Média | Médio | A busca filtra por `embedding_modelo` e o reconciliador reindexa ao trocar de modelo (ADR-0010, ADR-0011). |
-| Endpoint compatível não aceitar `dimensions` para embeddings do Gemini | Média | Médio | Validar na PoC. O plano B é truncar e renormalizar no adaptador (ADR-0011). |
+| Endpoint compatível não aceitar `dimensions` para embeddings do Gemini | Média | Médio | **PoC (2026-10-01):** `dimensions = 768` é respeitado; o vetor não vem normalizado, então o adaptador normaliza (ADR-0011). |
 | Prompt injection via descrição do chamado | Média | Médio | Conteúdo delimitado no prompt, saída validada contra o domínio, e ferramentas do copiloto somente leitura. |
 
 ---
@@ -317,7 +317,7 @@ Variáveis de ambiente (o `.env.example` completo sai na Sprint 0):
 | `LLM_BASE_URL` / `LLM_API_KEY` | — | Provedor real (ADR-0005). |
 | `LLM_CHAT_MODEL` / `LLM_EMBEDDING_MODEL` | — | Modelos configuráveis. |
 | `EMBEDDING_DIMENSIONS` | `768` | ADR-0011. |
-| `LLM_TIMEOUT_SECONDS` / `LLM_MAX_RETRIES` | `15` / `2` | NFR-04. |
+| `LLM_TIMEOUT_SECONDS` / `LLM_MAX_RETRIES` | `60` / `3` | NFR-04 (revisado na PoC, ADR-0005). |
 | `RAG_TOP_K` / `RAG_MIN_SIMILARITY` | `3` / `0.35` | ADR-0011. |
 | `WORKER_POLL_INTERVAL_MS` / `WORKER_BATCH_SIZE` / `WORKER_RECONCILE_INTERVAL_SECONDS` | `1500` / `5` / `30` | ADR-0003, ADR-0010. |
 | `COPILOTO_RATE_LIMIT_POR_MINUTO` | `10` | Proteção de cota. |
