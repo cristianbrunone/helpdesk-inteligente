@@ -13,7 +13,7 @@
 | Número amigável | `chamados.numero bigint GENERATED ALWAYS AS IDENTITY` (exibido como `#1042`). | Humanos não falam UUID. |
 | Datas | Sempre `timestamptz`, gravado em UTC. | Evita ambiguidade de fuso. A conversão para o horário local é feita no frontend. |
 | Enums | Enums nativos do PostgreSQL. | Integridade no banco e **ordem de declaração = ordem de negócio**: `ORDER BY prioridade` já ordena Baixa < Média < Alta < Crítica (P-07) sem `CASE`. |
-| Concorrência | Concorrência otimista via `xmin` (coluna de sistema do Postgres), usada como token no EF Core. | Dois atendentes mudando o status ao mesmo tempo → o segundo recebe **409**. |
+| Concorrência | Concorrência otimista via `xmin` (coluna de sistema do Postgres), usada como token no EF Core e como valor do `ETag`. | Dois atendentes mudando o chamado ao mesmo tempo → o segundo recebe **412** `versao_desatualizada`, tanto com `If-Match` velho quanto numa corrida detectada no `SaveChanges` (decisão da Sprint 1: um único código para o mesmo problema). |
 | Textos | Limites de tamanho com `CHECK`, e não só na API. | O banco é a última linha de defesa da integridade. |
 
 ## 2. Diagrama entidade-relacionamento

@@ -31,6 +31,19 @@ Resumo das principais decisões técnicas. Cada linha aponta para um ADR complet
 | [0022](docs/adr/0022-ci-com-smoke-do-compose.md) | CI no GitHub Actions: backend, frontend e smoke test do `docker compose up` sem `.env` | Só build e testes | CI alguns minutos mais lento em troca de verificar o item 1 da DoD (clone limpo) em todo push. |
 | [0023](docs/adr/0023-segredos-em-env-local.md) | Segredos em variáveis de ambiente via `.env` local + push protection, sem segredos no CI | Secrets em arquivo (`/run/secrets` + user-secrets) | Chave em texto puro no disco local em troca de ativação simples (uma linha) e defesa focada no risco real: vazamento. |
 
+### Decisões de implementação (Sprint 1)
+
+Decisões menores, que não contrariam nem acrescentam ADR, registradas para quem lê o código.
+
+| Decisão | Motivo |
+|---|---|
+| Toda escrita concorrente sobre o chamado responde **412** `versao_desatualizada`: `If-Match` velho **ou** corrida detectada pelo `xmin` no `SaveChanges` | Um único código para o mesmo problema; o front trata um caso só (recarrega e avisa). O `03-modelo-de-dados.md` dizia 409 e foi alinhado ao contrato |
+| Ordem das verificações nas escritas: 404 → 412 → 422 → 409 | A precondição HTTP é avaliada antes de qualquer outra coisa (RFC 9110) |
+| Enums só como texto no JSON (`"Critica"`); número dá 400 | O contrato define strings; aceitar `2` em silêncio esconderia erro do cliente |
+| Casos de uso registrados no host (`Api/ServicosAplicacao.cs`) | A Application segue sem nenhum pacote (ADR-0002); evita trazer `DependencyInjection.Abstractions` |
+| A URL da lista usa os mesmos nomes e valores da query da API | Recarregar e compartilhar o link reproduzem a consulta; uma única conversão nos dois sentidos |
+| Seed gerado pelo próprio domínio (`Abrir` → `MudarStatus` → `Comentar`) | Histórico, `resolvidoEm` e comentários coerentes por construção; se o seed violasse uma regra, o domínio recusaria |
+
 ### Adicionadas na revisão de arquitetura de 30/09
 
 Uma revisão por pares confrontou o desenho com um catálogo de 25 padrões agênticos e um checklist de produção, antes de qualquer código de IA existir. Os detalhes estão em [`docs/revisoes/2026-09-30-padroes-agenticos.md`](docs/revisoes/2026-09-30-padroes-agenticos.md).
