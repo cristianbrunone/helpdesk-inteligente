@@ -17,6 +17,10 @@ public sealed class HelpDeskDbContext(DbContextOptions<HelpDeskDbContext> option
 
     public DbSet<Chamado> Chamados => Set<Chamado>();
 
+    public DbSet<TriagemIA> Triagens => Set<TriagemIA>();
+
+    public DbSet<RegistroUsoLlm> UsoLlm => Set<RegistroUsoLlm>();
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         // Busca vetorial (ADR-0007); busca por substring e sem acento (ADR-0008).
