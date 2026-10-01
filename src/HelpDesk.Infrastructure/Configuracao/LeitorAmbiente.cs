@@ -1,5 +1,6 @@
 using System.Globalization;
 using HelpDesk.Application.Triagem;
+using HelpDesk.Infrastructure.Ia;
 
 namespace HelpDesk.Infrastructure.Configuracao;
 
@@ -32,9 +33,85 @@ public sealed class LeitorAmbiente(Func<string, string?> ler)
         var valor => throw Invalida(chave, valor, $"um inteiro entre {minimo} e {maximo}"),
     };
 
+    public const string LlmProvider = "LLM_PROVIDER";
+    public const string LlmBaseUrl = "LLM_BASE_URL";
+    public const string LlmApiKey = "LLM_API_KEY";
+    public const string LlmChatModel = "LLM_CHAT_MODEL";
+    public const string LlmTimeoutSeconds = "LLM_TIMEOUT_SECONDS";
+    public const string LlmMaxRetries = "LLM_MAX_RETRIES";
+    public const string TriagemMaxTokensSaida = "TRIAGEM_MAX_TOKENS_SAIDA";
+    public const string LlmFakeModo = "LLM_FAKE_MODO";
+    public const string LlmFakeAtrasoMs = "LLM_FAKE_ATRASO_MS";
+
     public OpcoesIA OpcoesIA() => new(
         TriagemHabilitada: Booleano(IaTriagemHabilitada, padrao: true),
         CopilotoHabilitado: Booleano(IaCopilotoHabilitado, padrao: true));
+
+    /// <summary>
+    /// Provedor de LLM (ADR-0005). O padrão é o fake. Com <c>openai-compatible</c>, URL e chave são obrigatórias, e
+    /// a mensagem de erro cita só o nome da variável, nunca o valor da chave.
+    /// </summary>
+    public OpcoesLlm OpcoesLlm()
+    {
+        var provedor = (Texto(LlmProvider) ?? OpcoesLlmPadrao.Provedor).ToLowerInvariant() switch
+        {
+            Ia.OpcoesLlm.NomeProvedorFake => TipoProvedorLlm.Fake,
+            Ia.OpcoesLlm.NomeProvedorOpenAiCompativel => TipoProvedorLlm.OpenAiCompativel,
+            var outro => throw Invalida(LlmProvider, outro, $"'{Ia.OpcoesLlm.NomeProvedorFake}' ou " +
+                $"'{Ia.OpcoesLlm.NomeProvedorOpenAiCompativel}'"),
+        };
+
+        Uri? baseUrl = null;
+        string? chave = null;
+        if (provedor == TipoProvedorLlm.OpenAiCompativel)
+        {
+            var url = Texto(LlmBaseUrl)
+                ?? throw new InvalidOperationException($"{LlmProvider}=openai-compatible exige {LlmBaseUrl}.");
+            if (!Uri.TryCreate(url, UriKind.Absolute, out baseUrl) || baseUrl.Scheme is not ("https" or "http"))
+            {
+                // Sem ecoar o valor: há provedores que aceitam a chave na query string da URL.
+                throw new InvalidOperationException($"A variável {LlmBaseUrl} deve ser uma URL http(s) absoluta.");
+            }
+
+            chave = Texto(LlmApiKey)
+                ?? throw new InvalidOperationException($"{LlmProvider}=openai-compatible exige {LlmApiKey} no .env.");
+        }
+
+        return new OpcoesLlm
+        {
+            Provedor = provedor,
+            BaseUrl = baseUrl,
+            ChaveApi = chave,
+            ModeloChat = Texto(LlmChatModel) ?? OpcoesLlmPadrao.ModeloChat,
+            Timeout = TimeSpan.FromSeconds(Inteiro(LlmTimeoutSeconds, OpcoesLlmPadrao.TimeoutSegundos, 1, 600)),
+            MaxRetries = Inteiro(LlmMaxRetries, OpcoesLlmPadrao.MaxRetries, 0, 10),
+            MaxTokensSaidaTriagem = Inteiro(TriagemMaxTokensSaida, OpcoesLlmPadrao.MaxTokensSaidaTriagem, 50, 8192),
+            ModoFake = ModoDoFake(),
+            AtrasoFake = TimeSpan.FromMilliseconds(Inteiro(LlmFakeAtrasoMs, OpcoesLlmPadrao.AtrasoFakeMs, 0, 600_000)),
+        };
+    }
+
+    private ModoFake ModoDoFake() => Texto(LlmFakeModo)?.ToLowerInvariant() switch
+    {
+        null or "normal" => ModoFake.Normal,
+        "lento" => ModoFake.Lento,
+        "json_invalido" => ModoFake.JsonInvalido,
+        "categoria_inexistente" => ModoFake.CategoriaInexistente,
+        "rate_limit" => ModoFake.RateLimit,
+        var outro => throw Invalida(LlmFakeModo, outro,
+            "normal, lento, json_invalido, categoria_inexistente ou rate_limit"),
+    };
+
+    /// <summary>Padrões do ADR-0005 (revisados na PoC) e do ADR-0021.</summary>
+    public static class OpcoesLlmPadrao
+    {
+        public const string Provedor = Ia.OpcoesLlm.NomeProvedorFake;
+        public const string ModeloChat = "gemini-3.5-flash-lite";
+        public const int TimeoutSegundos = 60;
+        public const int MaxRetries = 3;
+        public const int MaxTokensSaidaTriagem = 800;
+        public const int AtrasoFakeMs = 30_000;
+    }
 
     // O valor só aparece na mensagem para variáveis que não são segredo (quem chama nunca passa a chave de API).
     private static InvalidOperationException Invalida(string chave, string valor, string esperado) =>
