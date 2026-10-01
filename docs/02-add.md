@@ -228,6 +228,7 @@ sequenceDiagram
 | [ADR-0019](adr/0019-tracing-opentelemetry.md) | Tracing com OpenTelemetry e Aspire Dashboard opcional | Aceita (revisão 30/09) |
 | [ADR-0020](adr/0020-guardrail-de-saida-do-copiloto.md) | Guardrail de saída do copiloto (PII + citações verificadas) | Aceita (revisão 30/09) |
 | [ADR-0021](adr/0021-kill-switch-e-orcamentos-de-ia.md) | Kill switches por funcionalidade e orçamentos de tokens | Aceita (revisão 30/09) |
+| [ADR-0022](adr/0022-ci-com-smoke-do-compose.md) | CI com build, testes e smoke test do Compose em vez de só build e testes | Aceita |
 
 As decisões de plataforma da Sprint 0 usam os ADRs 0015 a 0017 (migrations, logs e UI kit do frontend) e 0022 a 0023 (estratégia de CI e gestão de segredos). A revisão de 30/09 está registrada em [`revisoes/2026-09-30-padroes-agenticos.md`](revisoes/2026-09-30-padroes-agenticos.md).
 

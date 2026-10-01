@@ -28,6 +28,7 @@ Resumo das principais decisões técnicas. Cada linha aponta para um ADR complet
 | [0015](docs/adr/0015-migrations-em-servico-one-shot.md) | Migrations e seed num serviço one-shot (`migrator`) | Migrate no startup da API | Um contêiner a mais em troca de um único ponto de DDL e de falhas isoladas e visíveis. |
 | [0016](docs/adr/0016-logs-estruturados-nativos.md) | Logging nativo do .NET em JSON no stdout, com `CorrelationId` no scope | Serilog | Formato de campos fixo e um middleware próprio em troca de zero pacotes e de logs ligados aos traces do OpenTelemetry sem ponte extra. |
 | [0017](docs/adr/0017-ui-kit-mantine.md) | Mantine como biblioteca de UI (AppShell, estados, notificações e gráficos) | Tailwind CSS + shadcn/ui | Visual padrão e bundle maior em troca de estados, responsividade e acessibilidade prontos no prazo. |
+| [0022](docs/adr/0022-ci-com-smoke-do-compose.md) | CI no GitHub Actions: backend, frontend e smoke test do `docker compose up` sem `.env` | Só build e testes | CI alguns minutos mais lento em troca de verificar o item 1 da DoD (clone limpo) em todo push. |
 
 ### Adicionadas na revisão de arquitetura de 30/09
 
