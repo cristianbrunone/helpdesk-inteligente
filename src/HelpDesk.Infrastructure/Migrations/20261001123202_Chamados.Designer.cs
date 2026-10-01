@@ -4,6 +4,7 @@ using HelpDesk.Domain.Chamados;
 using HelpDesk.Infrastructure.Persistencia;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -12,9 +13,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace HelpDesk.Infrastructure.Migrations
 {
     [DbContext(typeof(HelpDeskDbContext))]
-    partial class HelpDeskDbContextModelSnapshot : ModelSnapshot
+    [Migration("20261001123202_Chamados")]
+    partial class Chamados
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder

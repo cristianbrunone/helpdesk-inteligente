@@ -7,7 +7,15 @@ namespace HelpDesk.Infrastructure.Persistencia;
 
 public sealed class HelpDeskDbContext(DbContextOptions<HelpDeskDbContext> options) : DbContext(options)
 {
+    /// <summary>
+    /// Propriedade-sombra do <see cref="Chamado"/> mapeada no <c>xmin</c> do PostgreSQL: é o token de concorrência
+    /// otimista do EF e o valor do <c>ETag</c> da API.
+    /// </summary>
+    public const string VersaoChamado = "Versao";
+
     public DbSet<Categoria> Categorias => Set<Categoria>();
+
+    public DbSet<Chamado> Chamados => Set<Chamado>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
