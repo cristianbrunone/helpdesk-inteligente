@@ -70,13 +70,13 @@ erDiagram
         status_triagem status
         smallint categoria_sugerida_id FK "NULL"
         prioridade_chamado prioridade_sugerida "NULL"
-        varchar resumo "<=200, NULL"
+        text resumo "<=200 via CHECK, NULL"
         text resposta_sugerida "NULL"
         numeric confianca "0..1, NULL"
         varchar provedor
         varchar modelo
-        varchar prompt_versao
-        jsonb fontes "chunks usados no RAG"
+        varchar prompt_versao "NULL enquanto pendente"
+        jsonb fontes "chunks usados no RAG (Sprint 3)"
         text erro_motivo "NULL"
         smallint tentativas
         timestamptz proxima_tentativa_em
@@ -85,6 +85,8 @@ erDiagram
         timestamptz concluida_em "NULL"
         timestamptz decidida_em "NULL"
         varchar decidida_por "NULL"
+        varchar motivo_rejeicao "500, NULL"
+        varchar trace_parent "W3C, NULL"
     }
     artigos_conhecimento {
         uuid id PK
@@ -175,6 +177,15 @@ CHECK ((embedding IS NULL) = (embedding_modelo IS NULL))
 UNIQUE NULLS NOT DISTINCT (chamado_id, artigo_id, chunk_indice)
 ```
 
+Ajustes feitos na implementação da Sprint 2 (sem mudar nenhuma regra acima):
+
+- `triagens_ia.resumo` é `text` com o `CHECK` de 200 caracteres. Com `varchar(200)`, o PostgreSQL recusaria o texto longo antes do `CHECK`, e a regra nomeada nunca seria exercitada.
+- `provedor`, `modelo` e `prompt_versao` são nulos enquanto a triagem está pendente (ainda não se sabe quem vai processá-la) e obrigatórios depois: `CHECK (status = 'pendente' OR (provedor, modelo, prompt_versao) IS NOT NULL)`.
+- `motivo_rejeicao` guarda o `motivo` opcional da rejeição (contrato) e `trace_parent` guarda o contexto W3C da criação, para o processamento se vincular a ele no tracing (ADR-0019).
+- A triagem também usa o `xmin` como token de concorrência: aceitar e rejeitar ao mesmo tempo → o segundo recebe 412.
+- `uso_llm.triagem_id` usa `ON DELETE SET NULL`: o livro-razão de consumo sobrevive à triagem.
+- `fontes` entra na Sprint 3, junto com o RAG que a preenche.
+
 Política de exclusão: `ON DELETE CASCADE` de `chamados` para comentários, histórico, triagens e documentos, e de `artigos_conhecimento` para documentos. `categorias` usa `ON DELETE RESTRICT`, porque não se apaga uma categoria em uso.
 
 **A máquina de estados (RN-01) não está no banco.** Um trigger duplicaria a regra do domínio em outra linguagem. O banco garante as *consequências* verificáveis (`resolvido_em` coerente, Crítica nunca cancelada), e o domínio garante as *transições*. Os testes cobrem as duas camadas.
@@ -199,6 +210,8 @@ O objetivo é atender aos filtros e ordenações de `GET /api/chamados`, às con
 | 12 | `documentos_rag (indexado_em) WHERE embedding IS NULL` | **Fila** de indexação | Um índice parcial para o reconciliador achar rápido o que falta indexar. |
 | 13 | `documentos_rag (chamado_id)` e `(artigo_id)` | FKs + reconciliação | O reconciliador compara a origem com o documento. Também serve ao `ON DELETE CASCADE`. |
 | 14 | `uso_llm (criado_em)` | Métricas de custo por período | As consultas de consumo são sempre por janela de tempo. |
+
+O EF Core também cria índices simples nas FKs `triagens_ia (categoria_sugerida_id)` e `uso_llm (triagem_id)`, que sustentam o `RESTRICT` e o `SET NULL` sem *seq scan*.
 
 **Índices deliberadamente não criados:**
 

@@ -31,6 +31,23 @@ Resumo das principais decisões técnicas. Cada linha aponta para um ADR complet
 | [0022](docs/adr/0022-ci-com-smoke-do-compose.md) | CI no GitHub Actions: backend, frontend e smoke test do `docker compose up` sem `.env` | Só build e testes | CI alguns minutos mais lento em troca de verificar o item 1 da DoD (clone limpo) em todo push. |
 | [0023](docs/adr/0023-segredos-em-env-local.md) | Segredos em variáveis de ambiente via `.env` local + push protection, sem segredos no CI | Secrets em arquivo (`/run/secrets` + user-secrets) | Chave em texto puro no disco local em troca de ativação simples (uma linha) e defesa focada no risco real: vazamento. |
 
+### Decisões da Sprint 2 (triagem por IA)
+
+| # | Decisão | Alternativa rejeitada | Trade-off principal |
+|---|---|---|---|
+| [0024](docs/adr/0024-retry-no-cliente-de-chat.md) | Novas tentativas ao provedor no cliente de chat (middleware do `IChatClient`), com o retry do SDK desligado; a fila só retoma Worker que caiu | Retry pela fila (`proxima_tentativa_em`) | Worker ocupado durante as esperas e 429 longo vira `Falhou`, em troca de um trace com todas as tentativas e uma regra só para triagem e copiloto. |
+
+| Decisão de implementação | Motivo |
+|---|---|
+| A etapa "Recuperar" do pipeline já existe, devolvendo zero fontes até o RAG (Sprint 3) | O pipeline e os spans já têm as 5 etapas do ADR-0004; a Sprint 3 só troca a implementação |
+| O prompt pede o **nome** da categoria, e o validador o converte em id | O modelo erra menos com nomes; categoria inexistente vira `Falhou` (RN-09) |
+| Telemetria **por tentativa** em `uso_llm` (por dentro da resiliência) | O custo e as falhas de cada chamada ao provedor ficam visíveis, inclusive as que foram repetidas |
+| Falha de transporte do SDK (`ClientResultException` sem resposta HTTP) é transitória | Queda de rede, DNS e TLS são exatamente o caso que a resiliência deve repetir |
+| Triagem com `xmin` como token de concorrência; o índice único de pendente vira 409 | Decisões e "Refazer" simultâneos são resolvidos pelo banco, sem sobrescrever |
+| Variável vazia no `.env` vale o padrão; valor inválido impede a subida | Uma linha `CHAVE=` não pode virar "desligado" sem querer; um erro de digitação aparece na hora, sem nunca ecoar a chave |
+| Em rede com inspeção TLS, provedor real só com o Worker fora do contêiner (ou Ollama) | As imagens continuam sem CA corporativa (decisão da Sprint 0); a limitação é da rede, não do projeto |
+| A imagem `aspire-dashboard:13.6.0` roda com o `entrypoint` sobrescrito no Compose | A própria imagem aponta para um `.dll` que não existe mais na 13.x |
+
 ### Decisões de implementação (Sprint 1)
 
 Decisões menores, que não contrariam nem acrescentam ADR, registradas para quem lê o código.
