@@ -1,5 +1,6 @@
 import {
   Alert,
+  Anchor,
   Badge,
   Button,
   CopyButton,
@@ -13,11 +14,13 @@ import {
   Title,
 } from '@mantine/core';
 import { useState } from 'react';
+import { Link } from 'react-router';
 import type { ChamadoVersionado } from '../api/chamados';
 import {
   useConfiguracaoIA,
   useDecidirTriagem,
   useRefazerTriagem,
+  type FonteTriagem,
   type TriagemDetalhe,
 } from '../api/triagem';
 import { formatarDataHora } from '../dominio/chamado';
@@ -34,7 +37,8 @@ interface Props {
 
 /**
  * Painel da triagem por IA (Sprint 2). A sugestão é sempre identificada como gerada por IA, e a decisão final é
- * do atendente. Os botões aparecem conforme o status da triagem e o que o domínio permite no chamado.
+ * do atendente. Os botões aparecem conforme o status da triagem e o que o domínio permite no chamado. Desde a
+ * Sprint 3, mostra também em que documentos a sugestão se apoiou (RF-16).
  */
 export function PainelTriagem({ versionado, atendente, aoDesatualizar }: Props) {
   const { chamado, etag } = versionado;
@@ -225,6 +229,8 @@ function Sugestao({ triagem }: { triagem: TriagemDetalhe }) {
         </Text>
       </div>
 
+      {triagem.fontes.length > 0 && <Fontes fontes={triagem.fontes} />}
+
       {triagem.decididaPor && triagem.decididaEm && (
         <Text size="xs" c={triagem.status === 'Aceita' ? 'teal' : 'red'}>
           {triagem.status === 'Aceita' ? 'Aceita' : 'Rejeitada'} por {triagem.decididaPor} em{' '}
@@ -237,5 +243,54 @@ function Sugestao({ triagem }: { triagem: TriagemDetalhe }) {
         {triagem.totalTriagens > 1 ? ` · ${triagem.totalTriagens}ª triagem` : ''}
       </Text>
     </Stack>
+  );
+}
+
+/**
+ * Fontes do RAG (RF-16): o atendente vê em que chamados resolvidos e artigos a IA se apoiou. O chamado abre no
+ * próprio detalhe; o artigo ainda não tem página (só o título). Sem fontes, a seção não aparece.
+ */
+function Fontes({ fontes }: { fontes: FonteTriagem[] }) {
+  return (
+    <div>
+      <Text size="xs" c="dimmed" id="titulo-fontes">
+        Baseado em
+      </Text>
+      <Stack
+        gap={4}
+        component="ul"
+        aria-labelledby="titulo-fontes"
+        m={0}
+        p={0}
+        style={{ listStyle: 'none' }}
+      >
+        {fontes.map((fonte) => (
+          <Group
+            key={`${fonte.tipo}-${fonte.id}`}
+            component="li"
+            gap={6}
+            wrap="nowrap"
+            align="flex-start"
+          >
+            <Badge size="xs" variant="outline" color={fonte.tipo === 'chamado' ? 'blue' : 'grape'}>
+              {fonte.tipo === 'chamado' ? 'Chamado' : 'Artigo'}
+            </Badge>
+            <Text size="sm" style={{ overflowWrap: 'anywhere' }} flex={1}>
+              {fonte.tipo === 'chamado' ? (
+                <Anchor component={Link} to={`/chamados/${fonte.id}`} size="sm">
+                  {fonte.numero !== null ? `#${fonte.numero} ` : ''}
+                  {fonte.titulo}
+                </Anchor>
+              ) : (
+                fonte.titulo
+              )}
+            </Text>
+            <Text size="xs" c="dimmed" title="Similaridade com este chamado">
+              {Math.round(fonte.similaridade * 100)}%
+            </Text>
+          </Group>
+        ))}
+      </Stack>
+    </div>
   );
 }
