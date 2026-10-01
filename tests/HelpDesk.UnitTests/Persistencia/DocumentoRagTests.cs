@@ -10,7 +10,7 @@ public sealed class DocumentoRagTests
     [Fact]
     public void Indexar_VetorDe768_PreencheVetorModeloEData()
     {
-        var documento = DocumentoRag.DeChamado(Guid.CreateVersion7(), "texto", new string('a', 64), 2, _agora);
+        var documento = DocumentoRag.DeChamado(Guid.CreateVersion7(), "texto", new string('a', 64), 2, _agora, _agora);
 
         documento.Indexar(new Vector(new float[DocumentoRag.Dimensoes]), "fake-embedding-v1", _agora);
 
@@ -24,7 +24,7 @@ public sealed class DocumentoRagTests
     [InlineData(1536)]
     public void Indexar_DimensaoDiferenteDaColuna_Lanca(int dimensoes)
     {
-        var documento = DocumentoRag.DeArtigo(Guid.CreateVersion7(), 1, "texto", new string('a', 64), null, _agora);
+        var documento = DocumentoRag.DeArtigo(Guid.CreateVersion7(), 1, "texto", new string('a', 64), null, _agora, _agora);
 
         Should.Throw<ArgumentException>(() =>
             documento.Indexar(new Vector(new float[dimensoes]), "fake-embedding-v1", _agora));

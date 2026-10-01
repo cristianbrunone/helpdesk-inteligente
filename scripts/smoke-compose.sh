@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Smoke test do ambiente completo (ADR-0022): verifica os critérios de aceite das Sprints 0 a 2 contra o
+# Smoke test do ambiente completo (ADR-0022): verifica os critérios de aceite das Sprints 0 a 3 contra o
 # docker compose já em execução. Usado pelo CI e executável localmente:
 #   docker compose up --build -d --wait && bash scripts/smoke-compose.sh
 set -euo pipefail
@@ -120,6 +120,27 @@ dados_pessoais_fora_dos_logs() {
   ! echo "$logs" | grep -q -e "$EMAIL_SMOKE" -e "Pessoa Smoke" -e "123.456.789-09" -e "98765-4321"
 }
 
+# Consulta no banco do compose (dentro do contêiner, com as variáveis dele): -t sem cabeçalho, -A sem alinhamento.
+sql() { docker compose exec -T db sh -c 'psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -tAc "$1"' _ "$1"; }
+
+indice_rag_completo() {
+  # Critério da Sprint 3: após a subida, todos os resolvidos e artigos do seed estão indexados, sem ação manual.
+  # O reconciliador roda logo na subida; com o fake, leva poucos segundos. Espera até ~60 s.
+  local faltando
+  for _ in $(seq 1 30); do
+    faltando="$(sql "SELECT (SELECT count(*) FROM chamados c WHERE c.status IN ('resolvido', 'fechado')
+                       AND NOT EXISTS (SELECT 1 FROM documentos_rag d
+                                       WHERE d.chamado_id = c.id AND d.embedding IS NOT NULL))
+                    + (SELECT count(*) FROM artigos_conhecimento a WHERE a.ativo
+                       AND NOT EXISTS (SELECT 1 FROM documentos_rag d
+                                       WHERE d.artigo_id = a.id AND d.embedding IS NOT NULL))
+                    + (SELECT count(*) FROM documentos_rag WHERE embedding IS NULL)")"
+    [ "$faltando" = "0" ] && [ "$(sql "SELECT count(*) > 0 FROM documentos_rag")" = "t" ] && return 0
+    sleep 2
+  done
+  return 1
+}
+
 health_responde() {
   # Espera até ~20 s o /health devolver o status HTTP esperado (o banco leva alguns segundos para voltar).
   local esperado="$1"
@@ -143,6 +164,7 @@ verificar "GET /api/config/ia → triagem ativa" config_ia
 verificar "GET /health traz o check filaTriagem" saude_com_fila_de_triagem
 verificar "criar chamado → Worker conclui a triagem (fake) em até 30 s" triagem_concluida_pelo_worker
 verificar "aceitar a triagem pelo Nginx → Aceita" aceitar_triagem
+verificar "resolvidos e artigos do seed indexados no RAG (sem ação manual)" indice_rag_completo
 verificar "logs da API em JSON, com CorrelationId" logs_da_api_em_json
 verificar "nome, e-mail, CPF e telefone fora dos logs da API e do Worker" dados_pessoais_fora_dos_logs
 

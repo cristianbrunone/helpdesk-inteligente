@@ -1,3 +1,4 @@
+using HelpDesk.Application.Conhecimento;
 using HelpDesk.Application.Triagem;
 using HelpDesk.Infrastructure.Ia;
 using Microsoft.Extensions.DependencyInjection;
@@ -24,7 +25,10 @@ public static class Tracing
 
     /// <summary>Todas as fontes de atividades da aplicação, para exportar e para os testes ouvirem.</summary>
     public static readonly string[] Fontes =
-        [PipelineTriagem.NomeFonteAtividades, ResilienciaChatClient.NomeFonteAtividades, FonteChat, FonteEmbeddings];
+    [
+        PipelineTriagem.NomeFonteAtividades, ReconciliarIndiceRag.NomeFonteAtividades,
+        ResilienciaChatClient.NomeFonteAtividades, FonteChat, FonteEmbeddings,
+    ];
 
     public static IServiceCollection AdicionarTracing(
         this IServiceCollection services,

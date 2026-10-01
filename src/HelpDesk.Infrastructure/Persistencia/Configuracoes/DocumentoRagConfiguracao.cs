@@ -33,6 +33,8 @@ internal sealed class DocumentoRagConfiguracao : IEntityTypeConfiguration<Docume
         builder.Property(d => d.HashConteudo).HasColumnType("char(64)").IsRequired();
         builder.Property(d => d.Embedding).HasColumnType($"vector({DocumentoRag.Dimensoes})");
         builder.Property(d => d.EmbeddingModelo).HasMaxLength(100);
+        // Sem valor conhecido (escrita fora do reconciliador), o documento é conferido de novo na próxima passada.
+        builder.Property(d => d.OrigemAtualizadaEm).HasDefaultValueSql("'-infinity'");
 
         builder.HasOne<Chamado>()
             .WithMany()

@@ -23,7 +23,7 @@ public sealed class RagPersistenciaTests(BancoFixture banco)
         var vetor = new float[DocumentoRag.Dimensoes];
         vetor[3] = 0.6f;
         vetor[700] = 0.8f;
-        var documento = DocumentoRag.DeArtigo(artigo.Id, 0, "Como liberar o módulo de boletos.", _hash, 2, _agora);
+        var documento = DocumentoRag.DeArtigo(artigo.Id, 0, "Como liberar o módulo de boletos.", _hash, 2, _agora, _agora);
         documento.Indexar(new Vector(vetor), "fake-embedding-v1", _agora);
         await ConsultarAsync(db =>
         {
@@ -96,13 +96,13 @@ public sealed class RagPersistenciaTests(BancoFixture banco)
         var chamadoId = await CriarChamadoAsync();
         await ConsultarAsync(db =>
         {
-            db.DocumentosRag.Add(DocumentoRag.DeChamado(chamadoId, "texto", _hash, null, _agora));
+            db.DocumentosRag.Add(DocumentoRag.DeChamado(chamadoId, "texto", _hash, null, _agora, _agora));
             return db.SaveChangesAsync(Ct);
         });
 
         var erro = await Should.ThrowAsync<DbUpdateException>(() => ConsultarAsync(db =>
         {
-            db.DocumentosRag.Add(DocumentoRag.DeChamado(chamadoId, "outro texto", _hash, null, _agora));
+            db.DocumentosRag.Add(DocumentoRag.DeChamado(chamadoId, "outro texto", _hash, null, _agora, _agora));
             return db.SaveChangesAsync(Ct);
         }));
 
@@ -118,9 +118,9 @@ public sealed class RagPersistenciaTests(BancoFixture banco)
         var artigo = await CriarArtigoAsync();
         await ConsultarAsync(db =>
         {
-            db.DocumentosRag.Add(DocumentoRag.DeChamado(chamadoId, "texto", _hash, null, _agora));
-            db.DocumentosRag.Add(DocumentoRag.DeArtigo(artigo.Id, 0, "seção 1", _hash, null, _agora));
-            db.DocumentosRag.Add(DocumentoRag.DeArtigo(artigo.Id, 1, "seção 2", _hash, null, _agora));
+            db.DocumentosRag.Add(DocumentoRag.DeChamado(chamadoId, "texto", _hash, null, _agora, _agora));
+            db.DocumentosRag.Add(DocumentoRag.DeArtigo(artigo.Id, 0, "seção 1", _hash, null, _agora, _agora));
+            db.DocumentosRag.Add(DocumentoRag.DeArtigo(artigo.Id, 1, "seção 2", _hash, null, _agora, _agora));
             return db.SaveChangesAsync(Ct);
         });
 

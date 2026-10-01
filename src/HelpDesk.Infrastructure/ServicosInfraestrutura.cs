@@ -28,6 +28,17 @@ public static class ServicosInfraestrutura
         return services;
     }
 
+    /// <summary>
+    /// Índice do RAG (ADR-0010), só para quem indexa (o Worker): depende do gerador de embeddings
+    /// (<see cref="AdicionarClienteLlm"/>) e do mascarador.
+    /// </summary>
+    public static IServiceCollection AdicionarIndiceRag(this IServiceCollection services)
+    {
+        services.TryAddSingleton<MascaradorDadosPessoais>();
+        services.AddScoped<IIndiceRag, IndiceRag>();
+        return services;
+    }
+
     /// <summary>Cliente de LLM do provedor configurado, com resiliência e telemetria (ADR-0005).</summary>
     public static IServiceCollection AdicionarClienteLlm(this IServiceCollection services, OpcoesLlm opcoes)
     {

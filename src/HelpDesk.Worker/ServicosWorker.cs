@@ -1,3 +1,4 @@
+using HelpDesk.Application.Conhecimento;
 using HelpDesk.Application.Triagem;
 using HelpDesk.Infrastructure;
 using HelpDesk.Infrastructure.Ia;
@@ -25,6 +26,21 @@ public static class ServicosWorker
         services.AddScoped<ProcessarTriagemPendente>();
         services.AddSingleton<ConsumidorFilaTriagem>();
         services.AddHostedService(sp => sp.GetRequiredService<ConsumidorFilaTriagem>());
+        return services;
+    }
+
+    /// <summary>
+    /// Reconciliador do índice do RAG (ADR-0010). Depende do cliente de IA registrado por
+    /// <see cref="AdicionarTriagem"/> (o gerador de embeddings vem junto com o de chat).
+    /// </summary>
+    public static IServiceCollection AdicionarIndexacao(this IServiceCollection services, OpcoesReconciliacao opcoes)
+    {
+        services.AdicionarIndiceRag();
+        services.AddSingleton(opcoes);
+        services.AddSingleton<MontadorDocumentosRag>();
+        services.AddScoped<ReconciliarIndiceRag>();
+        services.AddSingleton<ReconciliadorIndexacao>();
+        services.AddHostedService(sp => sp.GetRequiredService<ReconciliadorIndexacao>());
         return services;
     }
 }

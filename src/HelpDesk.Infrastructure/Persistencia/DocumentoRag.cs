@@ -37,9 +37,15 @@ public sealed class DocumentoRag
 
     public DateTimeOffset? IndexadoEm { get; private set; }
 
+    /// <summary>
+    /// O <c>atualizado_em</c> da origem quando este documento foi conferido. O reconciliador só recalcula o hash das
+    /// origens alteradas depois disso, em vez de remontar todos os chamados a cada passada.
+    /// </summary>
+    public DateTimeOffset OrigemAtualizadaEm { get; private set; }
+
     private DocumentoRag(
         Guid id, Guid? chamadoId, Guid? artigoId, short chunkIndice, string conteudoMascarado, string hashConteudo,
-        short? categoriaId)
+        short? categoriaId, DateTimeOffset origemAtualizadaEm)
     {
         Id = id;
         ChamadoId = chamadoId;
@@ -48,16 +54,30 @@ public sealed class DocumentoRag
         ConteudoMascarado = conteudoMascarado;
         HashConteudo = hashConteudo;
         CategoriaId = categoriaId;
+        OrigemAtualizadaEm = origemAtualizadaEm;
     }
 
     public static DocumentoRag DeChamado(
-        Guid chamadoId, string conteudoMascarado, string hashConteudo, short? categoriaId, DateTimeOffset agora) =>
-        new(Guid.CreateVersion7(agora), chamadoId, null, 0, conteudoMascarado, hashConteudo, categoriaId);
+        Guid chamadoId, string conteudoMascarado, string hashConteudo, short? categoriaId,
+        DateTimeOffset origemAtualizadaEm, DateTimeOffset agora) =>
+        new(Guid.CreateVersion7(agora), chamadoId, null, 0, conteudoMascarado, hashConteudo, categoriaId,
+            origemAtualizadaEm);
 
     public static DocumentoRag DeArtigo(
         Guid artigoId, short chunkIndice, string conteudoMascarado, string hashConteudo, short? categoriaId,
-        DateTimeOffset agora) =>
-        new(Guid.CreateVersion7(agora), null, artigoId, chunkIndice, conteudoMascarado, hashConteudo, categoriaId);
+        DateTimeOffset origemAtualizadaEm, DateTimeOffset agora) =>
+        new(Guid.CreateVersion7(agora), null, artigoId, chunkIndice, conteudoMascarado, hashConteudo, categoriaId,
+            origemAtualizadaEm);
+
+    /// <summary>
+    /// A origem mudou, mas o conteúdo indexável não (ex.: Resolvido → Fechado, ou a categoria aceita): o vetor
+    /// continua valendo, e só a categoria desnormalizada e a data de conferência são atualizadas.
+    /// </summary>
+    public void Confirmar(short? categoriaId, DateTimeOffset origemAtualizadaEm)
+    {
+        CategoriaId = categoriaId;
+        OrigemAtualizadaEm = origemAtualizadaEm;
+    }
 
     public void Indexar(Vector embedding, string modelo, DateTimeOffset agora)
     {
