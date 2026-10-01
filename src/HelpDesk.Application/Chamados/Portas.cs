@@ -13,8 +13,10 @@ public interface IRepositorioChamados
     Task SalvarAsync(CancellationToken cancellationToken);
 }
 
-/// <summary>Porta de leitura do detalhe, com a versão atual para o <c>ETag</c>.</summary>
+/// <summary>Porta de leitura: detalhe (com a versão para o <c>ETag</c>) e listagem projetada.</summary>
 public interface IConsultaChamados
 {
     Task<ChamadoVersionado?> ObterDetalheAsync(Guid id, CancellationToken cancellationToken);
+
+    Task<ResultadoPaginado<ChamadoResumo>> ListarAsync(FiltroChamados filtro, CancellationToken cancellationToken);
 }

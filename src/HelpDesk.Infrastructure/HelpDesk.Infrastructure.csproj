@@ -7,4 +7,9 @@
   <ItemGroup>
     <ProjectReference Include="..\HelpDesk.Application\HelpDesk.Application.csproj" />
   </ItemGroup>
+
+  <ItemGroup>
+    <!-- Os testes de integração exercitam as consultas diretamente (ex.: EXPLAIN da busca). -->
+    <InternalsVisibleTo Include="HelpDesk.IntegrationTests" />
+  </ItemGroup>
 </Project>

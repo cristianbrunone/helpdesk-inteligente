@@ -13,6 +13,7 @@ internal static class ServicosAplicacao
     {
         services.AddScoped<ListarCategorias>();
         services.AddScoped<CriarChamado>();
+        services.AddScoped<ListarChamados>();
         return services;
     }
 }

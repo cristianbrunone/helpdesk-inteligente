@@ -9,7 +9,8 @@ namespace HelpDesk.Infrastructure.Consultas;
 
 /// <summary>
 /// Detalhe com EF Core (regra "leitura × escrita"): carrega o agregado porque <c>transicoesPermitidas</c> e
-/// <c>podeComentar</c> são calculados pelo domínio, nunca replicados aqui.
+/// <c>podeComentar</c> são calculados pelo domínio, nunca replicados aqui. A listagem é projeção pura
+/// (<c>AsNoTracking</c> + <c>Select</c>), paginada por offset, apoiada nos índices 1 a 5 do modelo §5.
 /// </summary>
 internal sealed class ConsultaChamados(HelpDeskDbContext db) : IConsultaChamados
 {
@@ -38,6 +39,115 @@ internal sealed class ConsultaChamados(HelpDeskDbContext db) : IConsultaChamados
                 Mapear(encontrado.Chamado, encontrado.Categoria),
                 encontrado.Versao.ToString(CultureInfo.InvariantCulture));
     }
+
+    public async Task<ResultadoPaginado<ChamadoResumo>> ListarAsync(
+        FiltroChamados filtro, CancellationToken cancellationToken)
+    {
+        var consulta = Filtrar(db.Chamados.AsNoTracking(), filtro);
+
+        var total = await consulta.CountAsync(cancellationToken);
+        var linhas = await Ordenar(consulta, filtro)
+            .Skip((filtro.Pagina - 1) * filtro.TamanhoPagina)
+            .Take(filtro.TamanhoPagina)
+            .Select(c => new
+            {
+                c.Id,
+                c.Numero,
+                c.Titulo,
+                c.Status,
+                c.Prioridade,
+                c.CategoriaId,
+                // Subconsulta escalar por PK, só para as linhas da página.
+                CategoriaNome = db.Categorias.Where(k => k.Id == c.CategoriaId).Select(k => k.Nome).FirstOrDefault(),
+                c.SolicitanteNome,
+                c.CriadoEm,
+                c.AtualizadoEm,
+            })
+            .ToListAsync(cancellationToken);
+
+        var itens = linhas.Select(l => new ChamadoResumo(
+                l.Id,
+                l.Numero,
+                l.Titulo,
+                l.Status,
+                l.Prioridade,
+                l.CategoriaId is { } categoriaId ? new CategoriaResumo(categoriaId, l.CategoriaNome!) : null,
+                l.SolicitanteNome,
+                l.CriadoEm,
+                l.AtualizadoEm))
+            .ToList();
+
+        var totalPaginas = (int)Math.Ceiling(total / (double)filtro.TamanhoPagina);
+        return new ResultadoPaginado<ChamadoResumo>(itens, filtro.Pagina, filtro.TamanhoPagina, total, totalPaginas);
+    }
+
+    private static IQueryable<Chamado> Filtrar(IQueryable<Chamado> consulta, FiltroChamados filtro)
+    {
+        // Filtros repetíveis: OR entre os valores do mesmo parâmetro, AND entre parâmetros (contrato §3).
+        if (filtro.Status.Count > 0)
+        {
+            var status = filtro.Status;
+            consulta = consulta.Where(c => status.Contains(c.Status));
+        }
+
+        if (filtro.Prioridades.Count > 0)
+        {
+            var prioridades = filtro.Prioridades;
+            consulta = consulta.Where(c => prioridades.Contains(c.Prioridade));
+        }
+
+        var categorias = filtro.CategoriaIds.Select(id => (short?)id).ToList();
+        consulta = (categorias.Count > 0, filtro.SemCategoria) switch
+        {
+            (true, true) => consulta.Where(c => c.CategoriaId == null || categorias.Contains(c.CategoriaId)),
+            (true, false) => consulta.Where(c => categorias.Contains(c.CategoriaId)),
+            (false, true) => consulta.Where(c => c.CategoriaId == null),
+            _ => consulta,
+        };
+
+        // Intervalo fechado-aberto [de, ate + 1 dia), em UTC: cabe no índice 1 como range scan.
+        if (filtro.CriadoDe is { } de)
+        {
+            var inicio = InicioDoDia(de);
+            consulta = consulta.Where(c => c.CriadoEm >= inicio);
+        }
+
+        if (filtro.CriadoAte is { } ate)
+        {
+            var fim = InicioDoDia(ate.AddDays(1));
+            consulta = consulta.Where(c => c.CriadoEm < fim);
+        }
+
+        // ADR-0008: a expressão do lado do chamado é idêntica à do índice ix_chamados_busca_trgm.
+        if (filtro.Texto is { } texto)
+        {
+            var padrao = $"%{EscaparCuringas(texto)}%";
+            consulta = consulta.Where(c => EF.Functions.Like(
+                HelpDeskDbContext.FUnaccent((c.Titulo + " " + c.Descricao).ToLower()),
+                HelpDeskDbContext.FUnaccent(padrao.ToLower()),
+                @"\"));
+        }
+
+        return consulta;
+    }
+
+    // Desempate sempre por criado_em e id: a paginação fica estável mesmo com datas iguais.
+    private static IQueryable<Chamado> Ordenar(IQueryable<Chamado> consulta, FiltroChamados filtro) =>
+        (filtro.OrdenarPor, filtro.Ascendente) switch
+        {
+            (OrdenacaoChamados.Prioridade, false) => consulta
+                .OrderByDescending(c => c.Prioridade).ThenByDescending(c => c.CriadoEm).ThenByDescending(c => c.Id),
+            (OrdenacaoChamados.Prioridade, true) => consulta
+                .OrderBy(c => c.Prioridade).ThenByDescending(c => c.CriadoEm).ThenByDescending(c => c.Id),
+            (_, true) => consulta.OrderBy(c => c.CriadoEm).ThenBy(c => c.Id),
+            _ => consulta.OrderByDescending(c => c.CriadoEm).ThenByDescending(c => c.Id),
+        };
+
+    /// <summary>O usuário busca texto literal: "100%" não pode virar curinga.</summary>
+    private static string EscaparCuringas(string texto) =>
+        texto.Replace(@"\", @"\\").Replace("%", @"\%").Replace("_", @"\_");
+
+    private static DateTimeOffset InicioDoDia(DateOnly dia) => new(dia.ToDateTime(TimeOnly.MinValue), TimeSpan.Zero);
 
     private static ChamadoDetalhe Mapear(Chamado c, CategoriaResumo? categoria) => new(
         c.Id,
