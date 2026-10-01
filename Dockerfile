@@ -29,6 +29,8 @@ RUN dotnet restore src/HelpDesk.Api/HelpDesk.Api.csproj \
  && dotnet restore src/HelpDesk.Migrator/HelpDesk.Migrator.csproj
 
 COPY src/ src/
+# Prompts versionados: a Infrastructure os copia para a saída da API e do Worker (lidos em tempo de execução).
+COPY prompts/ prompts/
 RUN dotnet publish src/HelpDesk.Api/HelpDesk.Api.csproj -c Release --no-restore -o /out/api -p:UseAppHost=false \
  && dotnet publish src/HelpDesk.Worker/HelpDesk.Worker.csproj -c Release --no-restore -o /out/worker -p:UseAppHost=false \
  && dotnet publish src/HelpDesk.Migrator/HelpDesk.Migrator.csproj -c Release --no-restore -o /out/migrator -p:UseAppHost=false

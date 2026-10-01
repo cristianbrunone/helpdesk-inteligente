@@ -9,6 +9,11 @@
   </ItemGroup>
 
   <ItemGroup>
+    <!-- Prompts versionados (prompts/*.md): copiados para a saída de quem referencia a Infrastructure (Api, Worker). -->
+    <None Include="..\..\prompts\*.md" Link="prompts\%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
+  <ItemGroup>
     <!-- Os testes de integração exercitam as consultas diretamente (ex.: EXPLAIN da busca). -->
     <InternalsVisibleTo Include="HelpDesk.IntegrationTests" />
   </ItemGroup>
