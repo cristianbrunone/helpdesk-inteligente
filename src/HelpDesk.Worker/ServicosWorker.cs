@@ -13,10 +13,13 @@ public static class ServicosWorker
         string connectionString,
         OpcoesIA opcoesIA,
         OpcoesLlm opcoesLlm,
-        OpcoesFila opcoesFila)
+        OpcoesFila opcoesFila,
+        OpcoesRag? opcoesRag = null)
     {
         services.AdicionarInfraestrutura(connectionString);
         services.AdicionarClienteLlm(opcoesLlm);
+        services.AdicionarRecuperacaoRag(
+            opcoesRag ?? new OpcoesRag(OpcoesRag.TopKPadrao, OpcoesRag.SimilaridadeMinimaPadrao));
 
         services.AddSingleton(opcoesIA);
         services.AddSingleton(opcoesFila);

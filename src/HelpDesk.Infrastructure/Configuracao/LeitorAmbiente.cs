@@ -34,6 +34,24 @@ public sealed class LeitorAmbiente(Func<string, string?> ler)
         var valor => throw Invalida(chave, valor, $"um inteiro entre {minimo} e {maximo}"),
     };
 
+    public double Decimal(string chave, double padrao, double minimo, double maximo) => Texto(chave) switch
+    {
+        null => padrao,
+        var valor when double.TryParse(valor, NumberStyles.Float, CultureInfo.InvariantCulture, out var numero)
+            && numero >= minimo && numero <= maximo => numero,
+        var valor => throw Invalida(chave, valor,
+            $"um número entre {minimo.ToString(CultureInfo.InvariantCulture)} e " +
+            $"{maximo.ToString(CultureInfo.InvariantCulture)}, com ponto decimal"),
+    };
+
+    public const string RagTopK = "RAG_TOP_K";
+    public const string RagMinSimilarity = "RAG_MIN_SIMILARITY";
+
+    /// <summary>Recuperação do RAG (ADR-0011): top-k por tipo de origem e similaridade mínima de cosseno.</summary>
+    public OpcoesRag OpcoesRag() => new(
+        Inteiro(RagTopK, Application.Conhecimento.OpcoesRag.TopKPadrao, 1, 20),
+        Decimal(RagMinSimilarity, Application.Conhecimento.OpcoesRag.SimilaridadeMinimaPadrao, 0, 1));
+
     public const string LlmProvider = "LLM_PROVIDER";
     public const string LlmBaseUrl = "LLM_BASE_URL";
     public const string LlmApiKey = "LLM_API_KEY";

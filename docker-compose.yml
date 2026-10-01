@@ -93,6 +93,9 @@ services:
       WORKER_LEASE_SECONDS: ${WORKER_LEASE_SECONDS:-}
       # Reconciliador do índice do RAG (ADR-0010)
       WORKER_RECONCILE_INTERVAL_SECONDS: ${WORKER_RECONCILE_INTERVAL_SECONDS:-}
+      # Recuperação do RAG na triagem (ADR-0011): top-k por tipo e similaridade mínima (ponto decimal)
+      RAG_TOP_K: ${RAG_TOP_K:-}
+      RAG_MIN_SIMILARITY: ${RAG_MIN_SIMILARITY:-}
       WORKER_HEARTBEAT_INTERVAL_SECONDS: ${WORKER_HEARTBEAT_INTERVAL_SECONDS:-30}
       OTEL_EXPORTER_OTLP_ENDPOINT: ${OTEL_EXPORTER_OTLP_ENDPOINT:-}
     depends_on:

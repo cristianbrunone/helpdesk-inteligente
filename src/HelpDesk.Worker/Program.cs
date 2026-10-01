@@ -15,7 +15,8 @@ var leitor = new LeitorAmbiente(chave => builder.Configuration[chave]);
 var connectionString = builder.Configuration.GetConnectionString("Default")
     ?? throw new InvalidOperationException("A variável ConnectionStrings__Default não foi configurada.");
 var opcoesLlm = leitor.OpcoesLlm();
-builder.Services.AdicionarTriagem(connectionString, leitor.OpcoesIA(), opcoesLlm, OpcoesFila.Ler(leitor, opcoesLlm));
+builder.Services.AdicionarTriagem(
+    connectionString, leitor.OpcoesIA(), opcoesLlm, OpcoesFila.Ler(leitor, opcoesLlm), leitor.OpcoesRag());
 builder.Services.AdicionarIndexacao(OpcoesReconciliacao.Ler(leitor));
 // Tracing (ADR-0019): só com OTEL_EXPORTER_OTLP_ENDPOINT.
 builder.Services.AdicionarTracing("helpdesk-worker", leitor.EndpointOtlp());

@@ -161,7 +161,9 @@ public sealed class FilaTriagemTests(BancoFixture banco, ApiFactory api) : IClas
             .Where(t => criadas.Contains(t.Id)).Select(t => t.Status).ToListAsync(Ct));
         status.Count.ShouldBe(12);
         status.ShouldAllBe(s => s == StatusTriagem.Concluida);
+        // Só as chamadas de chat: o embedding da consulta do RAG também vai para o uso_llm, sem triagem_id.
         var chamadasPorTriagem = await LerAsync(bancoIsolado, db => db.UsoLlm
+            .Where(u => u.Operacao == RegistroUsoLlm.OperacaoTriagem)
             .GroupBy(u => u.TriagemId).Select(g => g.Count()).ToListAsync(Ct));
         chamadasPorTriagem.Count.ShouldBe(12);
         chamadasPorTriagem.ShouldAllBe(n => n == 1);

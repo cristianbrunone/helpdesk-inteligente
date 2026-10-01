@@ -1,3 +1,4 @@
+using HelpDesk.Application.Conhecimento;
 using HelpDesk.Infrastructure.Configuracao;
 using HelpDesk.Infrastructure.Ia;
 using Microsoft.Extensions.AI;
@@ -201,5 +202,28 @@ public sealed class LeitorAmbienteTests
 
         opcoes.ModeloEmbeddingEfetivo.ShouldBe("embedding-x");
         gerador.GetService<EmbeddingGeneratorMetadata>()!.DefaultModelId.ShouldBe("embedding-x");
+    }
+
+    [Fact]
+    public void OpcoesRag_SemVariaveis_UsaOsPadroesDoAdr0011()
+    {
+        ComVariaveis().OpcoesRag().ShouldBe(new OpcoesRag(3, 0.35));
+    }
+
+    [Fact]
+    public void OpcoesRag_ValoresValidos_SaoLidosComPontoDecimal()
+    {
+        ComVariaveis(("RAG_TOP_K", "5"), ("RAG_MIN_SIMILARITY", "0.5")).OpcoesRag().ShouldBe(new OpcoesRag(5, 0.5));
+    }
+
+    [Theory]
+    [InlineData("RAG_TOP_K", "0")]
+    [InlineData("RAG_TOP_K", "50")]
+    [InlineData("RAG_MIN_SIMILARITY", "0,5")]
+    [InlineData("RAG_MIN_SIMILARITY", "1.5")]
+    public void OpcoesRag_ValorInvalido_ImpedeASubida(string chave, string valor)
+    {
+        Should.Throw<InvalidOperationException>(() => ComVariaveis((chave, valor)).OpcoesRag())
+            .Message.ShouldStartWith($"A variável {chave}");
     }
 }

@@ -39,6 +39,19 @@ public static class ServicosInfraestrutura
         return services;
     }
 
+    /// <summary>
+    /// Etapa "Recuperar" da triagem com RAG (ADR-0011): embedding da consulta + busca no pgvector. Depende do
+    /// gerador de embeddings (<see cref="AdicionarClienteLlm"/>).
+    /// </summary>
+    public static IServiceCollection AdicionarRecuperacaoRag(this IServiceCollection services, OpcoesRag opcoes)
+    {
+        services.TryAddSingleton<MascaradorDadosPessoais>();
+        services.AddSingleton(opcoes);
+        services.AddScoped<IBuscaSemantica, BuscaSemantica>();
+        services.AddScoped<IRecuperadorContexto, RecuperadorRag>();
+        return services;
+    }
+
     /// <summary>Cliente de LLM do provedor configurado, com resiliência e telemetria (ADR-0005).</summary>
     public static IServiceCollection AdicionarClienteLlm(this IServiceCollection services, OpcoesLlm opcoes)
     {
@@ -50,7 +63,6 @@ public static class ServicosInfraestrutura
         services.AddSingleton(sp => FabricaGeradorEmbeddings.Montar(
             opcoes, sp.GetRequiredService<ILoggerFactory>(), sp.GetRequiredService<IRegistroUsoLlm>()));
         services.AddSingleton<IGeradorEmbeddings, GeradorEmbeddings>();
-        services.AddSingleton<IRecuperadorContexto, RecuperadorSemRag>();
         return services;
     }
 }
