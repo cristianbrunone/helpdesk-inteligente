@@ -19,6 +19,7 @@ public sealed class InicializadorBanco(
         await db.Database.MigrateAsync(cancellationToken);
         await AplicarSeedCategoriasAsync(cancellationToken);
         await AplicarSeedChamadosAsync(cancellationToken);
+        await AplicarSeedArtigosAsync(cancellationToken);
     }
 
     private async Task AplicarSeedCategoriasAsync(CancellationToken cancellationToken)
@@ -43,12 +44,33 @@ public sealed class InicializadorBanco(
         }
 
         var categorias = await db.Categorias.ToDictionaryAsync(c => c.Nome, c => c.Id, cancellationToken);
-        var chamados = GeradorSeedChamados.Gerar(categorias, relogio.GetUtcNow());
+        var (chamados, triagens) = GeradorSeedChamados.Gerar(categorias, relogio.GetUtcNow());
 
         db.Chamados.AddRange(chamados);
+        db.Triagens.AddRange(triagens);
         await db.SaveChangesAsync(cancellationToken);
 
-        logger.LogInformation("Seed de chamados: {Chamados} chamados, {Comentarios} comentários e {Historico} registros de histórico",
-            chamados.Count, chamados.Sum(c => c.Comentarios.Count), chamados.Sum(c => c.Historico.Count));
+        logger.LogInformation(
+            "Seed de chamados: {Chamados} chamados, {Comentarios} comentários, {Historico} registros de histórico e {Triagens} triagens",
+            chamados.Count, chamados.Sum(c => c.Comentarios.Count), chamados.Sum(c => c.Historico.Count), triagens.Count);
+    }
+
+    // Idempotente como o de chamados, mas independente dele: um banco que já tinha chamados antes da Sprint 3
+    // também recebe a base de conhecimento.
+    private async Task AplicarSeedArtigosAsync(CancellationToken cancellationToken)
+    {
+        if (await db.Artigos.AnyAsync(cancellationToken))
+        {
+            logger.LogInformation("Seed de artigos ignorado: a tabela já tem dados");
+            return;
+        }
+
+        var categorias = await db.Categorias.ToDictionaryAsync(c => c.Nome, c => c.Id, cancellationToken);
+        var artigos = GeradorSeedArtigos.Gerar(categorias, relogio.GetUtcNow());
+
+        db.Artigos.AddRange(artigos);
+        await db.SaveChangesAsync(cancellationToken);
+
+        logger.LogInformation("Seed de artigos: {Artigos} artigos", artigos.Count);
     }
 }

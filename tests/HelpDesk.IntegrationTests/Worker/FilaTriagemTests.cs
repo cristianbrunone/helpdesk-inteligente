@@ -146,16 +146,20 @@ public sealed class FilaTriagemTests(BancoFixture banco, ApiFactory api) : IClas
     public async Task ProcessarLote_DoisWorkersConcorrentes_ProcessamCadaTriagemUmaVezSo()
     {
         var bancoIsolado = await banco.CriarBancoMigradoAsync(Ct);
+        var criadas = new List<Guid>();
         for (var i = 0; i < 12; i++)
         {
-            await CriarPendenteAsync(bancoIsolado);
+            criadas.Add(await CriarPendenteAsync(bancoIsolado));
         }
 
         await using var a = Worker(bancoIsolado, fila: new OpcoesFila(3, TimeSpan.FromMilliseconds(100), TimeSpan.FromMinutes(5), 3));
         await using var b = Worker(bancoIsolado, fila: new OpcoesFila(3, TimeSpan.FromMilliseconds(100), TimeSpan.FromMinutes(5), 3));
         await Task.WhenAll(EsvaziarAsync(a), EsvaziarAsync(b));
 
-        var status = await LerAsync(bancoIsolado, db => db.Triagens.Select(t => t.Status).ToListAsync(Ct));
+        // O seed também tem triagens (já decididas ou falhas); o teste olha só as que criou.
+        var status = await LerAsync(bancoIsolado, db => db.Triagens
+            .Where(t => criadas.Contains(t.Id)).Select(t => t.Status).ToListAsync(Ct));
+        status.Count.ShouldBe(12);
         status.ShouldAllBe(s => s == StatusTriagem.Concluida);
         var chamadasPorTriagem = await LerAsync(bancoIsolado, db => db.UsoLlm
             .GroupBy(u => u.TriagemId).Select(g => g.Count()).ToListAsync(Ct));

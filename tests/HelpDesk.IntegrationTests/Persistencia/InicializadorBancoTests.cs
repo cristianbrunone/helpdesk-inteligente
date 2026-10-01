@@ -56,7 +56,7 @@ public sealed class InicializadorBancoTests(BancoFixture banco)
     }
 
     [Fact]
-    public async Task MigrarEAplicarSeed_BancoVazioExecutadoDuasVezes_InsereOs200ChamadosUmaUnicaVez()
+    public async Task MigrarEAplicarSeed_BancoVazioExecutadoDuasVezes_InsereChamadosTriagensEArtigosUmaUnicaVez()
     {
         var bancoIsolado = await banco.CriarBancoVazioAsync(Ct);
 
@@ -74,10 +74,22 @@ public sealed class InicializadorBancoTests(BancoFixture banco)
                 UNION ALL
                 SELECT count(*)::int FROM chamados c
                 WHERE NOT EXISTS (SELECT 1 FROM comentarios m WHERE m.chamado_id = c.id)
+                UNION ALL
+                SELECT count(*)::int FROM artigos_conhecimento
+                UNION ALL
+                -- nenhuma pendente: o Worker processaria todas na subida (e consumiria a cota do provedor real)
+                SELECT count(*)::int FROM triagens_ia WHERE status = 'pendente'
+                UNION ALL
+                -- aceitas cujo chamado não ficou com a categoria e a prioridade sugeridas (deve ser zero)
+                SELECT count(*)::int FROM triagens_ia t JOIN chamados c ON c.id = t.chamado_id
+                WHERE t.status = 'aceita'
+                  AND (c.categoria_id <> t.categoria_sugerida_id OR c.prioridade <> t.prioridade_sugerida)
                 """)
             .ToListAsync(Ct), bancoIsolado);
+        var triagens = await ConsultarAsync(db => db.Triagens.CountAsync(Ct), bancoIsolado);
 
-        totais.ShouldBe([200, 0, 0]);
+        totais.ShouldBe([200, 0, 0, 25, 0, 0]);
+        triagens.ShouldBeInRange(120, 160);
     }
 
     private async Task ExecutarInicializadorAsync(string? connectionString = null)
