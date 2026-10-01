@@ -35,6 +35,14 @@ internal static class ChamadosEndpoints
             .ProducesProblem(StatusCodes.Status412PreconditionFailed)
             .ProducesValidationProblem(StatusCodes.Status422UnprocessableEntity);
 
+        grupo.MapPost("/{id:guid}/comentarios", Comentar)
+            .WithName("AdicionarComentario")
+            .WithSummary("Comenta o chamado. Fechado e Cancelado recusam (409). O ETag devolvido é a nova versão do chamado.")
+            .ProducesProblem(StatusCodes.Status404NotFound)
+            .ProducesProblem(StatusCodes.Status409Conflict)
+            .ProducesProblem(StatusCodes.Status412PreconditionFailed)
+            .ProducesValidationProblem(StatusCodes.Status422UnprocessableEntity);
+
         return app;
     }
 
@@ -56,6 +64,15 @@ internal static class ChamadosEndpoints
         var alterado = await casoDeUso.ExecutarAsync(id, corpo, ETag.VersoesDoIfMatch(http.Request), cancellationToken);
         http.Response.Headers.ETag = ETag.De(alterado.Versao);
         return TypedResults.Ok(alterado.Chamado);
+    }
+
+    private static async Task<Created<ComentarioDetalhe>> Comentar(
+        Guid id, NovoComentario corpo, AdicionarComentario casoDeUso, HttpContext http, CancellationToken cancellationToken)
+    {
+        var criado = await casoDeUso.ExecutarAsync(id, corpo, ETag.VersoesDoIfMatch(http.Request), cancellationToken);
+        http.Response.Headers.ETag = ETag.De(criado.VersaoChamado);
+        // O comentário não tem rota própria: o Location aponta para o chamado, onde ele aparece.
+        return TypedResults.Created($"/api/chamados/{id}", criado.Comentario);
     }
 
     private static async Task<Created<ChamadoDetalhe>> Criar(

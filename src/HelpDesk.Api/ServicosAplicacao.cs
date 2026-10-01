@@ -16,6 +16,7 @@ internal static class ServicosAplicacao
         services.AddScoped<ListarChamados>();
         services.AddScoped<ObterChamado>();
         services.AddScoped<MudarStatusChamado>();
+        services.AddScoped<AdicionarComentario>();
         return services;
     }
 }
