@@ -96,9 +96,17 @@ public sealed class FakeChatClient(ModoFake modo = ModoFake.Normal, TimeSpan? at
     {
     }
 
+    private static string SoOChamado(string usuario)
+    {
+        var inicio = usuario.IndexOf("<chamado>", StringComparison.Ordinal);
+        return inicio < 0 ? usuario : usuario[inicio..];
+    }
+
     private static string Responder(string sistema, string usuario, bool categoriaInexistente)
     {
         var categorias = CategoriasDoPrompt(sistema);
+        // Só o chamado decide: as palavras dos trechos do <contexto> (RAG) não podem mudar a classificação do fake.
+        usuario = SoOChamado(usuario);
         var normalizado = Normalizar(usuario);
         var (categoria, acertos) = EscolherCategoria(categorias, normalizado);
 

@@ -14,7 +14,8 @@ public static class ServicosWorker
         OpcoesIA opcoesIA,
         OpcoesLlm opcoesLlm,
         OpcoesFila opcoesFila,
-        OpcoesRag? opcoesRag = null)
+        OpcoesRag? opcoesRag = null,
+        string versaoPrompt = MontadorPromptTriagem.VersaoPadrao)
     {
         services.AdicionarInfraestrutura(connectionString);
         services.AdicionarClienteLlm(opcoesLlm);
@@ -24,7 +25,7 @@ public static class ServicosWorker
         services.AddSingleton(opcoesIA);
         services.AddSingleton(opcoesFila);
         services.AddSingleton<MascaradorDadosPessoais>();
-        services.AddSingleton<MontadorPromptTriagem>();
+        services.AddSingleton(sp => new MontadorPromptTriagem(sp.GetRequiredService<ICatalogoPrompts>(), versaoPrompt));
         services.AddScoped<PipelineTriagem>();
         services.AddScoped<ProcessarTriagemPendente>();
         services.AddSingleton<ConsumidorFilaTriagem>();

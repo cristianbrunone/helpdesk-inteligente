@@ -1,7 +1,7 @@
 using System.Diagnostics;
-using HelpDesk.Application.Chamados;
 using HelpDesk.Application.Conhecimento;
 using HelpDesk.Application.Triagem;
+using HelpDesk.Domain.Triagem;
 using Microsoft.Extensions.Logging;
 
 namespace HelpDesk.Infrastructure.Ia;
@@ -22,7 +22,7 @@ internal sealed partial class RecuperadorRag(
     OpcoesRag opcoes,
     ILogger<RecuperadorRag> logger) : IRecuperadorContexto
 {
-    public async Task<IReadOnlyList<FonteTriagem>> RecuperarAsync(
+    public async Task<ContextoRecuperado> RecuperarAsync(
         TextoMascarado titulo, TextoMascarado descricao, CancellationToken cancellationToken)
     {
         float[] vetor;
@@ -36,21 +36,24 @@ internal sealed partial class RecuperadorRag(
         {
             Activity.Current?.SetTag("rag.falha", falha.Tipo);
             LogSemContexto(logger, falha.Tipo);
-            return [];
+            return ContextoRecuperado.Vazio;
         }
 
         var documentos = await busca.BuscarAsync(vetor, gerador.Modelo, opcoes, cancellationToken);
 
-        // A busca devolve trechos (vários do mesmo artigo); a fonte exibida ao atendente é a origem, uma vez só,
-        // com a similaridade do melhor trecho.
-        return
-        [
-            .. documentos
-                .GroupBy(d => (d.Tipo, d.Id))
-                .Select(g => g.MaxBy(d => d.Similaridade)!)
-                .OrderByDescending(d => d.Similaridade)
-                .Select(d => new FonteTriagem(d.Tipo, d.Id, d.Numero, d.Titulo, Math.Round(d.Similaridade, 3))),
-        ];
+        // Para o prompt vão os trechos (vários do mesmo artigo, se forem os mais parecidos). A fonte exibida ao
+        // atendente é a origem, uma vez só, com a similaridade do melhor trecho.
+        var fontes = documentos
+            .GroupBy(d => (d.Tipo, d.Id))
+            .Select(g => g.MaxBy(d => d.Similaridade)!)
+            .OrderByDescending(d => d.Similaridade)
+            .Select(d => new FonteTriagem(d.Tipo, d.Id, d.Numero, d.Titulo, Math.Round(d.Similaridade, 3)))
+            .ToList();
+        var trechos = documentos
+            .OrderByDescending(d => d.Similaridade)
+            .Select(d => mascarador.Mascarar(d.ConteudoMascarado))
+            .ToList();
+        return new ContextoRecuperado(fontes, trechos);
     }
 
     [LoggerMessage(Level = LogLevel.Warning,

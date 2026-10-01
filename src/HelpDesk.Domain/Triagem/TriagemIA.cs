@@ -11,6 +11,12 @@ public sealed record SugestaoTriagem(
     string RespostaSugerida,
     decimal Confianca);
 
+/// <summary>
+/// Documento que o RAG recuperou e entregou ao modelo (RF-16): chamado resolvido ou artigo, com a similaridade.
+/// Fica gravado na triagem para o atendente ver em que a sugestão se apoiou.
+/// </summary>
+public sealed record FonteTriagem(string Tipo, Guid Id, long? Numero, string Titulo, double Similaridade);
+
 /// <summary>Com qual provedor, modelo e versão de prompt a triagem foi processada (rastreabilidade e evals).</summary>
 public sealed record ExecucaoTriagem(string Provedor, string Modelo, string PromptVersao);
 
@@ -71,6 +77,9 @@ public sealed class TriagemIA
 
     public string? MotivoRejeicao { get; private set; }
 
+    /// <summary>Documentos do RAG usados na sugestão (vazia sem RAG ou quando nada passou do limiar).</summary>
+    public IReadOnlyList<FonteTriagem> Fontes { get; private set; } = [];
+
     private TriagemIA(Guid id, Guid chamadoId, DateTimeOffset criadoEm, string? traceParent)
     {
         Id = id;
@@ -104,7 +113,9 @@ public sealed class TriagemIA
         return Criar(chamado, agora, traceParent);
     }
 
-    public void Concluir(SugestaoTriagem sugestao, ExecucaoTriagem execucao, DateTimeOffset agora)
+    public void Concluir(
+        SugestaoTriagem sugestao, ExecucaoTriagem execucao, DateTimeOffset agora,
+        IReadOnlyList<FonteTriagem>? fontes = null)
     {
         ExigirPendente();
         // O validador da Application já garantiu isto; aqui é a última defesa do invariante (e do CHECK do banco).
@@ -121,6 +132,7 @@ public sealed class TriagemIA
         Resumo = sugestao.Resumo;
         RespostaSugerida = sugestao.RespostaSugerida;
         Confianca = sugestao.Confianca;
+        Fontes = fontes ?? [];
         Encerrar(StatusTriagem.Concluida, execucao, agora);
     }
 

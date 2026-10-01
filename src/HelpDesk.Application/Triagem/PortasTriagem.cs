@@ -48,9 +48,18 @@ public interface IClienteLlmTriagem
     Task<ResultadoLlm> CompletarAsync(PromptTriagem prompt, ContextoTriagem contexto, CancellationToken cancellationToken);
 }
 
-/// <summary>Etapa "Recuperar" (RAG, ADR-0004/ADR-0007). Na Sprint 2 não há fontes; a busca entra na Sprint 3.</summary>
+/// <summary>
+/// O que a etapa "Recuperar" entrega: os trechos (já mascarados) que vão para o prompt, do mais parecido ao menos,
+/// e as fontes (uma por documento de origem) gravadas na triagem para o atendente.
+/// </summary>
+public sealed record ContextoRecuperado(IReadOnlyList<FonteTriagem> Fontes, IReadOnlyList<TextoMascarado> Trechos)
+{
+    public static readonly ContextoRecuperado Vazio = new([], []);
+}
+
+/// <summary>Etapa "Recuperar" (RAG, ADR-0004, ADR-0007, ADR-0011).</summary>
 public interface IRecuperadorContexto
 {
-    Task<IReadOnlyList<FonteTriagem>> RecuperarAsync(
+    Task<ContextoRecuperado> RecuperarAsync(
         TextoMascarado titulo, TextoMascarado descricao, CancellationToken cancellationToken);
 }

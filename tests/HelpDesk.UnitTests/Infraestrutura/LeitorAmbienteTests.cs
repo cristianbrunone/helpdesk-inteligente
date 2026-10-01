@@ -226,4 +226,22 @@ public sealed class LeitorAmbienteTests
         Should.Throw<InvalidOperationException>(() => ComVariaveis((chave, valor)).OpcoesRag())
             .Message.ShouldStartWith($"A variável {chave}");
     }
+
+    [Theory]
+    [InlineData(null, "triagem.v1")]
+    [InlineData("triagem.v2", "triagem.v2")]
+    public void VersaoPromptTriagem_AusenteOuValida_UsaOPadraoOuAInformada(string? valor, string esperada)
+    {
+        ComVariaveis(("TRIAGEM_PROMPT_VERSAO", valor ?? "")).VersaoPromptTriagem().ShouldBe(esperada);
+    }
+
+    [Theory]
+    [InlineData("../segredo")]
+    [InlineData("copiloto.v1")]
+    [InlineData("triagem.v2-teste")]
+    public void VersaoPromptTriagem_ForaDoFormato_ImpedeASubida(string valor)
+    {
+        Should.Throw<InvalidOperationException>(() => ComVariaveis(("TRIAGEM_PROMPT_VERSAO", valor)).VersaoPromptTriagem())
+            .Message.ShouldStartWith("A variável TRIAGEM_PROMPT_VERSAO");
+    }
 }

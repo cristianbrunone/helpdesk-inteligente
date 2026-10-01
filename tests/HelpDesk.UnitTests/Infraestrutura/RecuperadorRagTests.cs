@@ -22,13 +22,15 @@ public sealed class RecuperadorRagTests
             new("chamado", _chamado, 877, "Erro 403 ao abrir boletos", "chamado", 0.649),
             new("artigo", _artigo, null, "Erro 403 no módulo de boletos", "trecho 2", 0.543));
 
-        var fontes = await Criar(new GeradorFixo(), busca).RecuperarAsync(Mascarar("Erro 403"), Mascarar("boletos"), Ct);
+        var contexto = await Criar(new GeradorFixo(), busca).RecuperarAsync(Mascarar("Erro 403"), Mascarar("boletos"), Ct);
 
-        fontes.ShouldBe(
+        contexto.Fontes.ShouldBe(
         [
             new("artigo", _artigo, null, "Erro 403 no módulo de boletos", 0.692),
             new("chamado", _chamado, 877, "Erro 403 ao abrir boletos", 0.649),
         ]);
+        // Para o prompt vão todos os trechos, do mais parecido ao menos.
+        contexto.Trechos.Select(t => t.Valor).ShouldBe(["trecho 1", "chamado", "trecho 2"]);
     }
 
     [Fact]
@@ -51,10 +53,10 @@ public sealed class RecuperadorRagTests
     {
         var busca = new BuscaFixa();
 
-        var fontes = await Criar(new GeradorFixo { Fora = true }, busca)
+        var contexto = await Criar(new GeradorFixo { Fora = true }, busca)
             .RecuperarAsync(Mascarar("Erro 403"), Mascarar("boletos"), Ct);
 
-        fontes.ShouldBeEmpty();
+        contexto.ShouldBe(ContextoRecuperado.Vazio);
         busca.Modelo.ShouldBeNull(); // nem chegou a buscar
     }
 

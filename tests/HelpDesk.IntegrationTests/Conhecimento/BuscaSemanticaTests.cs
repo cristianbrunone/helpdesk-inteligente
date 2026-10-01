@@ -126,7 +126,7 @@ public sealed class BuscaSemanticaTests(BuscaSemanticaTests.IndiceDoSeed indice)
     {
         public string ConnectionString { get; private set; } = "";
 
-        public ServiceProvider Servicos()
+        public ServiceProvider Servicos(string versaoPrompt = MontadorPromptTriagem.VersaoPadrao)
         {
             var services = new ServiceCollection();
             services.AddLogging(b => b.SetMinimumLevel(LogLevel.Warning));
@@ -137,7 +137,8 @@ public sealed class BuscaSemanticaTests(BuscaSemanticaTests.IndiceDoSeed indice)
                 Timeout = TimeSpan.FromSeconds(5),
                 MaxRetries = 0,
                 MaxTokensSaidaTriagem = 800,
-            }, new OpcoesFila(5, TimeSpan.FromMilliseconds(100), TimeSpan.FromMinutes(5), OpcoesFila.MaxReservasPadrao));
+            }, new OpcoesFila(5, TimeSpan.FromMilliseconds(100), TimeSpan.FromMinutes(5), OpcoesFila.MaxReservasPadrao),
+                versaoPrompt: versaoPrompt);
             services.AdicionarIndexacao(new OpcoesReconciliacao(TimeSpan.FromSeconds(30), 64));
             return services.BuildServiceProvider();
         }

@@ -87,6 +87,8 @@ services:
       LLM_FAKE_MODO: ${LLM_FAKE_MODO:-}
       LLM_FAKE_ATRASO_MS: ${LLM_FAKE_ATRASO_MS:-}
       TRIAGEM_MAX_TOKENS_SAIDA: ${TRIAGEM_MAX_TOKENS_SAIDA:-}
+      # Versão do prompt da triagem (prompts/*.md). A v2 usa o RAG; uma versão nova só vira padrão após o eval.
+      TRIAGEM_PROMPT_VERSAO: ${TRIAGEM_PROMPT_VERSAO:-}
       # Fila (ADR-0003)
       WORKER_POLL_INTERVAL_MS: ${WORKER_POLL_INTERVAL_MS:-}
       WORKER_BATCH_SIZE: ${WORKER_BATCH_SIZE:-}

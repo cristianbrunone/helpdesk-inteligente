@@ -44,6 +44,19 @@ public sealed class LeitorAmbiente(Func<string, string?> ler)
             $"{maximo.ToString(CultureInfo.InvariantCulture)}, com ponto decimal"),
     };
 
+    public const string TriagemPromptVersao = "TRIAGEM_PROMPT_VERSAO";
+
+    /// <summary>
+    /// Versão do prompt da triagem (<c>prompts/{versao}.md</c>). Uma versão nova só vira a padrão depois do harness de
+    /// evals (ADR-0018); esta variável permite comparar e voltar atrás sem rebuild.
+    /// </summary>
+    public string VersaoPromptTriagem() => Texto(TriagemPromptVersao) switch
+    {
+        null => MontadorPromptTriagem.VersaoPadrao,
+        var valor when System.Text.RegularExpressions.Regex.IsMatch(valor, @"^triagem\.v[0-9]+$") => valor,
+        var valor => throw Invalida(TriagemPromptVersao, valor, "uma versão no formato triagem.vN (ex.: triagem.v2)"),
+    };
+
     public const string RagTopK = "RAG_TOP_K";
     public const string RagMinSimilarity = "RAG_MIN_SIMILARITY";
 

@@ -58,6 +58,42 @@ public sealed class PipelineTriagemTests
     }
 
     [Fact]
+    public async Task Processar_ComTriagemV2_EnviaOContextoMascaradoEGravaAsFontes()
+    {
+        var espiao = new ChatClientEspiao(new FakeChatClient());
+        var fonte = new FonteTriagem("artigo", Guid.CreateVersion7(), null, "Erro 403 no módulo de boletos", 0.69);
+        var recuperador = new RecuperadorFixo(new ContextoRecuperado([fonte],
+            [new MascaradorDadosPessoais().Mascarar("Artigo: Erro 403 no módulo de boletos\n\nLiberar o perfil.")]));
+        var (pipeline, triagem, chamado) = Montar(espiao, recuperador: recuperador, versao: "triagem.v2");
+
+        await pipeline.ProcessarAsync(triagem, chamado, Ct);
+
+        triagem.Status.ShouldBe(StatusTriagem.Concluida);
+        triagem.PromptVersao.ShouldBe("triagem.v2");
+        triagem.Fontes.ShouldBe([fonte]);
+        recuperador.Chamadas.ShouldBe(1);
+        espiao.TextoEnviado.ShouldContain("<contexto>\n[1]\nArtigo: Erro 403 no módulo de boletos");
+        // A v2 continua sem nenhum dado pessoal no que vai para o provedor.
+        foreach (var dado in new[] { Cpf, Telefone, EmailNoTexto, EmailSolicitante, "Mariana", "Quitéria" })
+        {
+            espiao.TextoEnviado.ShouldNotContain(dado, Case.Insensitive);
+        }
+    }
+
+    [Fact]
+    public async Task Processar_ComTriagemV1_NemChamaARecuperacao()
+    {
+        var recuperador = new RecuperadorFixo(ContextoRecuperado.Vazio);
+        var (pipeline, triagem, chamado) = Montar(new FakeChatClient(), recuperador: recuperador);
+
+        await pipeline.ProcessarAsync(triagem, chamado, Ct);
+
+        triagem.Status.ShouldBe(StatusTriagem.Concluida);
+        recuperador.Chamadas.ShouldBe(0); // sem custo de embedding na linha de base
+        triagem.Fontes.ShouldBeEmpty();
+    }
+
+    [Fact]
     public async Task Processar_ChamadoValido_ConcluiComPromptVersionadoEContextoDeTelemetria()
     {
         var espiao = new ChatClientEspiao(new FakeChatClient());
@@ -176,7 +212,8 @@ public sealed class PipelineTriagemTests
         doTeste.Select(s => s.OperationName)
             .ShouldBe(["mascarar", "recuperar", "montar_prompt", "completar", "validar"]);
         doTeste.Single(s => s.OperationName == "mascarar").GetTagItem("mascaramento.cpfs").ShouldBe(1);
-        doTeste.Single(s => s.OperationName == "recuperar").GetTagItem("rag.documentos").ShouldBe(0);
+        // A v1 é a linha de base sem RAG: a etapa existe no trace, mas não recupera nada.
+        doTeste.Single(s => s.OperationName == "recuperar").GetTagItem("rag.habilitado").ShouldBe(false);
         doTeste.Single(s => s.OperationName == "montar_prompt").GetTagItem("prompt.versao").ShouldBe("triagem.v1");
         doTeste.Single(s => s.OperationName == "validar").GetTagItem("validacao.resultado").ShouldBe("valida");
 
@@ -186,7 +223,9 @@ public sealed class PipelineTriagemTests
 
     // ---------- Apoio ----------
 
-    private static (PipelineTriagem, TriagemIA, Chamado) Montar(IChatClient chat, IConsultaCategorias? categorias = null)
+    private static (PipelineTriagem, TriagemIA, Chamado) Montar(
+        IChatClient chat, IConsultaCategorias? categorias = null, IRecuperadorContexto? recuperador = null,
+        string versao = MontadorPromptTriagem.VersaoPadrao)
     {
         var opcoes = new OpcoesLlm
         {
@@ -198,8 +237,8 @@ public sealed class PipelineTriagemTests
         };
         var pipeline = new PipelineTriagem(
             new MascaradorDadosPessoais(),
-            new RecuperadorSemRag(),
-            new MontadorPromptTriagem(new CatalogoPromptsArquivo()),
+            recuperador ?? new RecuperadorSemRag(),
+            new MontadorPromptTriagem(new CatalogoPromptsArquivo(), versao),
             new ClienteLlmTriagem(chat, opcoes, NullLogger<ClienteLlmTriagem>.Instance),
             categorias ?? new CategoriasEmMemoria(),
             TimeProvider.System);
@@ -214,6 +253,18 @@ public sealed class PipelineTriagemTests
             null,
             _inicio);
         return (pipeline, TriagemIA.Criar(chamado, _inicio), chamado);
+    }
+
+    private sealed class RecuperadorFixo(ContextoRecuperado contexto) : IRecuperadorContexto
+    {
+        public int Chamadas { get; private set; }
+
+        public Task<ContextoRecuperado> RecuperarAsync(
+            TextoMascarado titulo, TextoMascarado descricao, CancellationToken cancellationToken)
+        {
+            Chamadas++;
+            return Task.FromResult(contexto);
+        }
     }
 
     private sealed class CategoriasEmMemoria : IConsultaCategorias
