@@ -40,6 +40,16 @@ public sealed class BancoFixture : IAsyncLifetime
         return services.BuildServiceProvider();
     }
 
+    /// <summary>Um banco isolado já migrado (com o seed), para testes que não podem ver dados dos outros.</summary>
+    public async Task<string> CriarBancoMigradoAsync(CancellationToken cancellationToken)
+    {
+        var connectionString = await CriarBancoVazioAsync(cancellationToken);
+        await using var servicos = CriarServicos(connectionString);
+        await using var escopo = servicos.CreateAsyncScope();
+        await escopo.ServiceProvider.GetRequiredService<InicializadorBanco>().MigrarEAplicarSeedAsync(cancellationToken);
+        return connectionString;
+    }
+
     /// <summary>
     /// Um banco vazio no mesmo container, para testes que precisam de contagens exatas sem a interferência dos
     /// outros testes (que rodam em paralelo no banco compartilhado).

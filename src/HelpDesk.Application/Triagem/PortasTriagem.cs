@@ -10,6 +10,17 @@ namespace HelpDesk.Application.Triagem;
 public interface IRepositorioTriagens
 {
     void Adicionar(TriagemIA triagem);
+
+    Task<TriagemIA?> ObterAsync(Guid id, CancellationToken cancellationToken);
+}
+
+/// <summary>
+/// Fila de triagem (ADR-0003, ADR-0010): a própria tabela de triagens. Reservar marca o lease e conta a tentativa;
+/// duas instâncias do Worker nunca recebem a mesma triagem.
+/// </summary>
+public interface IFilaTriagem
+{
+    Task<IReadOnlyList<Guid>> ReservarAsync(int quantidade, TimeSpan lease, CancellationToken cancellationToken);
 }
 
 /// <summary>IDs da triagem em processamento, para a telemetria do LLM (nunca conteúdo).</summary>

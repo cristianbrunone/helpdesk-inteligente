@@ -71,8 +71,22 @@ services:
       target: worker
       secrets: [ca_extra]
     environment:
-      LLM_PROVIDER: ${LLM_PROVIDER:-fake}
+      <<: *banco
       IA_TRIAGEM_HABILITADA: ${IA_TRIAGEM_HABILITADA:-true}
+      # Provedor de IA (ADR-0005): fake por padrão. Valores vazios valem o padrão do código.
+      LLM_PROVIDER: ${LLM_PROVIDER:-fake}
+      LLM_BASE_URL: ${LLM_BASE_URL:-}
+      LLM_API_KEY: ${LLM_API_KEY:-}
+      LLM_CHAT_MODEL: ${LLM_CHAT_MODEL:-}
+      LLM_TIMEOUT_SECONDS: ${LLM_TIMEOUT_SECONDS:-}
+      LLM_MAX_RETRIES: ${LLM_MAX_RETRIES:-}
+      LLM_FAKE_MODO: ${LLM_FAKE_MODO:-}
+      LLM_FAKE_ATRASO_MS: ${LLM_FAKE_ATRASO_MS:-}
+      TRIAGEM_MAX_TOKENS_SAIDA: ${TRIAGEM_MAX_TOKENS_SAIDA:-}
+      # Fila (ADR-0003)
+      WORKER_POLL_INTERVAL_MS: ${WORKER_POLL_INTERVAL_MS:-}
+      WORKER_BATCH_SIZE: ${WORKER_BATCH_SIZE:-}
+      WORKER_LEASE_SECONDS: ${WORKER_LEASE_SECONDS:-}
       WORKER_HEARTBEAT_INTERVAL_SECONDS: ${WORKER_HEARTBEAT_INTERVAL_SECONDS:-30}
     depends_on:
       migrator:

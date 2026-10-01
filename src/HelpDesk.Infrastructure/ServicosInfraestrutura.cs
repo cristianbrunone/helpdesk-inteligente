@@ -22,6 +22,7 @@ public static class ServicosInfraestrutura
         services.AddScoped<IRepositorioChamados, RepositorioChamados>();
         services.AddScoped<IConsultaChamados, ConsultaChamados>();
         services.AddScoped<IRepositorioTriagens, RepositorioTriagens>();
+        services.AddScoped<IFilaTriagem, FilaTriagem>();
         services.AddSingleton<ICatalogoPrompts, CatalogoPromptsArquivo>();
         return services;
     }
