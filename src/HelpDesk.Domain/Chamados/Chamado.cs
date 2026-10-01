@@ -207,6 +207,27 @@ public sealed class Chamado
         return novo;
     }
 
+    /// <summary>
+    /// Aplica a categoria e a prioridade aceitas da triagem (RF-13). Estados finais não mudam (RN-08); um chamado
+    /// que passe a Crítico deixa de oferecer o cancelamento (RN-05), sem regra extra aqui.
+    /// </summary>
+    public void AplicarSugestao(short categoriaId, Prioridade prioridade, DateTimeOffset agora)
+    {
+        if (Finalizado)
+        {
+            throw new ChamadoFinalizadoException(Status);
+        }
+
+        if (!Enum.IsDefined(prioridade))
+        {
+            throw new ArgumentOutOfRangeException(nameof(prioridade));
+        }
+
+        CategoriaId = categoriaId;
+        Prioridade = prioridade;
+        AtualizadoEm = agora;
+    }
+
     private bool BloqueadoPorPrioridade(StatusChamado destino) =>
         destino == StatusChamado.Cancelado && Prioridade == Prioridade.Critica;
 }

@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Smoke test do ambiente completo (ADR-0022): verifica os critérios de aceite das Sprints 0 e 1 contra o
+# Smoke test do ambiente completo (ADR-0022): verifica os critérios de aceite das Sprints 0 a 2 contra o
 # docker compose já em execução. Usado pelo CI e executável localmente:
 #   docker compose up --build -d --wait && bash scripts/smoke-compose.sh
 set -euo pipefail
@@ -80,11 +80,44 @@ ciclo_do_chamado() {
   [ "$(patch_status "$id" Resolvido "$etag")" = "412" ]
 }
 
+config_ia() {
+  curl -fsS --max-time 10 "$WEB/api/config/ia" | grep -q '"triagem":true'
+}
+
+saude_com_fila_de_triagem() {
+  curl -s --max-time 10 "$API/health" | grep -q '"filaTriagem":{"status":"'
+}
+
+ID_TRIAGEM=""
+
+triagem_concluida_pelo_worker() {
+  # Critério da Sprint 2: com o fake, a triagem fica Concluida em segundos (o Worker consome a fila).
+  local corpo
+  corpo="$(curl -fsS --max-time 10 -H 'Content-Type: application/json' \
+    -d "{\"titulo\":\"Nao consigo emitir o boleto\",\"descricao\":\"O boleto do mes nao sai. Meu CPF e 123.456.789-09 e o telefone (11) 98765-4321.\",\"solicitanteNome\":\"Pessoa Smoke\",\"solicitanteEmail\":\"$EMAIL_SMOKE\"}" \
+    "$WEB/api/chamados")" || return 1
+  echo "$corpo" | grep -q '"triagem":{"id":"[^"]*","status":"Pendente"' || return 1
+  ID_TRIAGEM="$(echo "$corpo" | campo_json id)"
+  for _ in $(seq 1 30); do
+    curl -fsS --max-time 10 "$WEB/api/chamados/$ID_TRIAGEM" \
+      | grep -q '"triagem":{"id":"[^"]*","status":"Concluida"' && return 0
+    sleep 1
+  done
+  return 1
+}
+
+aceitar_triagem() {
+  [ -n "$ID_TRIAGEM" ] || return 1
+  curl -fsS --max-time 10 -H 'Content-Type: application/json' -d '{"decididaPor":"Smoke (suporte)"}' \
+    "$WEB/api/chamados/$ID_TRIAGEM/triagem/aceitar" | grep -q '"status":"Aceita"'
+}
+
 dados_pessoais_fora_dos_logs() {
-  # DoD: o e-mail, o nome e o CPF do chamado criado acima não podem aparecer em nenhuma linha de log da API.
+  # DoD: o e-mail, o nome, o CPF e o telefone dos chamados criados acima não podem aparecer em nenhuma linha de
+  # log da API nem do Worker (que é quem processa o texto para a IA).
   local logs
-  logs="$(docker compose logs api --no-log-prefix --no-color)"
-  ! echo "$logs" | grep -q -e "$EMAIL_SMOKE" -e "Pessoa Smoke" -e "123.456.789-09"
+  logs="$(docker compose logs api worker --no-log-prefix --no-color)"
+  ! echo "$logs" | grep -q -e "$EMAIL_SMOKE" -e "Pessoa Smoke" -e "123.456.789-09" -e "98765-4321"
 }
 
 health_responde() {
@@ -106,8 +139,12 @@ verificar "Swagger UI em /swagger → 200" test "$(status_http "$API/swagger/ind
 verificar "GET /api/chamados pelo Nginx → seed com 200+ chamados" chamados_do_seed
 verificar "busca 'configuracao' (sem acento) encontra chamados" busca_sem_acento
 verificar "criar (201) → mudar status com If-Match (200) → ETag antigo (412)" ciclo_do_chamado
+verificar "GET /api/config/ia → triagem ativa" config_ia
+verificar "GET /health traz o check filaTriagem" saude_com_fila_de_triagem
+verificar "criar chamado → Worker conclui a triagem (fake) em até 30 s" triagem_concluida_pelo_worker
+verificar "aceitar a triagem pelo Nginx → Aceita" aceitar_triagem
 verificar "logs da API em JSON, com CorrelationId" logs_da_api_em_json
-verificar "nome, e-mail e CPF do chamado criado fora dos logs da API" dados_pessoais_fora_dos_logs
+verificar "nome, e-mail, CPF e telefone fora dos logs da API e do Worker" dados_pessoais_fora_dos_logs
 
 docker compose stop db > /dev/null 2>&1
 verificar "banco parado → GET /health → 503" health_responde 503

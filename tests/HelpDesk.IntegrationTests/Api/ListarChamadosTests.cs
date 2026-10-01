@@ -30,7 +30,8 @@ public sealed class ListarChamadosTests(ApiFactory api, BancoFixture banco) : IC
         pagina.GetProperty("totalItens").GetInt32().ShouldBeGreaterThanOrEqualTo(200); // seed
         var item = pagina.GetProperty("itens")[0];
         item.EnumerateObject().Select(p => p.Name).ShouldBe(
-            ["id", "numero", "titulo", "status", "prioridade", "categoria", "solicitanteNome", "criadoEm", "atualizadoEm"]);
+            ["id", "numero", "titulo", "status", "prioridade", "categoria", "solicitanteNome", "criadoEm", "atualizadoEm",
+                "triagemStatus"]);
     }
 
     [Fact]

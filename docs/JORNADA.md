@@ -216,3 +216,44 @@ O plano dizia "melhor descobrir no dia 2 do que no dia 6", e foi exatamente o qu
 - **O tamanho do texto é contado em caracteres Unicode, como o `char_length` do PostgreSQL.** Contando em UTF-16, um título de 5 emojis passaria na API e cairia no `CHECK` do banco com erro 500.
 - **Ferramentas de teste no front.** O jsdom não tem `document.fonts`, que o `Textarea` com autosize usa, e precisou de polyfill. No MSW, o handler registrado **por último** tem precedência, o que inverteu um cenário de erro até a ordem ser corrigida.
 - **O bundle passou de 500 kB minificado** (~160 kB com gzip) depois do Zod. Fica registrado para o *code-splitting* por rota na Sprint 5, e não para agora.
+
+---
+
+## Sprint 2 — Triagem por IA (sem RAG)
+
+**Artefatos:** domínio `src/HelpDesk.Domain/Triagem/`; mascaramento, prompt, validador e pipeline em `src/HelpDesk.Application/Triagem/`; [`prompts/triagem.v1.md`](../prompts/triagem.v1.md); provedores, resiliência e telemetria em `src/HelpDesk.Infrastructure/Ia/`; fila em `src/HelpDesk.Infrastructure/Persistencia/FilaTriagem.cs`; consumidor em `src/HelpDesk.Worker/`; painel em `web/src/componentes/PainelTriagem.tsx`; [`adr/0024`](adr/0024-retry-no-cliente-de-chat.md).
+
+**O que foi entregue:** todo o requisito obrigatório de IA.
+
+- A triagem é **assíncrona**: o chamado nasce com a triagem `Pendente` na mesma transação, e a criação responde em menos de 300 ms mesmo com um provedor de 30 s.
+- O processamento é **resiliente**: fila com `SKIP LOCKED` e lease, timeout e retry com backoff, `Retry-After`.
+- A saída é **validada**: parse tolerante, schema e domínio; qualquer falha vira `Falhou` com motivo.
+- A triagem segue a **LGPD**: o mascaramento é garantido pelo tipo e provado por um *spy* no lugar do provedor.
+- A triagem é **observável**: `uso_llm` por tentativa e traces OpenTelemetry sem conteúdo, com o painel opcional.
+- A triagem tem **kill switch**: `IA_TRIAGEM_HABILITADA`, `/api/config/ia`, 503 no refazer e `Degraded` no `/health`.
+- O painel no front tem o selo "Gerado por IA" e as ações aceitar, rejeitar e refazer.
+- Testes: de 203 para 451 no backend, de 31 para 41 no frontend, e o smoke do Compose cresceu de 12 para 16 verificações.
+
+**Como foi feito:** 16 commits, na ordem domínio → mascaramento → banco → criação com a triagem → prompt e validador → provedores → resiliência → telemetria → pipeline → Worker → endpoints → tracing → smoke → front → correção → documentação. Duas decisões foram tomadas antes de codar, com duas alternativas cada: onde ficam as novas tentativas (virou o ADR-0024) e a etapa "Recuperar" vazia até o RAG.
+
+### O que mudou em relação ao plano
+
+- **Onde ficam as novas tentativas virou um ADR.** Os ADRs 0003/0010 (tentativas pela fila) e 0005 (resiliência no adaptador) eram ambíguos juntos, e fazer as duas coisas multiplicaria as chamadas e a cota. Ficou no cliente de chat ([ADR-0024](adr/0024-retry-no-cliente-de-chat.md)).
+- **Lacunas do modelo de dados preenchidas:** `motivo_rejeicao` (o contrato aceitava um motivo sem ter onde guardá-lo), `trace_parent` (o ADR-0019 pedia, o modelo não tinha), `provedor`/`modelo`/`prompt_versao` nulos enquanto pendente e o `xmin` na triagem para decisões simultâneas.
+- **Os 200 chamados do seed continuam sem triagem.** Pendentes no seed seriam processadas na subida, e com o Gemini isso consumiria a cota diária de uma vez. As triagens do seed, com status variados para o dashboard, entram na Sprint 3.
+- **A validação com o Gemini real foi feita com o Worker fora do contêiner.** Nesta máquina, um DLP corporativo intercepta o TLS e as imagens, por decisão da Sprint 0, não carregam a CA corporativa. A limitação ficou documentada no README; num clone limpo, o contêiner fala com o provedor normalmente.
+
+### Validação com o provedor real
+
+Com `LLM_PROVIDER=openai-compatible` e a chave do Gemini no `.env`, um chamado "VPN cai a cada 10 minutos" (com um telefone na descrição) foi triado em 3,2 s: **Infraestrutura / Média**, confiança 0,95, um resumo objetivo e uma resposta cordial, **sem o telefone**. Foram 752 tokens de entrada e 130 de saída, numa chamada registrada em `uso_llm`.
+
+### Aprendizados
+
+- **Um teste de concorrência que passava pelo motivo errado.** Ao tirar o `SKIP LOCKED` de propósito, o teste "duas instâncias não pegam a mesma triagem" continuou verde: no PostgreSQL, a segunda reserva **espera** a primeira e reavalia as linhas, então não duplica, só bloqueia. O que o `SKIP LOCKED` garante é não esperar. O teste certo segura linhas numa transação aberta e exige que a reserva volte na hora com as outras.
+- **O primeiro contato com o provedor real achou um defeito.** Dentro do contêiner, o TLS falhava (DLP), e o SDK entregava isso como `ClientResultException` **sem resposta HTTP** (status 0), que eu tratava como falha definitiva, sem retry. Uma queda de rede é exatamente o caso transitório; a correção foi um commit `fix` próprio, e o log de falha passou a trazer o status HTTP.
+- **`varchar(200)` escondia o `CHECK` de 200.** O PostgreSQL recusa o texto longo antes de avaliar o `CHECK`, então a regra nomeada do modelo nunca seria exercitada. O resumo virou `text` + `CHECK`.
+- **`EnableSensitiveData` desligado foi verificado, e não só configurado.** O teste com `ActivityListener` injeta um CPF e procura em todos os atributos de todos os spans, inclusive o SQL do Npgsql. Ligar a opção de propósito faz o teste falhar. No caminho, um falso positivo do próprio teste: `gen_ai.output.type=json` é metadado, não conteúdo.
+- **Uma imagem oficial com defeito.** A `aspire-dashboard:13.6.0` traz o painel como executável nativo, mas o `entrypoint` dela ainda aponta para um `.dll` que não existe; o contêiner reiniciava em loop. A solução foi sobrescrever o `entrypoint` no Compose, com comentário.
+- **Mascaramento conservador tem custo, e ele foi documentado.** Um protocolo `2026-0001` vira `[TELEFONE]` e um sobrenome como "Exemplo" é mascarado no texto todo. Cada falso positivo aceito tem teste próprio.
+- **O fake também tem bugs.** "fora do ar para todos os usuários" caía em Acesso/Login por causa da palavra "usuario". Como o fake passa pelo validador real nos testes, o erro apareceu na hora.
+- **Testes de `/health` precisaram de banco isolado.** Com a fila no health, as pendentes antigas criadas por outros testes deixavam o check `Degraded` no banco compartilhado.

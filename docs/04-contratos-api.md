@@ -76,7 +76,7 @@ Catálogo de conflitos (**409**):
 - **201 Created**, com `Location: /api/chamados/{id}` e o corpo = detalhe do chamado (seção abaixo), com `triagem.status = "Pendente"`.
 - **422**: título com 5–150 caracteres, descrição com 10–5000, nome obrigatório (até 120), e-mail válido, categoria existente (quando informada).
 - É **sempre** rápido: grava o chamado, o histórico (`null → Aberto`) e a triagem pendente numa transação (ADR-0003).
-- **Entrega incremental:** na Sprint 1, sem a tabela `triagens_ia`, o detalhe ainda não tem o campo `triagem` e a listagem não tem `triagemStatus`. Os dois entram na Sprint 2.
+- **Entrega incremental:** na Sprint 1 o detalhe não tinha `triagem` e a listagem não tinha `triagemStatus`; os dois entraram na Sprint 2. Com a triagem desativada (ADR-0021), o chamado é criado com `triagem: null`.
 
 ### `GET /api/chamados`: listar
 
@@ -157,6 +157,7 @@ Catálogo de conflitos (**409**):
       { "tipo": "artigo", "id": "...", "titulo": "Permissões do módulo financeiro", "similaridade": 0.84 }
     ],
     "erro": null,
+    "decididaPor": null, "decididaEm": null,
     "criadoEm": "...", "concluidaEm": "...",
     "totalTriagens": 1
   }
@@ -304,4 +305,5 @@ Usa os health checks do ASP.NET Core:
 - `banco` indisponível → **503** `Unhealthy`.
 - A fila com uma triagem pendente há mais de 5 minutos → `Degraded` (**200**). Isso indica que o Worker está parado ou que o provedor está lento, sem derrubar a API.
 - O provedor de LLM **não** entra no health check de propósito: a API funciona sem ele (D1).
-- **Entrega incremental:** nas Sprints 0 e 1, o `/health` tem apenas o check `banco`. O `filaTriagem` entra na Sprint 2, junto com a tabela `triagens_ia`.
+- Com a triagem desativada (ADR-0021) e pendentes na fila → `Degraded` (**200**). Quando um check não está `Healthy`, ele traz um campo `motivo` em texto (ex.: "Há triagem pendente há mais de 5 minutos.").
+- **Entrega incremental:** nas Sprints 0 e 1, o `/health` tinha apenas o check `banco`; o `filaTriagem` entrou na Sprint 2.

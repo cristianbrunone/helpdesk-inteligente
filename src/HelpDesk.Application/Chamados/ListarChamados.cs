@@ -1,5 +1,6 @@
 using HelpDesk.Application.Categorias;
 using HelpDesk.Domain.Chamados;
+using HelpDesk.Domain.Triagem;
 
 namespace HelpDesk.Application.Chamados;
 
@@ -37,7 +38,10 @@ public sealed record FiltroChamados(
     int Pagina,
     int TamanhoPagina);
 
-/// <summary>Item da listagem. Sem o e-mail do solicitante (minimização de dados, contrato §3).</summary>
+/// <summary>
+/// Item da listagem. Sem o e-mail do solicitante (minimização de dados, contrato §3). <see cref="TriagemStatus"/> é o
+/// da triagem vigente, ou <c>null</c> se não houver.
+/// </summary>
 public sealed record ChamadoResumo(
     Guid Id,
     long Numero,
@@ -47,7 +51,8 @@ public sealed record ChamadoResumo(
     CategoriaResumo? Categoria,
     string SolicitanteNome,
     DateTimeOffset CriadoEm,
-    DateTimeOffset AtualizadoEm);
+    DateTimeOffset AtualizadoEm,
+    StatusTriagem? TriagemStatus);
 
 /// <summary>Página da listagem no formato do contrato (<c>itens</c>, <c>pagina</c>, <c>totalPaginas</c>...).</summary>
 public sealed record ResultadoPaginado<T>(IReadOnlyList<T> Itens, int Pagina, int TamanhoPagina, int TotalItens, int TotalPaginas);

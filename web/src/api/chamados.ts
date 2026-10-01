@@ -1,8 +1,9 @@
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import type { Categoria } from './categorias';
 import { requisitar, requisitarComResposta } from './cliente';
-import type { Prioridade, StatusChamado } from '../dominio/chamado';
+import type { Prioridade, StatusChamado, StatusTriagem } from '../dominio/chamado';
 import { paraQueryString, type FiltrosChamados } from './filtrosChamados';
+import { intervaloDePolling, type TriagemDetalhe } from './triagem';
 
 export interface ChamadoResumo {
   id: string;
@@ -14,6 +15,8 @@ export interface ChamadoResumo {
   solicitanteNome: string;
   criadoEm: string;
   atualizadoEm: string;
+  /** Status da triagem vigente, ou null se não houver. */
+  triagemStatus: StatusTriagem | null;
 }
 
 export interface ResultadoPaginado<T> {
@@ -56,6 +59,8 @@ export interface ChamadoDetalhe {
   podeComentar: boolean;
   comentarios: Comentario[];
   historico: RegistroHistorico[];
+  /** Triagem vigente, ou null se nunca houve (por exemplo, com a triagem desativada). */
+  triagem: TriagemDetalhe | null;
 }
 
 /** Corpo de POST /api/chamados. Categoria e prioridade são opcionais (P-02): a triagem sugere. */
@@ -124,6 +129,8 @@ export function useChamado(id: string) {
   return useQuery({
     queryKey: chavesChamados.detalhe(id),
     queryFn: ({ signal }) => obterChamado(id, signal),
+    // Enquanto a IA processa a triagem, o detalhe se atualiza sozinho (com backoff).
+    refetchInterval: (query) => intervaloDePolling(query.state.data),
   });
 }
 

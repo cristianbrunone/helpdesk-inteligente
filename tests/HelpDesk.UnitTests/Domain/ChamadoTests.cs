@@ -339,6 +339,29 @@ public sealed class ChamadoTests
             .Erros.Keys.ShouldBe(["Autor", "Texto"], ignoreOrder: true);
     }
 
+    // ---------- Sugestão aceita da triagem (RF-13) ----------
+
+    [Fact]
+    public void AplicarSugestao_ChamadoAberto_AtualizaCategoriaPrioridadeEData()
+    {
+        var chamado = NovoChamado();
+        var agora = _inicio.AddHours(2);
+
+        chamado.AplicarSugestao(3, Prioridade.Critica, agora);
+
+        chamado.CategoriaId.ShouldBe((short)3);
+        chamado.Prioridade.ShouldBe(Prioridade.Critica);
+        chamado.AtualizadoEm.ShouldBe(agora);
+    }
+
+    [Theory]
+    [InlineData(StatusChamado.Fechado)]
+    [InlineData(StatusChamado.Cancelado)]
+    public void AplicarSugestao_ChamadoFinalizado_LancaChamadoFinalizado(StatusChamado status)
+    {
+        Should.Throw<ChamadoFinalizadoException>(() => ChamadoEm(status).AplicarSugestao(3, Prioridade.Alta, _inicio));
+    }
+
     // ---------- Apoio ----------
 
     private static Chamado NovoChamado(Prioridade? prioridade = null, short? categoriaId = null) =>

@@ -8,6 +8,7 @@ import { AlertaErro } from '../componentes/AlertaErro';
 import { BadgePrioridade, BadgeStatus } from '../componentes/BadgesChamado';
 import { ComentariosChamado } from '../componentes/ComentariosChamado';
 import { HistoricoChamado } from '../componentes/HistoricoChamado';
+import { PainelTriagem } from '../componentes/PainelTriagem';
 import { formatarDataHora } from '../dominio/chamado';
 
 export function DetalheChamado() {
@@ -102,6 +103,13 @@ export function DetalheChamado() {
                       aoDesatualizar={recarregar}
                     />
                   </Stack>
+                </Paper>
+                <Paper withBorder p="md">
+                  <PainelTriagem
+                    versionado={data}
+                    atendente={atendente}
+                    aoDesatualizar={recarregar}
+                  />
                 </Paper>
                 <Paper withBorder p="md">
                   <DadosDoChamado chamado={data.chamado} />

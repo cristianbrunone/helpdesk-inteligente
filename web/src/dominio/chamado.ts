@@ -15,6 +15,9 @@ export type StatusChamado = (typeof STATUS_CHAMADO)[number];
 export const PRIORIDADES = ['Baixa', 'Media', 'Alta', 'Critica'] as const;
 export type Prioridade = (typeof PRIORIDADES)[number];
 
+export const STATUS_TRIAGEM = ['Pendente', 'Concluida', 'Falhou', 'Aceita', 'Rejeitada'] as const;
+export type StatusTriagem = (typeof STATUS_TRIAGEM)[number];
+
 export const ROTULO_STATUS: Record<StatusChamado, string> = {
   Aberto: 'Aberto',
   EmAndamento: 'Em andamento',

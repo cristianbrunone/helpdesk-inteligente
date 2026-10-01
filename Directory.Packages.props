@@ -33,6 +33,14 @@
     <PackageVersion Include="Bogus" Version="35.6.5" />
   </ItemGroup>
 
+  <ItemGroup Label="Tracing (ADR-0019)">
+    <PackageVersion Include="OpenTelemetry.Extensions.Hosting" Version="1.19.1" />
+    <PackageVersion Include="OpenTelemetry.Exporter.OpenTelemetryProtocol" Version="1.19.1" />
+    <PackageVersion Include="OpenTelemetry.Instrumentation.AspNetCore" Version="1.19.0" />
+    <PackageVersion Include="OpenTelemetry.Instrumentation.Http" Version="1.19.0" />
+    <PackageVersion Include="Npgsql.OpenTelemetry" Version="10.0.3" />
+  </ItemGroup>
+
   <ItemGroup Label="Testes">
     <PackageVersion Include="xunit.v3" Version="4.0.1" />
     <PackageVersion Include="Shouldly" Version="4.3.0" />

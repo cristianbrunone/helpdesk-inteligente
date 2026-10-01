@@ -8,7 +8,7 @@ namespace HelpDesk.Api.Erros;
 
 /// <summary>
 /// O único ponto que converte exceções em ProblemDetails (ADR-0013), seguindo o catálogo do contrato §2: erros de
-/// domínio (404/409/412/422), parâmetro inválido e requisição malformada (400) e erro inesperado (500).
+/// domínio (404/409/412/422/503), parâmetro inválido e requisição malformada (400) e erro inesperado (500).
 /// </summary>
 internal sealed partial class DominioExceptionHandler(
     IProblemDetailsService problemDetails,
@@ -26,6 +26,9 @@ internal sealed partial class DominioExceptionHandler(
         ["transicao_invalida"] = (StatusCodes.Status409Conflict, "Transição de status não permitida"),
         ["chamado_finalizado"] = (StatusCodes.Status409Conflict, "Chamado finalizado"),
         ["critico_nao_cancelavel"] = (StatusCodes.Status409Conflict, "Chamado crítico não pode ser cancelado"),
+        ["triagem_nao_concluida"] = (StatusCodes.Status409Conflict, "Triagem não concluída"),
+        ["triagem_em_andamento"] = (StatusCodes.Status409Conflict, "Triagem em andamento"),
+        ["ia_indisponivel"] = (StatusCodes.Status503ServiceUnavailable, "IA indisponível"),
     };
 
     public async ValueTask<bool> TryHandleAsync(HttpContext http, Exception exception, CancellationToken cancellationToken)

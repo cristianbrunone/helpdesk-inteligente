@@ -16,7 +16,7 @@ O projeto foi **planejado antes de ser codificado**. As decisões já tomadas es
 | `docs/03-modelo-de-dados.md` | ER, constraints, índices justificados, SQL do dashboard, seed. |
 | `docs/04-contratos-api.md` | Endpoints, payloads, catálogo de erros, eventos SSE. |
 | `docs/05-sprints.md` | Escopo, critérios de aceite e testes de cada sprint. |
-| `docs/adr/` | Decisões (ADRs). **Antes de implementar algo, leia o ADR relacionado.** Os números 0015–0017 e 0022–0023 são da Sprint 0 (plataforma); os 0018–0021 vieram da revisão de 30/09. |
+| `docs/adr/` | Decisões (ADRs). **Antes de implementar algo, leia o ADR relacionado.** Os números 0015–0017 e 0022–0023 são da Sprint 0 (plataforma); os 0018–0021 vieram da revisão de 30/09; o 0024 é da Sprint 2. |
 | `docs/revisoes/` | Registros de revisões de arquitetura (o que motivou, o que foi adotado e o que foi rejeitado). |
 | `docs/JORNADA.md` | Narrativa do projeto por fase. |
 | `DECISOES.md` | Índice curto das decisões e premissas (entregável do enunciado). |
@@ -111,6 +111,7 @@ docker compose up --build -d --wait && bash scripts/smoke-compose.sh   # critér
 dotnet build                               # build do backend
 dotnet test --filter "Category!=ProvedorReal"   # todos os testes do backend (exige Docker); sintaxe válida no MTP
 dotnet test --project tests/HelpDesk.IntegrationTests --filter "Category=ProvedorReal"   # PoC com provedor real (exige chave no .env; nunca no CI)
+OTEL_EXPORTER_OTLP_ENDPOINT=http://aspire-dashboard:18889 docker compose --profile observabilidade up -d   # traces em http://localhost:18888
 dotnet format --verify-no-changes          # lint do backend
 dotnet ef migrations add <Nome> -p src/HelpDesk.Infrastructure -s src/HelpDesk.Migrator
 cd web && npm run lint && npm test && npm run build   # Node 24 (web/.nvmrc)
@@ -118,7 +119,9 @@ cd web && npm run lint && npm test && npm run build   # Node 24 (web/.nvmrc)
 
 Os testes rodam sobre o **Microsoft.Testing.Platform** (habilitado no `global.json`): `dotnet test` sem `--project` usa a `HelpDesk.slnx`. Um projeto de teste sem nenhum teste encerra com código 8.
 
-Máquina atrás de proxy com inspeção TLS: defina `CA_EXTRA_PEM` no `.env` local (veja o README). A CA vale só no build das imagens.
+Máquina atrás de proxy com inspeção TLS: defina `CA_EXTRA_PEM` no `.env` local (veja o README). A CA vale só no build das imagens: em tempo de execução, os contêineres não falam com provedores na internet. Para testar um provedor real nessa rede, rode o Worker fora do contêiner.
+
+O fake tem modos de falha para teste e demonstração (`LLM_FAKE_MODO`: `lento`, `json_invalido`, `categoria_inexistente`, `rate_limit`).
 
 (Atualize esta seção se os comandos mudarem.)
 

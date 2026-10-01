@@ -52,6 +52,7 @@ function detalhe(extra: Partial<ChamadoDetalhe> = {}): ChamadoDetalhe {
         alteradoPor: 'Ana (suporte)',
       },
     ],
+    triagem: null,
     ...extra,
   };
 }
