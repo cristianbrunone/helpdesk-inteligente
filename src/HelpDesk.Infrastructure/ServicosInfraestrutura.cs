@@ -33,6 +33,8 @@ public static class ServicosInfraestrutura
         services.AddSingleton<IRegistroUsoLlm, RegistroUsoLlmBanco>();
         services.AddSingleton(sp => FabricaClienteChat.Montar(
             opcoes, sp.GetRequiredService<ILoggerFactory>(), sp.GetRequiredService<IRegistroUsoLlm>()));
+        services.AddSingleton<IClienteLlmTriagem, ClienteLlmTriagem>();
+        services.AddSingleton<IRecuperadorContexto, RecuperadorSemRag>();
         return services;
     }
 }
