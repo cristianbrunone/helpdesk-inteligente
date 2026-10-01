@@ -32,5 +32,7 @@
     <InternalsVisibleTo Include="HelpDesk.IntegrationTests" />
     <!-- Cálculo do backoff e classificação de falhas da resiliência, testados sem I/O. -->
     <InternalsVisibleTo Include="HelpDesk.UnitTests" />
+    <!-- O harness de evals (ADR-0018) monta o pipeline real com os adaptadores internos. -->
+    <InternalsVisibleTo Include="HelpDesk.Evals" />
   </ItemGroup>
 </Project>

@@ -16,7 +16,9 @@ namespace HelpDesk.IntegrationTests.Conhecimento;
 public sealed class TriagemComRagTests(BuscaSemanticaTests.IndiceDoSeed indice)
     : IClassFixture<BuscaSemanticaTests.IndiceDoSeed>
 {
-    private static readonly DateTimeOffset _agora = DateTimeOffset.UtcNow;
+    // Data fixa no passado, como nos testes da fila: a reserva compara com o now() do banco, e o relógio do
+    // contêiner pode estar alguns segundos atrás do da máquina (com UtcNow, a triagem ficava "no futuro").
+    private static readonly DateTimeOffset _agora = new(2026, 9, 24, 9, 0, 0, TimeSpan.Zero);
 
     private static CancellationToken Ct => TestContext.Current.CancellationToken;
 

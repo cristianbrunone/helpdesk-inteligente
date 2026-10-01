@@ -4,6 +4,8 @@
     <ProjectReference Include="..\..\src\HelpDesk.Application\HelpDesk.Application.csproj" />
     <!-- Lógica pura da Infrastructure (ex.: convenção snake_case), testada sem I/O. -->
     <ProjectReference Include="..\..\src\HelpDesk.Infrastructure\HelpDesk.Infrastructure.csproj" />
+    <!-- Métricas e relatório do harness de evals (ADR-0018), testados com resultados simulados. -->
+    <ProjectReference Include="..\..\tools\HelpDesk.Evals\HelpDesk.Evals.csproj" />
     <!-- BackgroundServices do Worker testados sem I/O (ex.: heartbeat). -->
     <ProjectReference Include="..\..\src\HelpDesk.Worker\HelpDesk.Worker.csproj" />
   </ItemGroup>

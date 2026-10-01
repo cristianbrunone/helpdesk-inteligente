@@ -7,6 +7,9 @@
     <Project Path="src/HelpDesk.Migrator/HelpDesk.Migrator.csproj" />
     <Project Path="src/HelpDesk.Worker/HelpDesk.Worker.csproj" />
   </Folder>
+  <Folder Name="/tools/">
+    <Project Path="tools/HelpDesk.Evals/HelpDesk.Evals.csproj" />
+  </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/HelpDesk.ArchitectureTests/HelpDesk.ArchitectureTests.csproj" />
     <Project Path="tests/HelpDesk.IntegrationTests/HelpDesk.IntegrationTests.csproj" />

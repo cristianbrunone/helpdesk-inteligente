@@ -7,6 +7,8 @@
   <ItemGroup>
     <ProjectReference Include="..\..\src\HelpDesk.Api\HelpDesk.Api.csproj" />
     <ProjectReference Include="..\..\src\HelpDesk.Infrastructure\HelpDesk.Infrastructure.csproj" />
+    <!-- Harness de evals executado de ponta a ponta com o fake, com e sem RAG. -->
+    <ProjectReference Include="..\..\tools\HelpDesk.Evals\HelpDesk.Evals.csproj" />
     <!-- Consumidor da fila de triagem, exercitado contra o PostgreSQL real. -->
     <ProjectReference Include="..\..\src\HelpDesk.Worker\HelpDesk.Worker.csproj" />
   </ItemGroup>

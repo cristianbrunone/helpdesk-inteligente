@@ -124,8 +124,19 @@ public sealed class FakeChatClient(ModoFake modo = ModoFake.Normal, TimeSpan? at
     }
 
     /// <summary>As linhas "- Nome" do prompt de sistema (o marcador {{CATEGORIAS}} já substituído).</summary>
-    private static List<string> CategoriasDoPrompt(string sistema) =>
-        [.. sistema.Split('\n').Where(l => l.StartsWith("- ", StringComparison.Ordinal)).Select(l => l[2..].Trim())];
+    /// <summary>
+    /// As categorias são os itens da seção "## Categorias válidas" do prompt. Outras seções também têm listas (a
+    /// triagem.v2 lista as regras do contexto antes das categorias); sem o título, vale toda linha "- ".
+    /// </summary>
+    private static List<string> CategoriasDoPrompt(string sistema)
+    {
+        var linhas = sistema.Split('\n').Select(l => l.TrimEnd('\r')).ToList();
+        var inicio = linhas.FindIndex(l => l.StartsWith("## Categorias", StringComparison.Ordinal));
+        var secao = inicio < 0
+            ? linhas
+            : linhas.Skip(inicio + 1).TakeWhile(l => !l.StartsWith("## ", StringComparison.Ordinal));
+        return [.. secao.Where(l => l.StartsWith("- ", StringComparison.Ordinal)).Select(l => l[2..].Trim())];
+    }
 
     private static (string Categoria, int Acertos) EscolherCategoria(List<string> categorias, string texto)
     {

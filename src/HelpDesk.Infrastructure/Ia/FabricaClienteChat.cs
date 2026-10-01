@@ -19,7 +19,11 @@ public static class FabricaClienteChat
     /// primeiro <c>Use</c> é a camada mais externa.
     /// </summary>
     public static IChatClient Montar(OpcoesLlm opcoes, ILoggerFactory logs, IRegistroUsoLlm registro) =>
-        new ChatClientBuilder(Criar(opcoes))
+        Montar(Criar(opcoes), opcoes, logs, registro);
+
+    /// <summary>A mesma composição sobre um provedor já criado (o harness de evals põe um espião nele).</summary>
+    public static IChatClient Montar(IChatClient provedor, OpcoesLlm opcoes, ILoggerFactory logs, IRegistroUsoLlm registro) =>
+        new ChatClientBuilder(provedor)
             .Use(interno => new ResilienciaChatClient(interno, opcoes, logs.CreateLogger<ResilienciaChatClient>()))
             .Use(interno => new TelemetriaChatClient(interno, opcoes, registro, logs.CreateLogger<TelemetriaChatClient>()))
             // Nunca o prompt nem a resposta nos atributos: EnableSensitiveData fica desligado, explicitamente.
