@@ -91,6 +91,19 @@ public sealed class LeitorAmbiente(Func<string, string?> ler)
         };
     }
 
+    /// <summary>Destino OTLP dos traces (ADR-0019); <c>null</c> = sem exportação.</summary>
+    public Uri? EndpointOtlp()
+    {
+        if (Texto(Observabilidade.Tracing.VariavelEndpoint) is not { } valor)
+        {
+            return null;
+        }
+
+        return Uri.TryCreate(valor, UriKind.Absolute, out var endpoint) && endpoint.Scheme is "http" or "https"
+            ? endpoint
+            : throw Invalida(Observabilidade.Tracing.VariavelEndpoint, valor, "uma URL http(s) absoluta");
+    }
+
     private ModoFake ModoDoFake() => Texto(LlmFakeModo)?.ToLowerInvariant() switch
     {
         null or "normal" => ModoFake.Normal,

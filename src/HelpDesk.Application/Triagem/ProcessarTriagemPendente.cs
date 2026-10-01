@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using HelpDesk.Application.Chamados;
 using HelpDesk.Domain.Triagem;
 
@@ -17,6 +18,8 @@ public sealed class ProcessarTriagemPendente(
 {
     public const string CodigoInterrompida = "interrompida";
 
+    private static readonly ActivitySource _fonte = new(PipelineTriagem.NomeFonteAtividades);
+
     /// <returns>O resultado, ou <c>null</c> se a triagem não está mais pendente (outro Worker já a resolveu).</returns>
     public async Task<ResultadoPipeline?> ExecutarAsync(
         Guid triagemId, int maxReservas, CancellationToken cancellationToken)
@@ -27,6 +30,8 @@ public sealed class ProcessarTriagemPendente(
             return null;
         }
 
+        // ADR-0019: o processamento é um trace próprio, vinculado (span link) ao trace da criação do chamado.
+        using var raiz = IniciarRaiz(triagem);
         ResultadoPipeline resultado;
         if (triagem.Tentativas > maxReservas)
         {
@@ -44,6 +49,21 @@ public sealed class ProcessarTriagemPendente(
 
         // Mesma unidade de trabalho: só a triagem muda (o chamado não é alterado pela triagem).
         await chamados.SalvarAsync(cancellationToken);
+        raiz?.SetTag("triagem.status", resultado.Status.ToString());
+        raiz?.SetTag("triagem.falha", resultado.Codigo);
         return resultado;
+    }
+
+    private static Activity? IniciarRaiz(TriagemIA triagem)
+    {
+        ActivityLink[] links = ActivityContext.TryParse(triagem.TraceParent, null, out var criacao)
+            ? [new ActivityLink(criacao)]
+            : [];
+        var raiz = _fonte.StartActivity("triagem.processar", ActivityKind.Consumer, parentContext: default,
+            links: links);
+        raiz?.SetTag("triagem.id", triagem.Id);
+        raiz?.SetTag("chamado.id", triagem.ChamadoId);
+        raiz?.SetTag("triagem.reserva", (int)triagem.Tentativas);
+        return raiz;
     }
 }

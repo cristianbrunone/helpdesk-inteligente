@@ -15,12 +15,15 @@ public static class FabricaClienteChat
 {
     /// <summary>
     /// O cliente que a aplicação usa: resiliência (timeout, retry, backoff) → telemetria (<c>uso_llm</c> e log, uma
-    /// por tentativa) → provedor. No <see cref="ChatClientBuilder"/>, o primeiro <c>Use</c> é a camada mais externa.
+    /// por tentativa) → span GenAI do OpenTelemetry (ADR-0019) → provedor. No <see cref="ChatClientBuilder"/>, o
+    /// primeiro <c>Use</c> é a camada mais externa.
     /// </summary>
     public static IChatClient Montar(OpcoesLlm opcoes, ILoggerFactory logs, IRegistroUsoLlm registro) =>
         new ChatClientBuilder(Criar(opcoes))
             .Use(interno => new ResilienciaChatClient(interno, opcoes, logs.CreateLogger<ResilienciaChatClient>()))
             .Use(interno => new TelemetriaChatClient(interno, opcoes, registro, logs.CreateLogger<TelemetriaChatClient>()))
+            // Nunca o prompt nem a resposta nos atributos: EnableSensitiveData fica desligado, explicitamente.
+            .UseOpenTelemetry(logs, Observabilidade.Tracing.FonteChat, otel => otel.EnableSensitiveData = false)
             .Build();
 
     public static IChatClient Criar(OpcoesLlm opcoes) => opcoes.Provedor switch
