@@ -21,6 +21,7 @@ export const chamadosPadrao: ChamadoResumo[] = [
     solicitanteNome: 'Maria Exemplo',
     criadoEm: '2026-09-30T14:03:00Z',
     atualizadoEm: '2026-09-30T15:00:00Z',
+    triagemStatus: 'Concluida',
   },
   {
     id: '0192f0c1-0000-7000-8000-000000000002',
@@ -32,6 +33,7 @@ export const chamadosPadrao: ChamadoResumo[] = [
     solicitanteNome: 'João Exemplo',
     criadoEm: '2026-09-29T10:00:00Z',
     atualizadoEm: '2026-09-29T10:00:00Z',
+    triagemStatus: null,
   },
 ];
 
@@ -53,4 +55,5 @@ export function paginaDe(
 export const handlers = [
   http.get('/api/categorias', () => HttpResponse.json(categoriasPadrao)),
   http.get('/api/chamados', () => HttpResponse.json(paginaDe(chamadosPadrao))),
+  http.get('/api/config/ia', () => HttpResponse.json({ triagem: true, copiloto: true })),
 ];
