@@ -29,6 +29,8 @@
     <!-- Pinos transitivos: mesma versão do EF Core em todos os projetos. -->
     <PackageVersion Include="Microsoft.EntityFrameworkCore" Version="10.0.12" />
     <PackageVersion Include="Microsoft.EntityFrameworkCore.Relational" Version="10.0.12" />
+    <!-- Seed de demonstração com semente fixa (modelo §7). -->
+    <PackageVersion Include="Bogus" Version="35.6.5" />
   </ItemGroup>
 
   <ItemGroup Label="Testes">
