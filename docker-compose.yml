@@ -79,6 +79,9 @@ services:
       LLM_BASE_URL: ${LLM_BASE_URL:-}
       LLM_API_KEY: ${LLM_API_KEY:-}
       LLM_CHAT_MODEL: ${LLM_CHAT_MODEL:-}
+      # Embeddings do RAG (ADR-0011): trocar o modelo reindexa tudo; a dimensão é fixa em 768.
+      LLM_EMBEDDING_MODEL: ${LLM_EMBEDDING_MODEL:-}
+      EMBEDDING_DIMENSIONS: ${EMBEDDING_DIMENSIONS:-}
       LLM_TIMEOUT_SECONDS: ${LLM_TIMEOUT_SECONDS:-}
       LLM_MAX_RETRIES: ${LLM_MAX_RETRIES:-}
       LLM_FAKE_MODO: ${LLM_FAKE_MODO:-}

@@ -33,9 +33,12 @@ public static class FabricaClienteChat
         _ => throw new ArgumentOutOfRangeException(nameof(opcoes), opcoes.Provedor, "Provedor de LLM desconhecido."),
     };
 
-    private static IChatClient CriarOpenAiCompativel(OpcoesLlm opcoes)
-    {
-        var cliente = new OpenAIClient(
+    private static IChatClient CriarOpenAiCompativel(OpcoesLlm opcoes) =>
+        ClienteOpenAi(opcoes).GetChatClient(opcoes.ModeloChat).AsIChatClient();
+
+    /// <summary>Cliente do SDK apontado para o endpoint compatível; compartilhado com os embeddings.</summary>
+    internal static OpenAIClient ClienteOpenAi(OpcoesLlm opcoes) =>
+        new(
             new ApiKeyCredential(opcoes.ChaveApi!),
             new OpenAIClientOptions
             {
@@ -46,7 +49,4 @@ public static class FabricaClienteChat
                 // Rede de segurança: o timeout de cada tentativa é do middleware; este só evita conexão pendurada.
                 NetworkTimeout = opcoes.Timeout + TimeSpan.FromSeconds(10),
             });
-
-        return cliente.GetChatClient(opcoes.ModeloChat).AsIChatClient();
-    }
 }

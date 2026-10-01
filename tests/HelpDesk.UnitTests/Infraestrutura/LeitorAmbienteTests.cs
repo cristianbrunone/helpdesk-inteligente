@@ -170,4 +170,36 @@ public sealed class LeitorAmbienteTests
         metadados.DefaultModelId.ShouldBe("modelo-x");
         metadados.ProviderUri!.Host.ShouldBe("exemplo.local");
     }
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("768")]
+    public void OpcoesLlm_DimensaoAusenteOu768_SobeComOModeloDeEmbeddingPadrao(string? dimensoes)
+    {
+        var opcoes = ComVariaveis(("EMBEDDING_DIMENSIONS", dimensoes ?? "")).OpcoesLlm();
+
+        opcoes.ModeloEmbedding.ShouldBe("gemini-embedding-001");
+        opcoes.ModeloEmbeddingEfetivo.ShouldBe(OpcoesLlm.ModeloEmbeddingFake);
+    }
+
+    [Theory]
+    [InlineData("1536")]
+    [InlineData("abc")]
+    public void OpcoesLlm_DimensaoDiferenteDaColuna_ImpedeASubidaExplicandoAMigration(string dimensoes)
+    {
+        Should.Throw<InvalidOperationException>(() => ComVariaveis(("EMBEDDING_DIMENSIONS", dimensoes)).OpcoesLlm())
+            .Message.ShouldContain("exige uma migration");
+    }
+
+    [Fact]
+    public void FabricaGeradorEmbeddings_OpenAiCompativel_UsaOModeloDeEmbeddingConfigurado()
+    {
+        var opcoes = ComVariaveis(("LLM_PROVIDER", "openai-compatible"), ("LLM_BASE_URL", "https://exemplo.local/v1/"),
+            ("LLM_API_KEY", ChaveFicticia), ("LLM_EMBEDDING_MODEL", "embedding-x")).OpcoesLlm();
+
+        using var gerador = FabricaGeradorEmbeddings.Criar(opcoes);
+
+        opcoes.ModeloEmbeddingEfetivo.ShouldBe("embedding-x");
+        gerador.GetService<EmbeddingGeneratorMetadata>()!.DefaultModelId.ShouldBe("embedding-x");
+    }
 }

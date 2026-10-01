@@ -13,7 +13,7 @@ namespace HelpDesk.Infrastructure.Persistencia;
 public sealed class DocumentoRag
 {
     /// <summary>Dimensão fixa da coluna (ADR-0011): o fake e o provedor real geram 768.</summary>
-    public const int Dimensoes = 768;
+    public const int Dimensoes = Application.Conhecimento.IGeradorEmbeddings.Dimensoes;
 
     public Guid Id { get; private set; }
 

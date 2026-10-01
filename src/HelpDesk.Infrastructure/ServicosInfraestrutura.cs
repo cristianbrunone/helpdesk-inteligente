@@ -1,5 +1,6 @@
 using HelpDesk.Application.Categorias;
 using HelpDesk.Application.Chamados;
+using HelpDesk.Application.Conhecimento;
 using HelpDesk.Application.Triagem;
 using HelpDesk.Infrastructure.Consultas;
 using HelpDesk.Infrastructure.Ia;
@@ -35,6 +36,9 @@ public static class ServicosInfraestrutura
         services.AddSingleton(sp => FabricaClienteChat.Montar(
             opcoes, sp.GetRequiredService<ILoggerFactory>(), sp.GetRequiredService<IRegistroUsoLlm>()));
         services.AddSingleton<IClienteLlmTriagem, ClienteLlmTriagem>();
+        services.AddSingleton(sp => FabricaGeradorEmbeddings.Montar(
+            opcoes, sp.GetRequiredService<ILoggerFactory>(), sp.GetRequiredService<IRegistroUsoLlm>()));
+        services.AddSingleton<IGeradorEmbeddings, GeradorEmbeddings>();
         services.AddSingleton<IRecuperadorContexto, RecuperadorSemRag>();
         return services;
     }

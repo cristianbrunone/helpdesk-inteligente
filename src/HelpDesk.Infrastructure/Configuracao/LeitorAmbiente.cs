@@ -1,4 +1,5 @@
 using System.Globalization;
+using HelpDesk.Application.Conhecimento;
 using HelpDesk.Application.Triagem;
 using HelpDesk.Infrastructure.Ia;
 
@@ -37,6 +38,8 @@ public sealed class LeitorAmbiente(Func<string, string?> ler)
     public const string LlmBaseUrl = "LLM_BASE_URL";
     public const string LlmApiKey = "LLM_API_KEY";
     public const string LlmChatModel = "LLM_CHAT_MODEL";
+    public const string LlmEmbeddingModel = "LLM_EMBEDDING_MODEL";
+    public const string EmbeddingDimensions = "EMBEDDING_DIMENSIONS";
     public const string LlmTimeoutSeconds = "LLM_TIMEOUT_SECONDS";
     public const string LlmMaxRetries = "LLM_MAX_RETRIES";
     public const string TriagemMaxTokensSaida = "TRIAGEM_MAX_TOKENS_SAIDA";
@@ -77,12 +80,21 @@ public sealed class LeitorAmbiente(Func<string, string?> ler)
                 ?? throw new InvalidOperationException($"{LlmProvider}=openai-compatible exige {LlmApiKey} no .env.");
         }
 
+        // A dimensão é fixa na coluna vector(768) (ADR-0011): outro valor exige uma migration, não só a variável.
+        if (Texto(EmbeddingDimensions) is { } dimensoes && dimensoes != $"{IGeradorEmbeddings.Dimensoes}")
+        {
+            throw new InvalidOperationException(
+                $"A variável {EmbeddingDimensions} tem o valor '{dimensoes}', mas a coluna de embeddings tem " +
+                $"{IGeradorEmbeddings.Dimensoes} dimensões. Outra dimensão exige uma migration (veja o README).");
+        }
+
         return new OpcoesLlm
         {
             Provedor = provedor,
             BaseUrl = baseUrl,
             ChaveApi = chave,
             ModeloChat = Texto(LlmChatModel) ?? OpcoesLlmPadrao.ModeloChat,
+            ModeloEmbedding = Texto(LlmEmbeddingModel) ?? OpcoesLlmPadrao.ModeloEmbedding,
             Timeout = TimeSpan.FromSeconds(Inteiro(LlmTimeoutSeconds, OpcoesLlmPadrao.TimeoutSegundos, 1, 600)),
             MaxRetries = Inteiro(LlmMaxRetries, OpcoesLlmPadrao.MaxRetries, 0, 10),
             MaxTokensSaidaTriagem = Inteiro(TriagemMaxTokensSaida, OpcoesLlmPadrao.MaxTokensSaidaTriagem, 50, 8192),
@@ -120,6 +132,7 @@ public sealed class LeitorAmbiente(Func<string, string?> ler)
     {
         public const string Provedor = Ia.OpcoesLlm.NomeProvedorFake;
         public const string ModeloChat = "gemini-3.5-flash-lite";
+        public const string ModeloEmbedding = "gemini-embedding-001";
         public const int TimeoutSegundos = 60;
         public const int MaxRetries = 3;
         public const int MaxTokensSaidaTriagem = 800;
