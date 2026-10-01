@@ -27,5 +27,7 @@ public interface IConsultaChamados
 {
     Task<ChamadoVersionado?> ObterDetalheAsync(Guid id, CancellationToken cancellationToken);
 
+    Task<TriagemDetalhe?> ObterTriagemVigenteAsync(Guid chamadoId, CancellationToken cancellationToken);
+
     Task<ResultadoPaginado<ChamadoResumo>> ListarAsync(FiltroChamados filtro, CancellationToken cancellationToken);
 }

@@ -1,3 +1,4 @@
+using HelpDesk.Application;
 using HelpDesk.Domain.Chamados;
 using HelpDesk.Domain.Triagem;
 using HelpDesk.Infrastructure.Persistencia;
@@ -123,6 +124,57 @@ public sealed class TriagemPersistenciaTests(BancoFixture banco)
         indices.ShouldContain(i => i.Contains("UNIQUE INDEX ux_triagens_ia_uma_pendente_por_chamado")
             && i.Contains("WHERE (status = 'pendente'"));
         indices.ShouldContain(i => i.Contains("ix_uso_llm_criado_em"));
+    }
+
+    // ---------- Corridas que o banco resolve ----------
+
+    [Fact]
+    public async Task Decidir_AceitarERejeitarAoMesmoTempo_OSegundoRecebeVersaoDesatualizada()
+    {
+        var (chamado, triagem) = await CriarAsync();
+        await AlterarAsync(triagem.Id, chamado.Id, (_, t) => t.Concluir(
+            new SugestaoTriagem(2, Prioridade.Alta, "Resumo.", "Olá!", 0.8m), _execucao, _inicio.AddSeconds(4)));
+        await using var servicos = banco.CriarServicos();
+        await using var escopoA = servicos.CreateAsyncScope();
+        await using var escopoB = servicos.CreateAsyncScope();
+        var dbA = escopoA.ServiceProvider.GetRequiredService<HelpDeskDbContext>();
+        var dbB = escopoB.ServiceProvider.GetRequiredService<HelpDeskDbContext>();
+        var chamadoA = await dbA.Chamados.SingleAsync(c => c.Id == chamado.Id, Ct);
+        var triagemA = await dbA.Triagens.SingleAsync(t => t.Id == triagem.Id, Ct);
+        var chamadoB = await dbB.Chamados.SingleAsync(c => c.Id == chamado.Id, Ct);
+        var triagemB = await dbB.Triagens.SingleAsync(t => t.Id == triagem.Id, Ct);
+
+        triagemA.Aceitar(chamadoA, "Ana", _inicio.AddMinutes(1));
+        await new RepositorioChamados(dbA).SalvarAsync(Ct);
+        triagemB.Rejeitar(chamadoB, "Bruno", null, _inicio.AddMinutes(1));
+
+        await Should.ThrowAsync<VersaoDesatualizadaException>(() => new RepositorioChamados(dbB).SalvarAsync(Ct));
+        var (_, salva) = await LerAsync(chamado.Id, triagem.Id);
+        salva.Status.ShouldBe(StatusTriagem.Aceita);
+        salva.DecididaPor.ShouldBe("Ana");
+    }
+
+    [Fact]
+    public async Task Refazer_DuasPendentesAoMesmoTempo_OIndiceUnicoViraTriagemEmAndamento()
+    {
+        var (chamado, triagem) = await CriarAsync();
+        await AlterarAsync(triagem.Id, chamado.Id, (_, t) => t.Falhar("motivo", _execucao, _inicio.AddSeconds(4)));
+        await using var servicos = banco.CriarServicos();
+        await using var escopoA = servicos.CreateAsyncScope();
+        await using var escopoB = servicos.CreateAsyncScope();
+        var dbA = escopoA.ServiceProvider.GetRequiredService<HelpDeskDbContext>();
+        var dbB = escopoB.ServiceProvider.GetRequiredService<HelpDeskDbContext>();
+        var chamadoA = await dbA.Chamados.SingleAsync(c => c.Id == chamado.Id, Ct);
+        var chamadoB = await dbB.Chamados.SingleAsync(c => c.Id == chamado.Id, Ct);
+        var vigenteA = await dbA.Triagens.SingleAsync(t => t.Id == triagem.Id, Ct);
+        var vigenteB = await dbB.Triagens.SingleAsync(t => t.Id == triagem.Id, Ct);
+
+        // As duas leram a vigente "Falhou" antes de qualquer uma gravar: o domínio deixa as duas passarem.
+        dbA.Triagens.Add(TriagemIA.Refazer(chamadoA, vigenteA, _inicio.AddMinutes(1)));
+        dbB.Triagens.Add(TriagemIA.Refazer(chamadoB, vigenteB, _inicio.AddMinutes(1)));
+        await new RepositorioChamados(dbA).SalvarAsync(Ct);
+
+        await Should.ThrowAsync<TriagemEmAndamentoException>(() => new RepositorioChamados(dbB).SalvarAsync(Ct));
     }
 
     // ---------- Apoio ----------

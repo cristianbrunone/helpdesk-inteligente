@@ -2,7 +2,10 @@ using System.Globalization;
 using HelpDesk.Application;
 using HelpDesk.Application.Chamados;
 using HelpDesk.Domain.Chamados;
+using HelpDesk.Domain.Triagem;
+using HelpDesk.Infrastructure.Persistencia.Configuracoes;
 using Microsoft.EntityFrameworkCore;
+using Npgsql;
 
 namespace HelpDesk.Infrastructure.Persistencia;
 
@@ -36,6 +39,15 @@ internal sealed class RepositorioChamados(HelpDeskDbContext db) : IRepositorioCh
         {
             // Outra gravação mudou o xmin entre a nossa leitura e o UPDATE: mesmo caso do If-Match velho (412).
             throw new VersaoDesatualizadaException();
+        }
+        catch (DbUpdateException erro) when (erro.InnerException is PostgresException
+        {
+            SqlState: PostgresErrorCodes.UniqueViolation,
+            ConstraintName: TriagemIAConfiguracao.IndiceUmaPendentePorChamado,
+        })
+        {
+            // Dois "Refazer" simultâneos: o índice único parcial barra o segundo (409, ADR-0010).
+            throw new TriagemEmAndamentoException();
         }
     }
 }

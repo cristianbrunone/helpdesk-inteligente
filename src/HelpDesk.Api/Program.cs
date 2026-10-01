@@ -42,6 +42,7 @@ app.UseSwaggerUI(options =>
 app.MapSaude();
 app.MapCategorias();
 app.MapChamados();
+app.MapTriagem();
 app.MapConfiguracao();
 
 app.Run();

@@ -11,4 +11,11 @@ internal sealed class RepositorioTriagens(HelpDeskDbContext db) : IRepositorioTr
 
     public Task<TriagemIA?> ObterAsync(Guid id, CancellationToken cancellationToken) =>
         db.Triagens.SingleOrDefaultAsync(t => t.Id == id, cancellationToken);
+
+    public Task<TriagemIA?> ObterVigenteAsync(Guid chamadoId, CancellationToken cancellationToken) =>
+        db.Triagens
+            .Where(t => t.ChamadoId == chamadoId)
+            .OrderByDescending(t => t.CriadoEm)
+            .ThenByDescending(t => t.Id)
+            .FirstOrDefaultAsync(cancellationToken);
 }

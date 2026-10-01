@@ -46,7 +46,7 @@ internal sealed class ConsultaChamados(HelpDeskDbContext db) : IConsultaChamados
     }
 
     /// <summary>A vigente é a mais recente (P-04, índice 8); o total mostra quantas vezes o chamado foi triado.</summary>
-    private async Task<TriagemDetalhe?> ObterTriagemVigenteAsync(Guid chamadoId, CancellationToken cancellationToken)
+    public async Task<TriagemDetalhe?> ObterTriagemVigenteAsync(Guid chamadoId, CancellationToken cancellationToken)
     {
         var doChamado = db.Triagens.AsNoTracking().Where(t => t.ChamadoId == chamadoId);
         var vigente = await doChamado

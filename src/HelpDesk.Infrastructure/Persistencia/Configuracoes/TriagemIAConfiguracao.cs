@@ -13,6 +13,7 @@ namespace HelpDesk.Infrastructure.Persistencia.Configuracoes;
 internal sealed class TriagemIAConfiguracao : IEntityTypeConfiguration<TriagemIA>
 {
     public const string FiltroPendente = "status = 'pendente'";
+    public const string IndiceUmaPendentePorChamado = "ux_triagens_ia_uma_pendente_por_chamado";
 
     public void Configure(EntityTypeBuilder<TriagemIA> builder)
     {
@@ -49,6 +50,9 @@ internal sealed class TriagemIAConfiguracao : IEntityTypeConfiguration<TriagemIA
         builder.Property(t => t.DecididaPor).HasMaxLength(TriagemIA.DecididaPorTamanhoMaximo);
         builder.Property(t => t.MotivoRejeicao).HasMaxLength(TriagemIA.MotivoRejeicaoTamanhoMaximo);
 
+        // Concorrência otimista nas decisões (como no chamado): aceitar e rejeitar ao mesmo tempo → o segundo, 412.
+        builder.Property<uint>(HelpDeskDbContext.VersaoChamado).IsRowVersion().HasColumnName("xmin").HasColumnType("xid");
+
         builder.HasOne<Chamado>()
             .WithMany()
             .HasForeignKey(t => t.ChamadoId)
@@ -73,6 +77,6 @@ internal sealed class TriagemIAConfiguracao : IEntityTypeConfiguration<TriagemIA
         builder.HasIndex(t => t.ChamadoId)
             .IsUnique()
             .HasFilter(FiltroPendente)
-            .HasDatabaseName("ux_triagens_ia_uma_pendente_por_chamado");
+            .HasDatabaseName(IndiceUmaPendentePorChamado);
     }
 }

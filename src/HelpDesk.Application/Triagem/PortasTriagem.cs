@@ -12,6 +12,9 @@ public interface IRepositorioTriagens
     void Adicionar(TriagemIA triagem);
 
     Task<TriagemIA?> ObterAsync(Guid id, CancellationToken cancellationToken);
+
+    /// <summary>A triagem vigente (a mais recente, P-04) do chamado, para alteração.</summary>
+    Task<TriagemIA?> ObterVigenteAsync(Guid chamadoId, CancellationToken cancellationToken);
 }
 
 /// <summary>
