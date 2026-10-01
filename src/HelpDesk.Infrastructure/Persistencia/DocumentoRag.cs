@@ -1,0 +1,74 @@
+using Pgvector;
+
+namespace HelpDesk.Infrastructure.Persistencia;
+
+/// <summary>
+/// Unidade de indexação do RAG (tabela <c>documentos_rag</c>, ADR-0011): um chamado resolvido ou um chunk de artigo.
+/// Guarda o conteúdo já mascarado (o que vai para o prompt) e o vetor. É registro técnico, não conceito de domínio.
+/// <para>
+/// O vetor é nulo até o reconciliador gerar o embedding (ADR-0010); <c>embedding</c> e <c>embedding_modelo</c> são
+/// preenchidos juntos, e a busca só compara vetores do modelo configurado.
+/// </para>
+/// </summary>
+public sealed class DocumentoRag
+{
+    /// <summary>Dimensão fixa da coluna (ADR-0011): o fake e o provedor real geram 768.</summary>
+    public const int Dimensoes = 768;
+
+    public Guid Id { get; private set; }
+
+    public Guid? ChamadoId { get; private set; }
+
+    public Guid? ArtigoId { get; private set; }
+
+    public short ChunkIndice { get; private set; }
+
+    public string ConteudoMascarado { get; private set; }
+
+    /// <summary>SHA-256 (hex) do conteúdo mascarado: mudou o texto, muda o hash, e o documento é reindexado.</summary>
+    public string HashConteudo { get; private set; }
+
+    /// <summary>Desnormalizado da origem, para filtrar a busca por categoria sem JOIN.</summary>
+    public short? CategoriaId { get; private set; }
+
+    public Vector? Embedding { get; private set; }
+
+    public string? EmbeddingModelo { get; private set; }
+
+    public DateTimeOffset? IndexadoEm { get; private set; }
+
+    private DocumentoRag(
+        Guid id, Guid? chamadoId, Guid? artigoId, short chunkIndice, string conteudoMascarado, string hashConteudo,
+        short? categoriaId)
+    {
+        Id = id;
+        ChamadoId = chamadoId;
+        ArtigoId = artigoId;
+        ChunkIndice = chunkIndice;
+        ConteudoMascarado = conteudoMascarado;
+        HashConteudo = hashConteudo;
+        CategoriaId = categoriaId;
+    }
+
+    public static DocumentoRag DeChamado(
+        Guid chamadoId, string conteudoMascarado, string hashConteudo, short? categoriaId, DateTimeOffset agora) =>
+        new(Guid.CreateVersion7(agora), chamadoId, null, 0, conteudoMascarado, hashConteudo, categoriaId);
+
+    public static DocumentoRag DeArtigo(
+        Guid artigoId, short chunkIndice, string conteudoMascarado, string hashConteudo, short? categoriaId,
+        DateTimeOffset agora) =>
+        new(Guid.CreateVersion7(agora), null, artigoId, chunkIndice, conteudoMascarado, hashConteudo, categoriaId);
+
+    public void Indexar(Vector embedding, string modelo, DateTimeOffset agora)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(modelo);
+        if (embedding.Memory.Length != Dimensoes)
+        {
+            throw new ArgumentException($"O embedding deve ter {Dimensoes} dimensões.", nameof(embedding));
+        }
+
+        Embedding = embedding;
+        EmbeddingModelo = modelo;
+        IndexadoEm = agora;
+    }
+}

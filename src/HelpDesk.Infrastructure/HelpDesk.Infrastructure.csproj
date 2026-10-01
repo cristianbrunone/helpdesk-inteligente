@@ -1,6 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <ItemGroup>
     <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" />
+    <PackageReference Include="Pgvector.EntityFrameworkCore" />
     <PackageReference Include="Bogus" />
     <!-- Abstração de LLM e adaptador OpenAI-compatível (ADR-0005). -->
     <PackageReference Include="Microsoft.Extensions.AI" />

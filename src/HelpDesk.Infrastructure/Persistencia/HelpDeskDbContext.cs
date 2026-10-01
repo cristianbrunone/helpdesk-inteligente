@@ -1,5 +1,6 @@
 using HelpDesk.Domain.Categorias;
 using HelpDesk.Domain.Chamados;
+using HelpDesk.Domain.Conhecimento;
 using HelpDesk.Domain.Triagem;
 using Microsoft.EntityFrameworkCore;
 
@@ -20,6 +21,10 @@ public sealed class HelpDeskDbContext(DbContextOptions<HelpDeskDbContext> option
     public DbSet<TriagemIA> Triagens => Set<TriagemIA>();
 
     public DbSet<RegistroUsoLlm> UsoLlm => Set<RegistroUsoLlm>();
+
+    public DbSet<ArtigoConhecimento> Artigos => Set<ArtigoConhecimento>();
+
+    public DbSet<DocumentoRag> DocumentosRag => Set<DocumentoRag>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
