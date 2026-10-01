@@ -1,4 +1,5 @@
 import { MantineProvider } from '@mantine/core';
+import { Notifications } from '@mantine/notifications';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { render } from '@testing-library/react';
 import type { ReactElement } from 'react';
@@ -16,6 +17,7 @@ function criarQueryClientDeTeste(): QueryClient {
 export function renderizar(ui: ReactElement, { rota = '/' }: { rota?: string } = {}) {
   return render(
     <MantineProvider theme={tema} env="test">
+      <Notifications />
       <QueryClientProvider client={criarQueryClientDeTeste()}>
         <MemoryRouter initialEntries={[rota]}>{ui}</MemoryRouter>
       </QueryClientProvider>
@@ -28,6 +30,7 @@ export function renderizarApp(rota = '/') {
   const roteador = createMemoryRouter(rotas, { initialEntries: [rota] });
   const resultado = render(
     <MantineProvider theme={tema} env="test">
+      <Notifications />
       <QueryClientProvider client={criarQueryClientDeTeste()}>
         <RouterProvider router={roteador} />
       </QueryClientProvider>

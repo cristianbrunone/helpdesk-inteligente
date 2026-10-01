@@ -1,6 +1,6 @@
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import type { Categoria } from './categorias';
-import { requisitar } from './cliente';
+import { requisitar, requisitarComResposta } from './cliente';
 import type { Prioridade, StatusChamado } from '../dominio/chamado';
 import { paraQueryString, type FiltrosChamados } from './filtrosChamados';
 
@@ -71,7 +71,14 @@ export interface NovoChamado {
 export const chavesChamados = {
   todos: ['chamados'] as const,
   lista: (filtros: FiltrosChamados) => ['chamados', 'lista', filtros] as const,
+  detalhe: (id: string) => ['chamados', 'detalhe', id] as const,
 };
+
+/** O detalhe e o ETag (versão) que ele tinha quando foi lido: vai no If-Match das escritas. */
+export interface ChamadoVersionado {
+  chamado: ChamadoDetalhe;
+  etag: string;
+}
 
 export function listarChamados(
   filtros: FiltrosChamados,
@@ -102,5 +109,65 @@ export function useCriarChamado() {
   return useMutation({
     mutationFn: criarChamado,
     onSuccess: () => queryClient.invalidateQueries({ queryKey: chavesChamados.todos }),
+  });
+}
+
+export async function obterChamado(id: string, signal?: AbortSignal): Promise<ChamadoVersionado> {
+  const { dados, headers } = await requisitarComResposta<ChamadoDetalhe>(
+    `/api/chamados/${encodeURIComponent(id)}`,
+    { signal },
+  );
+  return { chamado: dados, etag: headers.get('ETag') ?? '' };
+}
+
+export function useChamado(id: string) {
+  return useQuery({
+    queryKey: chavesChamados.detalhe(id),
+    queryFn: ({ signal }) => obterChamado(id, signal),
+  });
+}
+
+export interface MudancaDeStatus {
+  status: StatusChamado;
+  alteradoPor: string;
+  comentario?: string;
+}
+
+export interface NovoComentario {
+  autor: string;
+  texto: string;
+}
+
+/**
+ * Escritas sobre o chamado mandam o ETag lido no If-Match: se outra pessoa alterou o chamado nesse meio-tempo,
+ * a API responde 412 e a tela recarrega a versão atual em vez de sobrescrever.
+ */
+export function useMudarStatus(id: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ etag, ...corpo }: MudancaDeStatus & { etag: string }) => {
+      const { dados, headers } = await requisitarComResposta<ChamadoDetalhe>(
+        `/api/chamados/${encodeURIComponent(id)}/status`,
+        { method: 'PATCH', corpo, headers: { 'If-Match': etag } },
+      );
+      return { chamado: dados, etag: headers.get('ETag') ?? '' };
+    },
+    onSuccess: (atualizado) => {
+      queryClient.setQueryData(chavesChamados.detalhe(id), atualizado);
+      void queryClient.invalidateQueries({ queryKey: chavesChamados.todos, refetchType: 'none' });
+    },
+  });
+}
+
+export function useComentar(id: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ etag, ...corpo }: NovoComentario & { etag: string }) =>
+      requisitar<Comentario>(`/api/chamados/${encodeURIComponent(id)}/comentarios`, {
+        method: 'POST',
+        corpo,
+        headers: { 'If-Match': etag },
+      }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: chavesChamados.detalhe(id) }),
   });
 }

@@ -54,3 +54,19 @@ const FORMATO_DATA_HORA = new Intl.DateTimeFormat('pt-BR', {
 export function formatarDataHora(iso: string): string {
   return FORMATO_DATA_HORA.format(new Date(iso));
 }
+
+/** Texto do botão de cada destino. Só rótulo: quais destinos existem quem diz é a API (`transicoesPermitidas`). */
+export function rotuloDaAcao(atual: StatusChamado, destino: StatusChamado): string {
+  switch (destino) {
+    case 'EmAndamento':
+      return atual === 'Resolvido' ? 'Reabrir' : 'Iniciar atendimento';
+    case 'Resolvido':
+      return 'Marcar como resolvido';
+    case 'Fechado':
+      return 'Fechar';
+    case 'Cancelado':
+      return 'Cancelar chamado';
+    case 'Aberto':
+      return 'Voltar para aberto';
+  }
+}

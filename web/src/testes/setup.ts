@@ -40,6 +40,7 @@ Object.defineProperty(document, 'fonts', {
 beforeAll(() => servidor.listen({ onUnhandledFrame: 'error' }));
 afterEach(() => {
   cleanup();
+  localStorage.clear();
   servidor.resetHandlers();
 });
 afterAll(() => servidor.close());
