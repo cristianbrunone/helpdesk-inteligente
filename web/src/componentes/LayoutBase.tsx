@@ -5,6 +5,7 @@ import { Link, Outlet, useLocation } from 'react-router';
 const ITENS_DO_MENU = [
   { rotulo: 'Chamados', destino: '/chamados' },
   { rotulo: 'Novo chamado', destino: '/chamados/novo' },
+  { rotulo: 'Dashboard', destino: '/dashboard' },
 ];
 
 /** Casca responsiva: no celular (< sm) a navegação vira um menu aberto pelo botão hambúrguer. */
