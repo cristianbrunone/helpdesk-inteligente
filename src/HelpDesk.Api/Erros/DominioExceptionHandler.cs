@@ -8,7 +8,7 @@ namespace HelpDesk.Api.Erros;
 
 /// <summary>
 /// O único ponto que converte exceções em ProblemDetails (ADR-0013), seguindo o catálogo do contrato §2: erros de
-/// domínio (422/409), parâmetro inválido e requisição malformada (400) e erro inesperado (500).
+/// domínio (404/409/422), parâmetro inválido e requisição malformada (400) e erro inesperado (500).
 /// </summary>
 internal sealed partial class DominioExceptionHandler(
     IProblemDetailsService problemDetails,
@@ -20,6 +20,7 @@ internal sealed partial class DominioExceptionHandler(
     private static readonly Dictionary<string, (int Status, string Titulo)> _errosDominio = new()
     {
         ["requisicao_invalida"] = (StatusCodes.Status400BadRequest, "Requisição inválida"),
+        ["nao_encontrado"] = (StatusCodes.Status404NotFound, "Recurso não encontrado"),
         ["validacao"] = (StatusCodes.Status422UnprocessableEntity, "Dados inválidos"),
         ["transicao_invalida"] = (StatusCodes.Status409Conflict, "Transição de status não permitida"),
         ["chamado_finalizado"] = (StatusCodes.Status409Conflict, "Chamado finalizado"),

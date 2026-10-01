@@ -16,6 +16,11 @@ internal static class ChamadosEndpoints
             .WithSummary("Lista chamados com filtros (repetíveis = OR), busca sem acento, ordenação e paginação.")
             .ProducesProblem(StatusCodes.Status400BadRequest);
 
+        grupo.MapGet("/{id:guid}", Obter)
+            .WithName("ObterChamado")
+            .WithSummary("Detalhe com comentários, histórico e as transições permitidas. O ETag carrega a versão.")
+            .ProducesProblem(StatusCodes.Status404NotFound);
+
         grupo.MapPost("/", Criar)
             .WithName("CriarChamado")
             .WithSummary("Abre um chamado. Responde na hora, sem aguardar a IA.")
@@ -28,6 +33,14 @@ internal static class ChamadosEndpoints
     private static async Task<Ok<ResultadoPaginado<ChamadoResumo>>> Listar(
         [AsParameters] ParametrosListagemHttp parametros, ListarChamados casoDeUso, CancellationToken cancellationToken) =>
         TypedResults.Ok(await casoDeUso.ExecutarAsync(parametros.ParaAplicacao(), cancellationToken));
+
+    private static async Task<Ok<ChamadoDetalhe>> Obter(
+        Guid id, ObterChamado casoDeUso, HttpContext http, CancellationToken cancellationToken)
+    {
+        var encontrado = await casoDeUso.ExecutarAsync(id, cancellationToken);
+        http.Response.Headers.ETag = ETag.De(encontrado.Versao);
+        return TypedResults.Ok(encontrado.Chamado);
+    }
 
     private static async Task<Created<ChamadoDetalhe>> Criar(
         NovoChamado corpo, CriarChamado casoDeUso, HttpContext http, CancellationToken cancellationToken)
