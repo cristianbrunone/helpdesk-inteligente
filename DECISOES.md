@@ -29,6 +29,7 @@ Resumo das principais decisões técnicas. Cada linha aponta para um ADR complet
 | [0016](docs/adr/0016-logs-estruturados-nativos.md) | Logging nativo do .NET em JSON no stdout, com `CorrelationId` no scope | Serilog | Formato de campos fixo e um middleware próprio em troca de zero pacotes e de logs ligados aos traces do OpenTelemetry sem ponte extra. |
 | [0017](docs/adr/0017-ui-kit-mantine.md) | Mantine como biblioteca de UI (AppShell, estados, notificações e gráficos) | Tailwind CSS + shadcn/ui | Visual padrão e bundle maior em troca de estados, responsividade e acessibilidade prontos no prazo. |
 | [0022](docs/adr/0022-ci-com-smoke-do-compose.md) | CI no GitHub Actions: backend, frontend e smoke test do `docker compose up` sem `.env` | Só build e testes | CI alguns minutos mais lento em troca de verificar o item 1 da DoD (clone limpo) em todo push. |
+| [0023](docs/adr/0023-segredos-em-env-local.md) | Segredos em variáveis de ambiente via `.env` local + push protection, sem segredos no CI | Secrets em arquivo (`/run/secrets` + user-secrets) | Chave em texto puro no disco local em troca de ativação simples (uma linha) e defesa focada no risco real: vazamento. |
 
 ### Adicionadas na revisão de arquitetura de 30/09
 
