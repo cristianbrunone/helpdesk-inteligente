@@ -138,4 +138,43 @@ Com a Sprint 0 em andamento, um AI Engineer externo compartilhou um catálogo de
 
 ## Fase 4 — Walking Skeleton (Sprint 0)
 
-_(a preencher)_
+**Artefatos:** código em `src/`, `tests/` e `web/`; `Dockerfile`, `docker-compose.yml`, `.github/workflows/ci.yml`, `scripts/smoke-compose.sh`; [`adr/0015`](adr/0015-migrations-em-servico-one-shot.md), [`adr/0016`](adr/0016-logs-estruturados-nativos.md), [`adr/0017`](adr/0017-ui-kit-mantine.md), [`adr/0022`](adr/0022-ci-com-smoke-do-compose.md) e [`adr/0023`](adr/0023-segredos-em-env-local.md); resultado da PoC nos ADRs [0005](adr/0005-abstracao-provedor-llm.md) e [0011](adr/0011-estrategia-de-embeddings.md).
+
+**O que foi entregue:** a arquitetura completa funcionando de ponta a ponta com o mínimo de funcionalidade.
+
+- O `docker compose up`, num clone limpo e sem chave, sobe os 5 serviços na ordem certa.
+- `/health` verifica o banco e devolve 503 quando ele cai.
+- Logs JSON com correlation id e ProblemDetails no formato do contrato.
+- Casca web responsiva carregando as categorias pela API.
+- CI com três jobs (backend, frontend e smoke do Compose).
+- 35 testes de backend e 9 de frontend.
+
+**Como foi feito:** 15 commits pequenos, um por vez, cada um com build e testes rodados antes da mensagem de commit. Toda decisão de plataforma teve duas alternativas apresentadas **antes** do ADR ser escrito. Todo pacote fora da lista aprovada foi justificado antes de entrar.
+
+### O que mudou em relação ao plano
+
+- **Um Dockerfile com três alvos** (api, worker e migrator) em vez de três Dockerfiles quase iguais. Restore e compilação acontecem uma vez só.
+- **Dois ADRs de plataforma a mais** que o previsto (CI e segredos), numerados 0022 e 0023, porque os números 0018 a 0021 já tinham sido usados pela revisão de 30/09.
+- **"CA extra" opcional no build**, que não estava no plano. A máquina de desenvolvimento fica atrás de um DLP corporativo (Acronis DeviceLock) que reassina o HTTPS, e os contêineres de build não confiam nessa CA. A solução é um *build secret* opt-in: sem configuração, nada muda, e o certificado não entra nas imagens finais.
+- **O CI virou a fonte oficial da validação em clone limpo.** A sessão do Claude Code na nuvem, prevista para isso, roda atrás de um proxy que também inspeciona TLS e bloqueia o download do .NET, então não consegue compilar o backend. O job de smoke do CI faz exatamente o papel dela: clone limpo, sem `.env`, a cada push.
+- **Modelo de IA padrão:** `gemini-3.5-flash-lite`, escolhido pelas cotas medidas, e não o Flash "maior". Ver a PoC abaixo.
+
+### PoC de IA: o risco que justificou a Sprint 0
+
+O plano dizia "melhor descobrir no dia 2 do que no dia 6", e foi exatamente o que aconteceu.
+
+- **Saída estruturada e embeddings funcionaram de primeira.** Um detalhe: o vetor reduzido para 768 dimensões **não vem normalizado** (norma ≈ 0,59), o que confirmou que a normalização do ADR-0011 é obrigatória.
+- **O tool calling falhou.** Os modelos Gemini 3 devolvem a chamada de ferramenta com uma *thought signature* e exigem recebê-la de volta. O SDK da OpenAI descarta esse campo, e a segunda rodada dá HTTP 400. O diagnóstico foi feito à mão, via REST (sem a assinatura → 400; com a assinatura → OK). O plano B escolhido mantém a arquitetura: uma `PipelinePolicy` no adaptador guarda e reinjeta a assinatura. O protótipo passou na PoC; a versão definitiva entra na Sprint 4.
+- **A cota do free tier mudou a escolha do modelo.** Os modelos Flash têm **20 requisições por dia**, e a cota acabou durante a própria PoC. Os Flash Lite têm 500. A latência variou de 5 a 21 s, com 429 e 503 intermitentes, e o timeout padrão subiu de 15 para 60 s.
+
+### Aprendizados (e bugs que só apareceram rodando de verdade)
+
+- **O Npgsql cria enums em ordem alfabética.** O `MapEnum` sozinho gerava `('alta','baixa','critica','media')`, o que quebraria o `ORDER BY prioridade` (P-07). A correção foi declarar os rótulos explicitamente, e um teste de integração verifica a ordem dos três enums.
+- **O CI pegou um bug que o Windows escondia.** O teste de arquitetura lia os `ProjectReference` com `\`, que não é separador no Linux. Na máquina de desenvolvimento ficava verde; no runner, vermelho. A correção foi reproduzida e validada num contêiner Linux antes do push. *(Por descuido, ela entrou no mesmo commit da PoC, e não num `fix:` próprio.)*
+- **Um arquivo necessário ao Compose estava sendo ignorado pelo `.gitignore`** (o placeholder vazio da CA, pego pela regra `*.pem`). Funcionaria na máquina local e falharia em qualquer clone limpo. Isso reforçou o valor do job de smoke no CI.
+- **As versões mais novas trazem armadilhas.**
+  - O TypeScript 7 ainda não é suportado pelo `typescript-eslint` (ficamos no 6).
+  - O MSW 3 renomeou `onUnhandledRequest` para `onUnhandledFrame`. Com o nome antigo, o modo estrito era ignorado em silêncio, e só o `tsc` do build denunciou.
+  - O jsdom 30 exige Node 22.22+ ou 24, o que levou o projeto para o Node 24 LTS.
+- **A imagem Alpine tem diferenças em relação à máquina local.** O Npgsql tenta Kerberos por padrão e a imagem não tem a `libgssapi`, o que gerava um aviso fora do JSON a cada conexão; foi desligado na connection string. O SDK Alpine também não traz o `update-ca-certificates`.
+- **Testes que passam pelo motivo errado.** Duas verificações passavam mesmo com o sistema quebrado: o modo estrito do MSW (opção com nome errado) e a checagem de logs do smoke test (ID fixo que existia de uma execução anterior). As duas foram descobertas provocando a falha de propósito. Desde então, cada teste novo é "quebrado" uma vez para provar que detecta o problema.

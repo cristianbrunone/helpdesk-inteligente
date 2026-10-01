@@ -58,6 +58,7 @@ tools/
 evals/                      conjuntos de avaliação rotulados (triagem/casos.jsonl)
 web/                        frontend (src/api/ isola todo acesso HTTP)
 prompts/                    prompts versionados (triagem.v1.md, copiloto.v1.md...)
+scripts/                    smoke-compose.sh (critérios de aceite contra o compose de pé; usado pelo CI)
 docs/                       documentação de arquitetura (docs/evals/ guarda os relatórios de eval)
 ```
 
@@ -105,13 +106,19 @@ docs/                       documentação de arquitetura (docs/evals/ guarda os
 ## Comandos
 
 ```bash
-docker compose up --build                  # sobe tudo (IA fake por padrão)
+docker compose up --build                  # sobe tudo (IA fake por padrão; sem .env)
+docker compose up --build -d --wait && bash scripts/smoke-compose.sh   # critérios de aceite contra o ambiente de pé
 dotnet build                               # build do backend
-dotnet test --filter "Category!=ProvedorReal"   # todos os testes do backend (exige Docker)
+dotnet test --filter "Category!=ProvedorReal"   # todos os testes do backend (exige Docker); sintaxe válida no MTP
+dotnet test --project tests/HelpDesk.IntegrationTests --filter "Category=ProvedorReal"   # PoC com provedor real (exige chave no .env; nunca no CI)
 dotnet format --verify-no-changes          # lint do backend
 dotnet ef migrations add <Nome> -p src/HelpDesk.Infrastructure -s src/HelpDesk.Migrator
-cd web && npm run lint && npm test && npm run build
+cd web && npm run lint && npm test && npm run build   # Node 24 (web/.nvmrc)
 ```
+
+Os testes rodam sobre o **Microsoft.Testing.Platform** (habilitado no `global.json`): `dotnet test` sem `--project` usa a `HelpDesk.slnx`. Um projeto de teste sem nenhum teste encerra com código 8.
+
+Máquina atrás de proxy com inspeção TLS: defina `CA_EXTRA_PEM` no `.env` local (veja o README). A CA vale só no build das imagens.
 
 (Atualize esta seção se os comandos mudarem.)
 
@@ -152,6 +159,8 @@ O desenvolvimento principal acontece **localmente**, no VS Code. A nuvem tem pap
 - desabilitar, pular ou enfraquecer testes para "fazer passar".
 
 **Ambiente:** a nuvem tem Docker, `docker compose` e Node. O .NET 10 SDK **não** vem instalado. Se `dotnet` não existir, instale com o script oficial (`dotnet-install.sh --channel 10.0`) e registre isso no relatório.
+
+**Limitação observada em 2026-10-01 (Sprint 0):** o ambiente na nuvem bloqueou o download do .NET (`builds.dotnet.microsoft.com`) e faz inspeção TLS, o que quebra o `dotnet restore` dentro do build das imagens (`NU1301 UntrustedRoot`). Por isso, **a validação em clone limpo oficial é o CI** (job "Smoke (docker compose)", ADR-0022), que roda o mesmo cenário a cada push. Nos modos 1 e 2, verifique o que o ambiente permitir (frontend, estado do CI via API do GitHub) e marque o resto como **limitação do ambiente**, nunca como falha do projeto. Não tente contornar a inspeção TLS por conta própria.
 
 **Relatório (modos 1 e 2):** termine sempre com este formato:
 
