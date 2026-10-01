@@ -1,7 +1,8 @@
+using System.Text.Json.Serialization;
+using HelpDesk.Api;
 using HelpDesk.Api.Endpoints;
 using HelpDesk.Api.Erros;
 using HelpDesk.Api.Observabilidade;
-using HelpDesk.Application.Categorias;
 using HelpDesk.Infrastructure;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -11,7 +12,10 @@ var connectionString = builder.Configuration.GetConnectionString("Default")
     ?? throw new InvalidOperationException("A variável ConnectionStrings__Default não foi configurada.");
 
 builder.Services.AdicionarInfraestrutura(connectionString);
-builder.Services.AddScoped<ListarCategorias>();
+builder.Services.AdicionarCasosDeUso();
+// Enums como texto em PascalCase ASCII (contrato §1): "EmAndamento", "Critica".
+builder.Services.ConfigureHttpJsonOptions(options =>
+    options.SerializerOptions.Converters.Add(new JsonStringEnumConverter()));
 builder.Services.AdicionarProblemDetails();
 builder.Services.AdicionarSaude();
 builder.Services.AddOpenApi();
@@ -34,6 +38,7 @@ app.UseSwaggerUI(options =>
 
 app.MapSaude();
 app.MapCategorias();
+app.MapChamados();
 
 app.Run();
 
