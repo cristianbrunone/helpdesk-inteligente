@@ -1,6 +1,7 @@
 using HelpDesk.Application.Categorias;
 using HelpDesk.Application.Chamados;
 using HelpDesk.Application.Conhecimento;
+using HelpDesk.Application.Dashboard;
 using HelpDesk.Application.Triagem;
 using HelpDesk.Infrastructure.Consultas;
 using HelpDesk.Infrastructure.Ia;
@@ -22,6 +23,7 @@ public static class ServicosInfraestrutura
         services.AddScoped<IConsultaCategorias, ConsultaCategorias>();
         services.AddScoped<IRepositorioChamados, RepositorioChamados>();
         services.AddScoped<IConsultaChamados, ConsultaChamados>();
+        services.AddScoped<IConsultaDashboard, ConsultaDashboard>();
         services.AddScoped<IRepositorioTriagens, RepositorioTriagens>();
         services.AddScoped<IFilaTriagem, FilaTriagem>();
         services.AddSingleton<ICatalogoPrompts, CatalogoPromptsArquivo>();

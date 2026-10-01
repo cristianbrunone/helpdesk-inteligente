@@ -120,6 +120,17 @@ dados_pessoais_fora_dos_logs() {
   ! echo "$logs" | grep -q -e "$EMAIL_SMOKE" -e "Pessoa Smoke" -e "123.456.789-09" -e "98765-4321"
 }
 
+dashboard_bate_com_a_listagem() {
+  # Critério da Sprint 3: o dashboard agrega no banco; o total dele é o mesmo da listagem, e a IA tem decisões
+  # (o seed traz triagens aceitas e rejeitadas).
+  local resumo total_lista
+  resumo="$(curl -fsS --max-time 10 "$WEB/api/dashboard/resumo")" || return 1
+  total_lista="$(curl -fsS --max-time 10 "$WEB/api/chamados?tamanhoPagina=1" | campo_json totalItens)"
+  [ "$(echo "$resumo" | campo_json totalChamados)" = "$total_lista" ] \
+    && echo "$resumo" | grep -q '"porStatus":\[{"status":"Aberto"' \
+    && ! echo "$resumo" | grep -q '"taxaAceitacao":null'
+}
+
 # Consulta no banco do compose (dentro do contêiner, com as variáveis dele): -t sem cabeçalho, -A sem alinhamento.
 sql() { docker compose exec -T db sh -c 'psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -tAc "$1"' _ "$1"; }
 
@@ -165,6 +176,7 @@ verificar "GET /health traz o check filaTriagem" saude_com_fila_de_triagem
 verificar "criar chamado → Worker conclui a triagem (fake) em até 30 s" triagem_concluida_pelo_worker
 verificar "aceitar a triagem pelo Nginx → Aceita" aceitar_triagem
 verificar "resolvidos e artigos do seed indexados no RAG (sem ação manual)" indice_rag_completo
+verificar "GET /api/dashboard/resumo pelo Nginx → total igual ao da listagem" dashboard_bate_com_a_listagem
 verificar "logs da API em JSON, com CorrelationId" logs_da_api_em_json
 verificar "nome, e-mail, CPF e telefone fora dos logs da API e do Worker" dados_pessoais_fora_dos_logs
 

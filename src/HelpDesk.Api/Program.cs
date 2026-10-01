@@ -50,6 +50,7 @@ app.MapCategorias();
 app.MapChamados();
 app.MapTriagem();
 app.MapConfiguracao();
+app.MapDashboard();
 
 app.Run();
 
