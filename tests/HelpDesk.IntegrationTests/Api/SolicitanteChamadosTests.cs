@@ -53,6 +53,30 @@ public sealed class SolicitanteChamadosTests(ApiFactory api) : IClassFixture<Api
     }
 
     [Fact]
+    public async Task Listar_ChamadoAbertoPeloAtendenteComEmailEmMaiusculas_ApareceParaOSolicitante()
+    {
+        // O atendente abre em nome da Marina, digitando o e-mail com maiúsculas (um pedido por telefone).
+        var sufixo = Guid.NewGuid().ToString("N")[..8];
+        using var criacao = await api.CriarClienteAtendente().PostAsJsonAsync("/api/chamados", new
+        {
+            titulo = $"Aberto pelo atendente {sufixo}",
+            descricao = "Descrição com mais de dez caracteres.",
+            solicitanteNome = "Marina Costa",
+            solicitanteEmail = "Marina.Costa@Example.com",
+        }, Ct);
+        criacao.StatusCode.ShouldBe(HttpStatusCode.Created);
+        using var criado = JsonDocument.Parse(await criacao.Content.ReadAsStringAsync(Ct));
+        var id = criado.RootElement.GetProperty("id").GetString();
+        var clienteMarina = api.CriarCliente(GeradorSeedUsuarios.MarinaSolicitante);
+
+        using var lista = await clienteMarina.GetAsync($"/api/chamados?q={sufixo}", Ct);
+        using var detalhe = await clienteMarina.GetAsync($"/api/chamados/{id}", Ct);
+
+        (await ItensAsync(lista)).ShouldContain(i => i.GetProperty("id").GetString() == id);
+        detalhe.StatusCode.ShouldBe(HttpStatusCode.OK); // lista e detalhe concordam
+    }
+
+    [Fact]
     public async Task Obter_SolicitanteNoProprioChamado_RetornaSemTriagemESemTransicoes()
     {
         var clienteMarina = api.CriarCliente(GeradorSeedUsuarios.MarinaSolicitante);
