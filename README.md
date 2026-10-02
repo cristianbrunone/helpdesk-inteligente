@@ -5,10 +5,13 @@ Gestão de chamados de suporte com **triagem assistida por IA** (RAG com pgvecto
 **.NET 10 · React + TypeScript · PostgreSQL + pgvector · Docker Compose**
 
 [![CI](https://github.com/cristianbrunone/helpdesk-inteligente/actions/workflows/ci.yml/badge.svg)](https://github.com/cristianbrunone/helpdesk-inteligente/actions/workflows/ci.yml)
+[![Docs](https://img.shields.io/badge/docs-GitHub%20Pages-blue?style=flat&logo=materialformkdocs)](https://cristianbrunone.github.io/helpdesk-inteligente/)
 
 > **Entregue em oito sprints incrementais** ([plano](docs/05-sprints.md)): walking skeleton e PoC de IA, chamados de ponta a ponta, triagem por IA, RAG + dashboard + evals, copiloto conversacional, hardening, autenticação JWT com perfis (ADR-0026), design e experiência e **deploy de demonstração na nuvem com Gemini real e HTTPS** (ADR-0027). Veja [o que existe](#o-que-existe) e o [mapa do enunciado](#mapa-do-enunciado).
 
 > 🌐 **Demonstração em nuvem:** o sistema possui deploy ativo em VPS na nuvem com HTTPS válido e Google Gemini real no plano gratuito ([ADR-0027](docs/adr/0027-deploy-de-demonstracao-na-vps.md) e [guia operacional](docs/deploy-vps.md)). Para proteger a cota da IA e a segurança da infraestrutura contra acessos automatizados, o link de acesso direto é fornecido privadamente durante a avaliação do processo seletivo.
+
+> 📚 **Portal de Documentação Online:** o projeto conta com um site estático interativo no GitHub Pages (MkDocs Material) com navegação lateral, busca instantânea, diagramas Mermaid e os 27 ADRs indexados: **[cristianbrunone.github.io/helpdesk-inteligente](https://cristianbrunone.github.io/helpdesk-inteligente/)**.
 
 **Para testar localmente em 10 minutos:** `docker compose up --build`, abra http://localhost:8080 e entre com um dos usuários do seed:
 - **Atendente:** `ana.suporte@example.com` / `HelpDesk@2026` (acesso total: veja a triagem da IA, aceite a sugestão, pergunte ao copiloto "Já tivemos casos parecidos?" e abra o dashboard).

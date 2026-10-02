@@ -84,3 +84,7 @@ tmp/
 # ---------- Docker (overrides locais) ----------
 docker-compose.override.yml
 compose.override.yaml
+
+# ---------- MkDocs ----------
+site/
+

@@ -1,0 +1,119 @@
+site_name: HelpDesk Inteligente
+site_description: Documentação técnica, arquitetura de software (C4), 27 ADRs, métricas de IA (evals), testes e jornada de desenvolvimento.
+site_author: Cristian Brunone
+site_url: https://cristianbrunone.github.io/helpdesk-inteligente/
+repo_name: cristianbrunone/helpdesk-inteligente
+repo_url: https://github.com/cristianbrunone/helpdesk-inteligente
+
+docs_dir: docs
+
+theme:
+  name: material
+  language: pt-BR
+  features:
+    - navigation.tabs
+    - navigation.tabs.sticky
+    - navigation.sections
+    - navigation.top
+    - navigation.indexes
+    - search.suggest
+    - search.highlight
+    - content.code.copy
+  palette:
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      primary: indigo
+      accent: indigo
+      toggle:
+        icon: material/brightness-7
+        name: Alternar para modo escuro
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      primary: indigo
+      accent: indigo
+      toggle:
+        icon: material/brightness-4
+        name: Alternar para modo claro
+  font:
+    text: Inter
+    code: JetBrains Mono
+
+plugins:
+  - search
+
+markdown_extensions:
+  - admonition
+  - pymdownx.details
+  - pymdownx.superfences:
+      custom_fences:
+        - name: mermaid
+          class: mermaid
+          format: !!python/name:pymdownx.superfences.fence_code_format
+  - pymdownx.highlight:
+      anchor_linenums: true
+      line_spans: __span
+      pygments_lang_class: true
+  - pymdownx.inlinehilite
+  - pymdownx.snippets
+  - tables
+  - attr_list
+  - def_list
+  - toc:
+      permalink: true
+
+nav:
+  - Início: index.md
+  - Arquitetura & Design:
+      - Visão Geral (C4): 02-add.md
+      - Requisitos de Negócio: 01-requisitos.md
+      - Modelo de Dados: 03-modelo-de-dados.md
+      - Contratos da API: 04-contratos-api.md
+      - Enunciado Original: 00-enunciado.md
+  - Decisões (ADRs):
+      - Catálogo de Decisões: decisoes.md
+      - Template de ADR: adr/0000-template.md
+      - 0001 · Monólito Modular: adr/0001-monolito-modular.md
+      - 0002 · Clean Architecture: adr/0002-clean-architecture-pragmatica.md
+      - 0003 · Fila em Tabela PostgreSQL: adr/0003-fila-em-tabela-postgres.md
+      - 0004 · Triagem Pipeline RAG: adr/0004-triagem-pipeline-rag-deterministico.md
+      - 0005 · Abstração Provedor LLM: adr/0005-abstracao-provedor-llm.md
+      - 0006 · Gemini Free Tier e LGPD: adr/0006-gemini-free-tier-e-lgpd.md
+      - 0007 · pgvector no PostgreSQL: adr/0007-pgvector-no-postgres.md
+      - 0008 · Busca Textual pg_trgm: adr/0008-busca-textual-pg-trgm.md
+      - 0009 · SQL Explícito no Dashboard: adr/0009-sql-explicito-no-dashboard.md
+      - 0010 · Filas Derivadas do Estado: adr/0010-filas-derivadas-do-estado.md
+      - 0011 · Estratégia de Embeddings: adr/0011-estrategia-de-embeddings.md
+      - 0012 · Copiloto Streaming SSE: adr/0012-copiloto-com-streaming-sse.md
+      - 0013 · Minimal APIs: adr/0013-minimal-apis.md
+      - 0014 · Fluxo Git Trunk-Based: adr/0014-fluxo-git-trunk-based.md
+      - 0015 · Migrations em One-Shot: adr/0015-migrations-em-servico-one-shot.md
+      - 0016 · Logs Estruturados Nativos: adr/0016-logs-estruturados-nativos.md
+      - 0017 · UI Kit Mantine: adr/0017-ui-kit-mantine.md
+      - 0018 · Evals Offline da IA: adr/0018-evals-offline-da-ia.md
+      - 0019 · Tracing OpenTelemetry: adr/0019-tracing-opentelemetry.md
+      - 0020 · Guardrail de Saída do Copiloto: adr/0020-guardrail-de-saida-do-copiloto.md
+      - 0021 · Kill Switch e Orçamentos: adr/0021-kill-switch-e-orcamentos-de-ia.md
+      - 0022 · CI com Smoke do Compose: adr/0022-ci-com-smoke-do-compose.md
+      - 0023 · Segredos em .env Local: adr/0023-segredos-em-env-local.md
+      - 0024 · Retry no Cliente de Chat: adr/0024-retry-no-cliente-de-chat.md
+      - 0025 · ICU nas Imagens .NET: adr/0025-icu-nas-imagens-dotnet.md
+      - 0026 · Autenticação JWT e Perfis: adr/0026-autenticacao-jwt-com-usuarios-do-seed.md
+      - 0027 · Deploy de Demonstração na VPS: adr/0027-deploy-de-demonstracao-na-vps.md
+  - Jornada & Sprints:
+      - Jornada do Projeto: JORNADA.md
+      - Plano de Sprints: 05-sprints.md
+      - Análise de Experiência: 06-analise-de-experiencia.md
+  - Avaliação de IA (Evals):
+      - Metodologia de Evals: evals/LEIAME.md
+      - Baseline v1 (Sem RAG): evals/2026-10-01-triagem-v1-sem-rag.md
+      - Benchmark v2 (Com RAG): evals/2026-10-01-triagem-v2-com-rag.md
+  - Padrões de Engenharia:
+      - Visão Geral: padroes/LEIAME.md
+      - Convenções de Código: padroes/convencoes-de-codigo.md
+      - Guia de Testes: padroes/guia-de-testes.md
+      - Checklist de Revisão: padroes/checklist-de-revisao.md
+      - Fluxo Git: padroes/fluxo-git.md
+      - Fluxo de ADR: padroes/fluxo-de-adr.md
+      - Revisão Padrões Agênticos: revisoes/2026-09-30-padroes-agenticos.md
+  - Operação & Nuvem:
+      - Deploy na VPS com Gemini & HTTPS: deploy-vps.md
