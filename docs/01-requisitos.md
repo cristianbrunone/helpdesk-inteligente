@@ -228,7 +228,7 @@ Os alvos abaixo servem como referência para decisões de design. Eles valem par
 |---|---|---|
 | P-01 | **Backend em C# / .NET** (versão LTS mais recente disponível). | É a stack principal da vaga e está declarada como diferencial. |
 | P-02 | **`categoriaId` e `prioridade` são opcionais na criação.** A prioridade padrão é Média e a categoria fica nula até o aceite ou uma edição. | O solicitante normalmente não sabe classificar, e é exatamente isso que a IA sugere. Se fossem obrigatórias, a triagem perderia o sentido. |
-| P-03 | **Sem autenticação na v1.** O atendente é informado em campo livre (`alteradoPor`, `autor`). | A autenticação é diferencial. Ficou registrada como próxima versão. |
+| P-03 | ~~**Sem autenticação na v1.** O atendente é informado em campo livre (`alteradoPor`, `autor`).~~ *(Substituída na Sprint 6 pelo [ADR-0026](adr/0026-autenticacao-jwt-com-usuarios-do-seed.md): login com JWT e perfis; a identidade vem do token.)* | A autenticação é diferencial. Ficou registrada como próxima versão, e entrou na Sprint 6, condicional. |
 | P-04 | **Refazer triagem cria um novo registro** de `TriagemIA`. A vigente é a mais recente, e o histórico é preservado. | Permite auditoria e métricas de qualidade. |
 | P-05 | O LLM responde em **português do Brasil**. | Público do produto. |
 | P-06 | É permitido comentar em chamados Resolvidos (só os finais bloqueiam). | O enunciado só bloqueia Fechado e Cancelado. |

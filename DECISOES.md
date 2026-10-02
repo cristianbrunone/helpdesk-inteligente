@@ -95,6 +95,12 @@ Nenhum ADR novo: as decisões abaixo aplicam os ADRs 0004, 0012, 0020 e 0021 e f
 |---|---|
 | O Nginx não comprime as respostas da API (`gzip off` em `/api/`) | Ao comprimir, ele trocava o ETag forte por um fraco (`W/"..."`), e o `If-Match` de toda escrita feita pelo navegador dava 412; os assets seguem comprimidos |
 
+### Decisões da Sprint 6 (login e perfis, condicional)
+
+| # | Decisão | Alternativa rejeitada | Trade-off principal |
+|---|---|---|---|
+| [0026](docs/adr/0026-autenticacao-jwt-com-usuarios-do-seed.md) | JWT próprio (tabela `usuarios`, PBKDF2 nativo, `JwtBearer`) em cookie `httpOnly` + `SameSite=Strict`; perfis atendente e solicitante; identidade vinda do token | ASP.NET Core Identity (`MapIdentityApi`) | Sem recuperação de senha, bloqueio nem refresh token, em troca de um pacote só, JWT de verdade e um token que o JavaScript nunca lê. |
+
 ### Decisões de implementação (Sprint 1)
 
 Decisões menores, que não contrariam nem acrescentam ADR, registradas para quem lê o código.
@@ -127,7 +133,7 @@ O enunciado permite registrar premissas aqui em vez de consultar o recrutador.
 |---|---|
 | P-01 | Backend em C# / .NET 10 (LTS), a stack principal da vaga. |
 | P-02 | `categoriaId` e `prioridade` são opcionais na criação (padrão: sem categoria e prioridade Média). A IA existe justamente para sugeri-las. |
-| P-03 | Sem autenticação na v1. O atendente é identificado por um campo livre (`alteradoPor`, `autor`). |
+| P-03 | ~~Sem autenticação na v1. O atendente é identificado por um campo livre (`alteradoPor`, `autor`).~~ **Substituída na Sprint 6** pelo [ADR-0026](docs/adr/0026-autenticacao-jwt-com-usuarios-do-seed.md): login com JWT e perfis; a identidade vem do token. Valeu até a `v1.0.0`. |
 | P-04 | "Refazer triagem" cria um novo registro de `TriagemIA`. A vigente é a mais recente, e o histórico é preservado. |
 | P-05 | O LLM responde em português do Brasil. |
 | P-06 | É permitido comentar em chamados Resolvidos. Só Fechado e Cancelado bloqueiam comentários. |

@@ -2,7 +2,7 @@
 
 > **Fase do checklist:** fechamento da 3 (planejamento), que prepara a 4 (Walking Skeleton = Sprint 0)
 > **Base:** [`01-requisitos.md`](01-requisitos.md), [`02-add.md`](02-add.md), [`03-modelo-de-dados.md`](03-modelo-de-dados.md), [`04-contratos-api.md`](04-contratos-api.md)
-> **Versão do plano:** 1.1 (30/09). As mudanças estão no [histórico de revisões](#5-histórico-de-revisões-do-plano).
+> **Versão do plano:** 1.2 (02/10). As mudanças estão no [histórico de revisões](#5-histórico-de-revisões-do-plano).
 
 ## 1. Estratégia
 
@@ -22,7 +22,9 @@
 | **3** | RAG + Dashboard + Evals | Triagem com fontes + dashboard com gráficos + **relatório de eval sem RAG × com RAG** | M (dashboard) / S (RAG, evals) | 4,5 h |
 | **4** | Copiloto conversacional | Chat com tool calling e streaming no detalhe do chamado, **com guardrail de saída** | S | 3,25 h |
 | **5** | Hardening e entrega | README completo, E2E, cobertura, revisão final, padrões (Fase 5) | M (docs) / C (E2E) | 2 h |
-| | | | **Total** | **~21,5 h** |
+| **6** | Login e perfis *(condicional, revisão 1.2)* | Login com JWT, perfis solicitante e atendente, identidade vinda do token | C | 3–4 h |
+| **7** | Design e experiência *(revisão 1.2)* | Análise das telas e melhorias de navegação, hierarquia visual e feedback | C | 2–3 h |
+| | | | **Total** | **~21,5 h** (+ 5 a 7 h das Sprints 6 e 7) |
 
 O enunciado estima de 10 a 14 h para o **obrigatório**. As Sprints 0, 1, 2 e a parte de dashboard da 3 somam ~13 h. As ~8,5 h restantes são o investimento consciente nos diferenciais de IA conversacional: RAG, evals, copiloto e os controles de produção vindos da [revisão de 30/09](revisoes/2026-09-30-padroes-agenticos.md).
 
@@ -41,6 +43,8 @@ Considerando o recebimento em 30/09 e a entrega até 07/10:
 | D7 | Ter 06/10 | Sprint 5 + entrega |
 | — | Qua 07/10 | Folga para imprevistos |
 
+*(revisão 1.2)* As Sprints 0 a 5 terminaram em 02/10, à frente do calendário. As Sprints 6 e 7 usam os dias restantes, com uma regra: **até 06/10**. O dia 07/10 continua sendo folga, e nenhuma funcionalidade nova começa nele.
+
 ### Linha de corte (se o prazo apertar)
 
 Os cortes acontecem nesta ordem, do primeiro ao último:
@@ -51,6 +55,8 @@ Os cortes acontecem nesta ordem, do primeiro ao último:
 4. O copiloto inteiro (Sprint 4), junto com o guardrail de saída dele. O RAG da triagem continua sendo o diferencial de IA.
 5. **Os evals (ADR-0018) só são cortados depois do copiloto.** Para uma vaga de IA, medir a qualidade vale mais que uma funcionalidade a mais. Se o tempo for curto, reduzir para os 15 casos claros + os 5 de segurança, em vez de eliminar.
 6. **Nunca se corta:** testes obrigatórios, README e DECISOES.md, e o `docker compose up` funcionando.
+
+*(revisão 1.2)* As Sprints 6 e 7 ficam **fora** da linha de corte: são condicionais. Se uma delas não terminar até 06/10, a branch dela não é mergeada, e a `main` (tag `v1.0.0`) continua sendo a entrega.
 
 ---
 
@@ -274,6 +280,60 @@ Os cortes acontecem nesta ordem, do primeiro ao último:
 
 ---
 
+## Sprint 6: Login e perfis *(condicional, revisão 1.2)*
+
+**Objetivo:** o diferencial "autenticação simples (JWT) com perfis solicitante e atendente" do enunciado (§9), sem deixar de lado o que já funciona.
+
+**Regra para começar e para mergear:** só começa com as Sprints 0 a 5 mergeadas, com o CI verde, os evals rodados e o README final pronto. Só é mergeada se terminar **até 06/10**; senão, a branch fica de fora e a `main` (`v1.0.0`) continua sendo a entrega.
+
+**Requisitos:** "Autenticação JWT com perfis" (C), [ADR-0026](adr/0026-autenticacao-jwt-com-usuarios-do-seed.md). Substitui a premissa P-03.
+
+**Escopo:**
+
+- Domínio e banco: `Usuario` com perfil (`Atendente`, `Solicitante`), tabela `usuarios` com e-mail único e hash de senha (PBKDF2 nativo).
+- Seed: 2 atendentes e 2 solicitantes fictícios, com a senha de demonstração documentada; parte dos chamados do seed passa a pertencer aos solicitantes.
+- API: `POST /api/auth/login`, `GET /api/auth/eu` e `POST /api/auth/sair`; JWT em cookie `httpOnly` + `Secure` + `SameSite=Strict` (e `Authorization: Bearer` aceito); políticas por perfil; 401 e 403.
+- Regras do solicitante: abre chamados com o próprio nome e e-mail; lista e detalhe só dos próprios (o alheio dá 404); comenta só nos próprios; não vê a triagem; não usa o copiloto, o dashboard nem as ações de status e de triagem.
+- Contrato: `alteradoPor`, `autor` e `decididaPor` passam a vir do token.
+- Web: tela de login, rotas protegidas, menu do usuário com "Sair", telas por perfil; sai o campo "Seu nome (atendente)".
+- **README:** os usuários de demonstração, os perfis e o que cada um vê.
+
+**Critérios de aceite:**
+
+- [ ] Sem login, a API responde 401 (exceto `/health`, o login e o OpenAPI), e o front leva à tela de login.
+- [ ] O atendente faz tudo o que fazia antes, e o nome dele aparece no histórico, nos comentários e na decisão da triagem, sem digitar.
+- [ ] O solicitante vê só os próprios chamados; o de outro solicitante dá 404; ele não vê a triagem e recebe 403 nas ações de atendente.
+- [ ] O token nunca fica acessível ao JavaScript (cookie `httpOnly`).
+- [ ] `docker compose up` sem `.env` continua subindo, com login funcionando.
+
+**Testes:**
+
+- **Unitários:** hash e verificação de senha; regras de perfil no caso de uso.
+- **Integração:** login (certo, senha errada, usuário inexistente; atributos do cookie); 401 e 403 em cada grupo de endpoints; o solicitante restrito aos próprios chamados; a identidade vinda do token.
+- **Frontend:** tela de login, redirecionamento sem sessão e telas por perfil.
+- **Smoke e E2E:** autenticados; um E2E do solicitante abrindo um chamado e não vendo o de outro.
+
+---
+
+## Sprint 7: Design e experiência *(revisão 1.2)*
+
+**Objetivo:** melhorar o uso diário da aplicação, com base numa análise das telas, e não em gosto pessoal.
+
+**Escopo:**
+
+- **Análise primeiro:** percorrer as telas (desktop e 375 px, com os dois perfis) e registrar os problemas com prioridade: navegação e menu lateral, hierarquia visual, estados vazios, feedback das ações e consistência. O resultado vira um documento curto e a lista de commits da sprint.
+- Melhorias priorizadas pela análise, sem mudar o contrato da API.
+- **README:** o que mudou na experiência, com as telas.
+
+**Critérios de aceite:**
+
+- [ ] O documento de análise existe, com os problemas e a prioridade de cada um.
+- [ ] Os itens de prioridade alta foram resolvidos, sem regressão no E2E, em 375 px e no contraste (zero violações do axe-core).
+
+**Testes:** os de componente afetados, o E2E e uma nova auditoria de acessibilidade.
+
+---
+
 ## 4. Rastreabilidade: requisitos × sprints
 
 | Requisitos | Sprint |
@@ -284,6 +344,8 @@ Os cortes acontecem nesta ordem, do primeiro ao último:
 | RF-15, RF-16, RF-30, RF-31, RF-40..43, RN-11..13, NFR-02 (dashboard), NFR-12, NFR-16 | 3 |
 | RF-20..24 | 4 |
 | Entrega (README, DECISOES, E2E, cobertura) | 5 |
+| Autenticação JWT com perfis (substitui a P-03) | 6 |
+| Experiência de uso (análise e melhorias) | 7 |
 
 ---
 
@@ -293,3 +355,4 @@ Os cortes acontecem nesta ordem, do primeiro ao último:
 |---|---|---|---|
 | 1.0 | 30/09 | Plano inicial (fechamento da Fase 3) | Sprints 0 a 5, ~18,5 h. |
 | 1.1 | 30/09 | [Revisão de arquitetura: padrões agênticos](revisoes/2026-09-30-padroes-agenticos.md), feita com a Sprint 0 em andamento e **antes** de qualquer código de IA | **S2:** tracing com OpenTelemetry (ADR-0019), kill switch e orçamento da triagem (ADR-0021). **S3:** evals offline com comparação sem RAG × com RAG (ADR-0018); nova tentativa corretiva como opcional. **S4:** guardrail de saída do copiloto (ADR-0020), kill switch e orçamento do copiloto (ADR-0021). Linha de corte: os evals passam a ficar acima do copiloto e do E2E. Total: ~21,5 h. A Sprint 0 não mudou. |
+| 1.2 | 02/10 | As Sprints 0 a 5 terminaram à frente do calendário, com a `v1.0.0` entregável | **S6 (condicional):** login com JWT e perfis solicitante e atendente ([ADR-0026](adr/0026-autenticacao-jwt-com-usuarios-do-seed.md)); a P-03 é substituída. **S7:** análise e melhorias de design e experiência. Prazo das duas: 06/10; o dia 07/10 segue como folga. As Sprints 0 a 5 não mudaram. |
