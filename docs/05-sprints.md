@@ -327,10 +327,35 @@ Os cortes acontecem nesta ordem, do primeiro ao último:
 
 **Critérios de aceite:**
 
-- [ ] O documento de análise existe, com os problemas e a prioridade de cada um.
-- [ ] Os itens de prioridade alta foram resolvidos, sem regressão no E2E, em 375 px e no contraste (zero violações do axe-core).
+- [x] O documento de análise existe, com os problemas e a prioridade de cada um.
+- [x] Os itens de prioridade alta foram resolvidos, sem regressão no E2E, em 375 px e no contraste (zero violações do axe-core).
 
 **Testes:** os de componente afetados, o E2E e uma nova auditoria de acessibilidade.
+
+---
+
+## Sprint 8: Deploy de demonstração *(revisão 1.3)*
+
+**Objetivo:** publicar o HelpDesk Inteligente em nuvem com link acessível (`https://helpdesk.projetoesperanca.tech`), com o Google Gemini real no plano gratuito, cobrindo o diferencial §9 do enunciado.
+
+**Escopo:**
+
+- Deploy na VPS Hostinger Ubuntu 24.04 existente, com subdomínio `helpdesk.projetoesperanca.tech` e terminação HTTPS via Nginx do host ([ADR-0027](adr/0027-deploy-de-demonstracao-na-vps.md)).
+- Portas internas do Docker Compose presas em `127.0.0.1` (`WEB_PORTA_HOST=127.0.0.1:8085`, `API_PORTA_HOST=127.0.0.1:5080`, `DB_PORTA_HOST=127.0.0.1:55432`).
+- Segredos (`LLM_API_KEY`, `JWT_CHAVE` e `POSTGRES_PASSWORD`) mantidos exclusivamente no `.env` da VPS (permissão 600), sem transitar pelo Git ou pelo CI ([ADR-0023](adr/0023-segredos-em-env-local.md)).
+- Remoção do cartão de credenciais da tela de login do frontend (credenciais de teste documentadas no README).
+- Validação remota com smoke e E2E Playwright contra o link publicado.
+- Atualização do README com o link da demonstração e guia operacional em `docs/deploy-vps.md`.
+
+**Critérios de aceite:**
+
+- [ ] O link abre com HTTPS válido, e o login funciona.
+- [ ] A triagem usa o Gemini (o painel mostra o modelo real).
+- [ ] O copiloto responde em streaming e cita fontes.
+- [ ] As portas internas (API, banco e web) não respondem de fora da VPS.
+- [ ] Um clone limpo continua subindo com a IA fake, sem .env (CI verde).
+
+**Testes:** smoke e E2E existentes executados contra o link publicado com HTTPS.
 
 ---
 
@@ -346,6 +371,7 @@ Os cortes acontecem nesta ordem, do primeiro ao último:
 | Entrega (README, DECISOES, E2E, cobertura) | 5 |
 | Autenticação JWT com perfis (substitui a P-03) | 6 |
 | Experiência de uso (análise e melhorias) | 7 |
+| Diferencial §9 (deploy em nuvem com link acessível) | 8 |
 
 ---
 
@@ -356,3 +382,4 @@ Os cortes acontecem nesta ordem, do primeiro ao último:
 | 1.0 | 30/09 | Plano inicial (fechamento da Fase 3) | Sprints 0 a 5, ~18,5 h. |
 | 1.1 | 30/09 | [Revisão de arquitetura: padrões agênticos](revisoes/2026-09-30-padroes-agenticos.md), feita com a Sprint 0 em andamento e **antes** de qualquer código de IA | **S2:** tracing com OpenTelemetry (ADR-0019), kill switch e orçamento da triagem (ADR-0021). **S3:** evals offline com comparação sem RAG × com RAG (ADR-0018); nova tentativa corretiva como opcional. **S4:** guardrail de saída do copiloto (ADR-0020), kill switch e orçamento do copiloto (ADR-0021). Linha de corte: os evals passam a ficar acima do copiloto e do E2E. Total: ~21,5 h. A Sprint 0 não mudou. |
 | 1.2 | 02/10 | As Sprints 0 a 5 terminaram à frente do calendário, com a `v1.0.0` entregável | **S6 (condicional):** login com JWT e perfis solicitante e atendente ([ADR-0026](adr/0026-autenticacao-jwt-com-usuarios-do-seed.md)); a P-03 é substituída. **S7:** análise e melhorias de design e experiência. Prazo das duas: 06/10; o dia 07/10 segue como folga. As Sprints 0 a 5 não mudaram. |
+| 1.3 | 02/10 | As Sprints 6 e 7 terminaram à frente do calendário; decisão de implementar o diferencial de deploy em nuvem (§9) | **S8:** deploy de demonstração na VPS com link público em `https://helpdesk.projetoesperanca.tech`, Gemini real no plano gratuito ([ADR-0027](adr/0027-deploy-de-demonstracao-na-vps.md)) e guia em `docs/deploy-vps.md`. Prazo: 06/10. |

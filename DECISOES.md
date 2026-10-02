@@ -116,6 +116,12 @@ Sem ADR novo: nada mudou na arquitetura nem no contrato da API. O que guiou a sp
 | Contraste ajustado no tema, e não em cada componente: erro dos campos em `red.9`; variante "light" com fundo no tom 0 e hover no tom 1 | Corrige todos os usos de uma vez (inclusive os que a auditoria não visitou); um teste de unidade recalcula o contraste |
 | O README descreve as mudanças da sprint em texto, sem capturas de tela | Decisão do desenvolvedor; o plano (05-sprints.md) previa as telas no README |
 
+### Decisões da Sprint 8 (deploy de demonstração)
+
+| # | Decisão | Alternativa rejeitada | Trade-off principal |
+|---|---|---|---|
+| [0027](docs/adr/0027-deploy-de-demonstracao-na-vps.md) | Deploy na VPS existente em `https://helpdesk.projetoesperanca.tech`, portas internas presas em `127.0.0.1`, Nginx do host com Let's Encrypt e Gemini real no plano gratuito | PaaS gratuita (Render/Fly.io) ou nova VPS dedicada | Compilação inicial mais demorada com 1 vCPU (~15 min) em troca de custo zero, sem *cold start* e aproveitamento de capacidade ociosa da VPS. |
+
 ### Decisões de implementação (Sprint 1)
 
 Decisões menores, que não contrariam nem acrescentam ADR, registradas para quem lê o código.
