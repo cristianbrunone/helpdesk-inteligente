@@ -8,6 +8,7 @@ import { AlertaErro } from '../componentes/AlertaErro';
 import { BadgePrioridade, BadgeStatus } from '../componentes/BadgesChamado';
 import { ComentariosChamado } from '../componentes/ComentariosChamado';
 import { HistoricoChamado } from '../componentes/HistoricoChamado';
+import { PainelCopiloto } from '../componentes/PainelCopiloto';
 import { PainelTriagem } from '../componentes/PainelTriagem';
 import { formatarDataHora } from '../dominio/chamado';
 
@@ -72,6 +73,9 @@ export function DetalheChamado() {
                   <Text size="sm" style={{ whiteSpace: 'pre-wrap', overflowWrap: 'anywhere' }}>
                     {data.chamado.descricao}
                   </Text>
+                </Paper>
+                <Paper withBorder p="md">
+                  <PainelCopiloto chamadoId={data.chamado.id} />
                 </Paper>
                 <Paper withBorder p="md">
                   <ComentariosChamado
