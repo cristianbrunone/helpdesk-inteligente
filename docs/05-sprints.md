@@ -300,11 +300,11 @@ Os cortes acontecem nesta ordem, do primeiro ao último:
 
 **Critérios de aceite:**
 
-- [ ] Sem login, a API responde 401 (exceto `/health`, o login e o OpenAPI), e o front leva à tela de login.
-- [ ] O atendente faz tudo o que fazia antes, e o nome dele aparece no histórico, nos comentários e na decisão da triagem, sem digitar.
-- [ ] O solicitante vê só os próprios chamados; o de outro solicitante dá 404; ele não vê a triagem e recebe 403 nas ações de atendente.
-- [ ] O token nunca fica acessível ao JavaScript (cookie `httpOnly`).
-- [ ] `docker compose up` sem `.env` continua subindo, com login funcionando.
+- [x] Sem login, a API responde 401 (exceto `/health`, o login e o OpenAPI), e o front leva à tela de login.
+- [x] O atendente faz tudo o que fazia antes, e o nome dele aparece no histórico, nos comentários e na decisão da triagem, sem digitar.
+- [x] O solicitante vê só os próprios chamados; o de outro solicitante dá 404; ele não vê a triagem e recebe 403 nas ações de atendente.
+- [x] O token nunca fica acessível ao JavaScript (cookie `httpOnly`).
+- [x] `docker compose up` sem `.env` continua subindo, com login funcionando.
 
 **Testes:**
 

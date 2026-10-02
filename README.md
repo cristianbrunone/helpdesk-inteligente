@@ -6,9 +6,12 @@ Gestão de chamados de suporte com **triagem assistida por IA** (RAG com pgvecto
 
 [![CI](https://github.com/cristianbrunone/helpdesk-inteligente/actions/workflows/ci.yml/badge.svg)](https://github.com/cristianbrunone/helpdesk-inteligente/actions/workflows/ci.yml)
 
-> **Entregue em seis sprints incrementais** ([plano](docs/05-sprints.md)): walking skeleton e PoC de IA, chamados de ponta a ponta, triagem por IA, RAG + dashboard + evals, copiloto conversacional e hardening (E2E, cobertura, acessibilidade e padrões). Veja [o que existe](#o-que-existe) e, para quem avalia, o [mapa do enunciado](#mapa-do-enunciado).
+> **Entregue em sete sprints incrementais** ([plano](docs/05-sprints.md)): walking skeleton e PoC de IA, chamados de ponta a ponta, triagem por IA, RAG + dashboard + evals, copiloto conversacional, hardening (E2E, cobertura, acessibilidade e padrões) e **autenticação JWT com perfis** (ADR-0026). Veja [o que existe](#o-que-existe) e, para quem avalia, o [mapa do enunciado](#mapa-do-enunciado).
 
-**Para testar em 10 minutos:** `docker compose up --build`, abra http://localhost:8080, crie um chamado ("Não consigo emitir o boleto") e veja a triagem da IA chegar em segundos; informe seu nome em "Ações" e aceite a sugestão; no detalhe de um chamado sobre "erro 403", pergunte ao copiloto "Já tivemos casos parecidos?"; e abra o dashboard. Tudo com a IA fake, sem chave.
+**Para testar em 10 minutos:** `docker compose up --build`, abra http://localhost:8080 e entre com um dos usuários do seed:
+- **Atendente:** `ana.suporte@example.com` / `HelpDesk@2026` (acesso total: veja a triagem da IA, aceite a sugestão, pergunte ao copiloto "Já tivemos casos parecidos?" e abra o dashboard).
+- **Solicitante:** `carlos.solicitante@example.com` / `HelpDesk@2026` (visão restrita: abra um novo chamado sem precisar preencher dados de contato, acompanhe o status e envie comentários).
+Tudo pronto no seed, com IA fake e sem precisar de chave.
 
 ## Documentação
 
@@ -58,6 +61,14 @@ Não é preciso criar `.env`: todo valor tem padrão no `docker-compose.yml`. A 
 
 Para mudar alguma porta ou valor, copie o [`.env.example`](.env.example) para `.env` e edite. O `.env` nunca é versionado (ADR-0023).
 
+### Usuários de demonstração (Seed)
+
+| E-mail | Senha | Perfil | O que pode fazer |
+|---|---|---|---|
+| `ana.suporte@example.com` | `HelpDesk@2026` | **Atendente** | Acesso total: listar todos os chamados, iniciar/resolver/cancelar chamados, aceitar/rejeitar triagem de IA, copiloto conversacional, dashboard e abrir chamados em nome de terceiros. |
+| `carlos.solicitante@example.com` | `HelpDesk@2026` | **Solicitante** | Acesso restrito: lista apenas seus próprios chamados, abertura simplificada de chamados (dados de solicitante vêm da sessão) e adição de comentários. Não acessa dashboard, nem painéis de IA. |
+| `mariana.solicitante@example.com` | `HelpDesk@2026` | **Solicitante** | Solicitante adicional para testar isolamento de chamados entre contas distintas. |
+
 <details>
 <summary><b>Rede corporativa com inspeção TLS</b> (o build falha com <code>UntrustedRoot</code> ou <code>NU1301</code>)</summary>
 
@@ -103,11 +114,11 @@ O mesmo conjunto roda no **CI** (GitHub Actions) a cada push, em três jobs para
 | Suíte | Testes | O que cobrem |
 |---|---|---|
 | Arquitetura | 6 | Regra de dependência entre camadas, nos tipos (NetArchTest) e nos `.csproj` |
-| Unitários | 446 | Máquina de estados do chamado e da triagem; **mascaramento** (positivos, negativos e falsos positivos aceitos); **validador da saída da IA**; fake e seus modos de falha; **resiliência** (timeout, retry, backoff, `Retry-After`) do chat e dos embeddings; **embedding fake** (norma 1, determinismo, proximidade) e normalização do provedor real; **montagem dos documentos do RAG** (mascaramento, corte, chunking, hash); prompt v1/v2 e injeção pelo contexto; **métricas do harness de evals** com resultados simulados; o **conjunto rotulado** (composição e independência do seed); **ferramentas do copiloto** e seus parâmetros; **guardrail de saída do copiloto** (retenção em stream, PII dividida, verificação de citações); **caso de uso ConversarComCopiloto** e adaptador de IA; variáveis de ambiente; seed; heartbeat |
-| Integração | 237 | PostgreSQL real: `CHECK`s, índices, seed e concorrência. API de chamados, de triagem, do copiloto e do dashboard. **Pipeline com spy** (nenhum dado pessoal chega ao provedor, com e sem contexto). **Fila** da triagem. **Reconciliador do RAG** (indexar, reabrir, comentar, fechar sem reindexar, trocar o modelo, desativar artigo, dois reconciliadores e provedor fora). **Busca semântica** ("erro 403 em boletos" recupera o artigo financeiro; `EXPLAIN` com o índice HNSW). **Consultas das ferramentas do copiloto** (similares, artigos, histórico e métricas). **Endpoint SSE do copiloto** (sequência, rate limit 429, guardrail de PII e citação inventada, kill switch 503 e cancelamento). **Harness de evals** com o fake. **Tracing** sem conteúdo. `/health` com a fila |
-| Frontend | 62 | Filtros na URL; busca com debounce; paginação; formulário e erros 422; botões só das `transicoesPermitidas`; 412; **painel da triagem** (concluída, falhou, pendente com polling, aceitar, rejeitar, refazer, IA desativada, **fontes do RAG**); **dashboard** (cartões, tabelas acessíveis dos gráficos, consumo de IA); **parser e cliente SSE do copiloto** (chunks fragmentados, AbortController, eventos tipados); **painel do copiloto** (streaming incremental, etapas das ferramentas, fontes clicáveis, selo de referência não verificada, resposta truncada, botão parar, kill switch); estados de carregando, vazio e erro |
-| Smoke (Compose) | 20 | Critérios de aceite contra o ambiente de pé: seed, busca sem acento, ciclo com `If-Match` e 412 **pedindo gzip como o navegador**, **triagem concluída pelo Worker e aceita pelo Nginx**, **texto acentuado tratado pelo Worker** (ICU), **copiloto via SSE pelo Nginx sem buffer, com fontes verificadas**, **seed indexado no RAG sem ação manual**, **dashboard batendo com a listagem**, `/api/config/ia`, e dados pessoais fora dos logs da API **e do Worker** |
-| E2E (Playwright) | 6 | No navegador, contra o compose: **criar chamado → ver a triagem → aceitar** (categoria e prioridade aplicadas); **copiloto** citando chamados parecidos com fontes clicáveis; lista, novo chamado, detalhe e dashboard **sem rolagem horizontal em 375 px** |
+| Unitários | 482 | Máquina de estados do chamado e da triagem; **mascaramento** (positivos, negativos e falsos positivos aceitos); **validador da saída da IA**; fake e seus modos de falha; **resiliência** (timeout, retry, backoff, `Retry-After`) do chat e dos embeddings; **embedding fake** (norma 1, determinismo, proximidade) e normalização do provedor real; **montagem dos documentos do RAG** (mascaramento, corte, chunking, hash); prompt v1/v2 e injeção pelo contexto; **métricas do harness de evals** com resultados simulados; o **conjunto rotulado** (composição e independência do seed); **ferramentas do copiloto** e seus parâmetros; **guardrail de saída do copiloto** (retenção em stream, PII dividida, verificação de citações); **caso de uso ConversarComCopiloto** e adaptador de IA; variáveis de ambiente; seed; heartbeat; **hasher PBKDF2** (salt e hash); **serviço de tokens JWT** (emissão, expiração, assinatura e validação); **políticas e claims** |
+| Integração | 292 | PostgreSQL real: `CHECK`s, índices, seed e concorrência. API de chamados, de triagem, do copiloto, do dashboard e de **autenticação** (`/api/auth/login`, `/api/auth/sessao`, `/api/auth/logout` com cookies HttpOnly). **Políticas de autorização** (401 sem sessão, 403 por perfil). **Isolamento de solicitante** (solicitante só lista e detalha os próprios chamados). **Identidade via JWT** (remoção de identidade manual; nome e autor vêm da sessão). **Pipeline com spy** (nenhum dado pessoal chega ao provedor, com e sem contexto). **Fila** da triagem. **Reconciliador do RAG** (indexar, reabrir, comentar, fechar sem reindexar, trocar o modelo, desativar artigo, dois reconciliadores e provedor fora). **Busca semântica** ("erro 403 em boletos" recupera o artigo financeiro; `EXPLAIN` com o índice HNSW). **Consultas das ferramentas do copiloto** (similares, artigos, histórico e métricas). **Endpoint SSE do copiloto** (sequência, rate limit 429, guardrail de PII e citação inventada, kill switch 503 e cancelamento). **Harness de evals** com o fake. **Tracing** sem conteúdo. `/health` com a fila |
+| Frontend | 70 | **Login e sessão** (redirecionamento com `?voltar=`, credenciais, exibição do usuário, logout); **formulário dinâmico por perfil** (solicitante sem campos de contato); **esconder dashboard e painéis de IA** para solicitante; filtros na URL; busca com debounce; paginação; formulário e erros 422; botões só das `transicoesPermitidas`; 412; **painel da triagem** (concluída, falhou, pendente com polling, aceitar, rejeitar, refazer, IA desativada, **fontes do RAG**); **dashboard** (cartões, tabelas acessíveis dos gráficos, consumo de IA); **parser e cliente SSE do copiloto** (chunks fragmentados, AbortController, eventos tipados); **painel do copiloto** (streaming incremental, etapas das ferramentas, fontes clicáveis, selo de referência não verificada, resposta truncada, botão parar, kill switch); estados de carregando, vazio e erro |
+| Smoke (Compose) | 20 | Critérios de aceite contra o ambiente de pé: autenticado via cookie de sessão, seed, busca sem acento, ciclo com `If-Match` e 412 **pedindo gzip como o navegador**, **triagem concluída pelo Worker e aceita pelo Nginx**, **texto acentuado tratado pelo Worker** (ICU), **copiloto via SSE pelo Nginx sem buffer, com fontes verificadas**, **seed indexado no RAG sem ação manual**, **dashboard batendo com a listagem**, `/api/config/ia`, e dados pessoais fora dos logs da API **e do Worker** |
+| E2E (Playwright) | 8 | No navegador, contra o compose: **login e sessão** com credenciais válidas e inválidas; **fluxo completo do Solicitante** (restrição de navegação, abertura sem campos de contato, sem painéis de IA/status, envio de comentários); **criar chamado → ver a triagem → aceitar** (categoria e prioridade aplicadas com identidade da sessão); **copiloto** citando chamados parecidos com fontes clicáveis; lista, novo chamado, detalhe e dashboard **sem rolagem horizontal em 375 px** |
 
 #### Cobertura
 
@@ -138,6 +149,15 @@ cd web && npm run test:cobertura
 ---
 
 ## O que existe
+
+### Sprint 6: Autenticação JWT e Perfis (ADR-0026)
+
+- **Autenticação segura via Cookie HttpOnly:** JWT assinado com HMAC-SHA256 trafegado em cookie protegido (`HttpOnly`, `SameSite=Lax`), prevenindo ataques de XSS. A API também aceita `Authorization: Bearer` para clientes programáticos e testes.
+- **Perfis de acesso granulares (`Atendente` e `Solicitante`):**
+  - **Atendente:** permissão completa de operação (iniciar/resolver/cancelar chamados, aceitar/rejeitar triagem por IA, copiloto conversacional, dashboard executivo e abertura de chamado em nome de terceiros).
+  - **Solicitante:** visão restrita aos próprios chamados (`solicitanteId`), abertura simplificada de chamados (dados pessoais vêm da sessão) e permissão para leitura e adição de comentários. Menus administrativos (Dashboard) e painéis de IA ficam ocultos.
+- **Identidade inviolável no backend:** remoção de campos de identificação manual (`alteradoPor`, `autor`, `decididaPor`) dos contratos JSON de escrita. A identidade é extraída diretamente das *claims* assinadas do token JWT (`ClaimsPrincipal`), prevenindo falsificação de autoria em comentários, mudanças de estado e decisões de triagem.
+- **Armazenamento seguro de credenciais:** senhas salvas com hash PBKDF2 (HMAC-SHA256, 100.000 iterações e salt aleatório de 16 bytes), verificadas em tempo constante.
 
 ### Sprint 5: Hardening e entrega
 
@@ -460,6 +480,7 @@ O enunciado pede que cada biblioteca seja justificada. As versões ficam fixadas
 | Pgvector.EntityFrameworkCore | O tipo `vector` do pgvector no EF Core e no Npgsql (ADR-0007): embeddings gravados e lidos como qualquer coluna |
 | Microsoft.EntityFrameworkCore.Design | Ferramenta de migrations (`dotnet ef`), só em tempo de desenvolvimento |
 | Microsoft.AspNetCore.OpenApi + Swashbuckle.AspNetCore.SwaggerUI | Documento OpenAPI nativo do .NET e só a interface do Swagger por cima |
+| Microsoft.AspNetCore.Authentication.JwtBearer | Autenticação e validação de tokens JWT no ASP.NET Core (ADR-0026) |
 | Microsoft.Extensions.Hosting | Host genérico (DI, configuração e logs) para o Worker e o Migrator |
 | Microsoft.Extensions.AI + Microsoft.Extensions.AI.OpenAI | Abstração padrão do .NET para LLM (`IChatClient`, `IEmbeddingGenerator`); um adaptador atende Gemini, OpenAI e Ollama (ADR-0005). Os middlewares de resiliência, telemetria e OpenTelemetry são camadas desse mesmo cliente |
 | OpenTelemetry (Hosting, exportador OTLP, instrumentação de ASP.NET Core e HttpClient) + Npgsql.OpenTelemetry | Traces por etapa da triagem e por tentativa ao provedor, sem conteúdo, no padrão aberto (ADR-0019) |
@@ -509,16 +530,15 @@ A convenção snake_case, o health check do banco e a validação dos dados de e
 
 ## O que ficaria para uma próxima versão
 
-O que ficou de fora foi decidido, não esquecido. Cada item tem o motivo e, quando existe, o ADR com o gatilho de reavaliação.
+O que ficou de fora foi decidido, não esquecido. Cada item tem o motivo e, quando existe, o ADR com o gatilho de reavaliação. A autenticação com perfis, prevista inicialmente como diferencial futuro, foi implementada e entregue integralmente na Sprint 6 (ADR-0026).
 
 | Tema | O que falta | Por que ficou para depois |
 |---|---|---|
-| **Autenticação e perfis** | JWT com perfis solicitante e atendente; hoje o atendente se identifica num campo livre (P-03) | Diferencial do enunciado; o escopo priorizou a IA conversacional, foco da vaga |
 | **Qualidade da triagem** | `triagem.v3` para a regra "problema com contorno = Média" (onde a v2 perdeu para a v1), com o critério de adoção fixado **antes** de medir; métrica conjunta (categoria **e** prioridade certas) no relatório do harness | O eval da Sprint 3 mostrou o alvo; ajustar o prompt sem um critério prévio seria escolher o resultado depois de vê-lo |
 | **Evals do copiloto** | Conjunto rotulado e métricas para o `copiloto.v1` (uso certo das ferramentas, citações, recusa de escrita) | O harness (ADR-0018) cobre a triagem; o copiloto tem testes determinísticos com o fake, mas não medição de qualidade com o modelo real |
 | **Grounding das respostas** | LLM-as-judge por amostragem para afirmações sem citação | Hoje só as citações `#numero` são verificadas (ADR-0020); o juiz dobra custo e latência |
 | **Dados pessoais** | NER/DLP além das regex (nomes de terceiros, endereços) | O mascaramento por regex cobre e-mail, telefone, CPF e o nome do solicitante; não é um DLP completo (ADR-0006) |
-| **Rate limit do copiloto** | Por atendente (com autenticação) ou por IP real atrás do proxy (`ForwardedHeaders` restrito à rede do Nginx) | Hoje, atrás do Nginx, o limite vale para o conjunto dos atendentes |
+| **Rate limit do copiloto** | Por atendente autenticado ou por IP real atrás do proxy (`ForwardedHeaders` restrito à rede do Nginx) | Hoje, atrás do Nginx, o limite vale para o conjunto dos atendentes |
 | **Notificações em tempo real** | SignalR/SSE para "a triagem terminou", no lugar do polling | O polling com backoff resolve com uma triagem de segundos (ADR-0012, gatilho registrado) |
 | **Feature flags dinâmicas** | Kill switches sem reiniciar o contêiner | Num único ambiente, reiniciar leva segundos (ADR-0021) |
 | **RAG** | *Reranking* e reescrita da consulta para chamados ambíguos | Só se a taxa de rejeição por categoria pedir (gatilho do ADR-0004) |
@@ -555,8 +575,8 @@ Onde cada item da seção 8 (Entrega) e dos testes (seção 7) está atendido:
 | Justificativa dos índices | [Índices](#índices-resumo) e [`docs/03-modelo-de-dados.md` §5](docs/03-modelo-de-dados.md#5-índices-e-justificativas) |
 | O que ficaria para uma próxima versão | [Próxima versão](#o-que-ficaria-para-uma-próxima-versão) |
 | `DECISOES.md` com decisões, alternativas e trade-offs | [`DECISOES.md`](DECISOES.md), com os ADRs completos em [`docs/adr/`](docs/adr/) |
-| Histórico de commits real e incremental | 6 PRs de sprint com merge commit e tags `v0.1.0` a `v1.0.0` ([fluxo Git](docs/padroes/fluxo-git.md)) |
+| Histórico de commits real e incremental | 7 PRs de sprint com merge commit e tags `v0.1.0` a `v1.1.0` ([fluxo Git](docs/padroes/fluxo-git.md)) |
 | Pipeline de CI | [`.github/workflows/ci.yml`](.github/workflows/ci.yml): backend, frontend, smoke do compose e E2E |
 | Bibliotecas usadas e por quê | [Stack e bibliotecas](#stack-e-bibliotecas) |
 | Uso de assistentes de IA | [Uso de assistentes de IA](#uso-de-assistentes-de-ia-no-desenvolvimento) |
-| Testes mínimos (transições, mascaramento, parsing da IA, integração com banco real, 3+ de componente) e E2E | [Rodar os testes](#rodar-os-testes): 689 no backend, 62 no front, 20 no smoke e 6 no E2E |
+| Testes mínimos (transições, mascaramento, parsing da IA, integração com banco real, 3+ de componente) e E2E | [Rodar os testes](#rodar-os-testes): 780 no backend, 70 no front, 20 no smoke e 8 no E2E |

@@ -368,16 +368,53 @@ O eval rodou no Gemini: 180 triagens, 90 por versão, sem nenhuma falha que não
 
 ---
 
+## Sprint 6 — Autenticação JWT e Perfis (ADR-0026)
+
+**Artefatos:** [ADR-0026](adr/0026-autenticacao-jwt-com-usuarios-do-seed.md); entidade `Usuario` e enum `PerfilUsuario` em `src/HelpDesk.Domain/Usuarios/`; PBKDF2 e JWT em `src/HelpDesk.Infrastructure/Autenticacao/` (`HasherSenha`, `TokenJwtServico`); endpoints de autenticação em `src/HelpDesk.Api/Endpoints/AutenticacaoEndpoints.cs` (`POST /api/auth/login`, `GET /api/auth/sessao`, `POST /api/auth/logout`); políticas de autorização `Atendente` e `Autenticado` em `src/HelpDesk.Api/Program.cs`; migração `AdicionarUsuarios` e seed determinístico com senhas seguras em `src/HelpDesk.Infrastructure/Persistencia/Seed/GeradorSeedUsuarios.cs`; filtro por `solicitanteId` em `ConsultaChamados`; tela de login `web/src/paginas/Entrar.tsx`, rotas protegidas em `web/src/componentes/RotaProtegida.tsx` e gestão de sessão em `web/src/api/autenticacao.ts`; fluxo E2E do solicitante em `web/e2e/solicitante.spec.ts`.
+
+**O que foi entregue:**
+
+- **Autenticação robusta por Cookie HttpOnly:** JWT assinado com HMAC-SHA256, encapsulado num cookie seguro com `HttpOnly`, `SameSite=Lax` e `Path=/`. Imune a ataques de roubo de token via XSS no frontend e compatível com clientes sem navegador via cabeçalho `Authorization: Bearer`.
+- **Perfis de usuário estritos (`Atendente` e `Solicitante`):**
+  - **Atendente:** acesso completo à triagem por IA, copiloto conversacional, transições de status da máquina de estados, dashboard executivo e abertura de chamado em nome de solicitantes.
+  - **Solicitante:** visão restrita e personalizada. Na API e na interface, visualiza e consulta apenas os chamados associados à sua própria conta (`solicitanteId`). O formulário de abertura de chamado omite campos de contato (vinculados diretamente à sessão ativa), o menu omite o dashboard, e o detalhe do chamado oculta painéis de IA e botões de alteração de status, mantendo acesso a leitura e envio de comentários.
+- **Identidade confiável e inviolável:** remoção total de campos de identidade do corpo das requisições (`alteradoPor`, `autor`, `decididaPor`). O backend extrai a identidade unicamente do `ClaimsPrincipal` assinado, impedindo qualquer falsificação de autoria de comentários, alterações de status ou decisões de triagem.
+- **Segurança de credenciais:** senhas com salt criptográfico de 16 bytes e hash PBKDF2 com HMAC-SHA256 em 100.000 iterações, comparadas em tempo constante contra ataques de temporização.
+- **Testes:** a suíte do backend cresceu de 689 para 780 testes (482 unitários, 292 de integração e 6 de arquitetura); o frontend passou de 62 para 70 testes no Vitest; os testes E2E com Playwright aumentaram de 6 para 8 cenários, cobrindo o fluxo do solicitante e autenticação; e o script de smoke do compose foi atualizado para operar autenticado.
+
+**Como foi feito:** 8 commits estruturados e validados isoladamente:
+1. `feat(db): adiciona a tabela de usuários com perfis e a migration`
+2. `feat(db): popula usuários com perfis no seed com senhas seguras`
+3. `feat(api): adiciona o login com JWT e cookie HttpOnly + /api/auth/sessao e logout`
+4. `feat(web): adiciona o login, a sessão e o guard de rotas no front + smoke e E2E autenticados`
+5. `feat(api): exige autenticação nos endpoints e restringe ações de atendente`
+6. `feat(api): restringe o solicitante aos próprios chamados e documenta os usuários de teste`
+7. `refactor(api): tira a identidade do corpo das requisições + o front sem o campo 'Seu nome (atendente)' e o formulário por perfil`
+8. `test(e2e): cobre o fluxo do solicitante`
+
+### O que mudou em relação ao plano
+
+- **Inversão planejada entre frontend e backend:** para preservar o princípio inegociável de que *cada commit compila e passa 100% nos testes*, a interface e os testes de integração/E2E com login foram integrados antes de a API fechar os endpoints com 401. Se a API exigisse autenticação antes do frontend ter tela de login, o CI quebraria no meio da branch.
+- **Ajustes no script de smoke:** o smoke em bash precisou ser atualizado para realizar login via `curl`, armazenando o cookie em jar temporário para consumir os endpoints protegidos, e as chamadas de transição/triagem tiveram seus payloads ajustados para não mais enviar identidade manual.
+
+### Aprendizados
+
+- **Ordem de introdução de segurança:** introduzir autenticação em projetos com CI estrito exige criar as chaves e mecanismos de autenticação do cliente antes de bloquear os endpoints da API.
+- **Segurança defensiva contra falsificação:** confiar na identidade enviada no payload JSON (ex.: `"alteradoPor": "Ana"`) é uma vulnerabilidade clássica. Ao amarrar a autoria ao token JWT assinado, eliminou-se uma superfície inteira de ataque sem adicionar complexidade ao domínio.
+- **Cookie HttpOnly vs LocalStorage:** armazenar JWT no `localStorage` expõe a aplicação a vazamento por XSS. O uso de cookie HttpOnly gerenciado pelo navegador, com suporte opcional a `Bearer` para testes de API e scripts, combinou segurança máxima na UI e flexibilidade em integrações.
+
+---
+
 ## Fechamento do projeto
 
 ### Lições que valem para o próximo
 
 - **Planejar antes de codificar pagou.** Os requisitos, os ADRs, o modelo de dados e os contratos existiam antes da primeira linha de código. Nas sprints, quase toda discussão foi "como", e não "o quê" ou "por quê"; as mudanças de rumo viraram ADRs novos, e não surpresas.
-- **Cada camada de teste pegou algo que as outras não pegavam:** o teste de concorrência achou um deadlock (Sprint 3); o harness de evals achou um fake lendo o prompt errado (Sprint 3); a revisão achou variáveis faltando no compose (Sprint 4); o E2E achou o ETag e o ICU (Sprint 5).
+- **Cada camada de teste pegou algo que as outras não pegavam:** o teste de concorrência achou um deadlock (Sprint 3); o harness de evals achou um fake lendo o prompt errado (Sprint 3); a revisão achou variáveis faltando no compose (Sprint 4); o E2E achou o ETag e o ICU (Sprint 5); os testes de autenticação e perfis pegaram chamados de outros solicitantes vazando na busca (Sprint 6).
 - **Quebrar o teste de propósito é barato e revelador.** Ao longo do projeto, essa regra encontrou testes que passavam por acaso (o filtro de status do dashboard, na Sprint 3) e quebras que não compilavam e por isso "passavam" com o binário antigo.
 - **IA tratada como componente não confiável funciona.** Tipos que impedem mandar texto cru ao provedor, validação de toda saída, fake determinístico que passa pelo mesmo pipeline, evals antes de trocar o prompt, guardrail no stream e kill switches. Nenhuma dessas peças é sofisticada; juntas, deixam a IA previsível o bastante para produção.
 - **Medir mudou decisões.** "O RAG melhora a triagem?" virou uma tabela, e a tabela mostrou o que melhorou, o que piorou e quanto custou.
 
 ### O que ficou de fora e por quê
 
-Ficaram de fora, por escolha: autenticação com perfis, deploy em nuvem, a `triagem.v3` (com o critério de adoção fixado antes de medir), os evals do copiloto, o *grounding* por LLM-as-judge, um DLP com NER, o rate limit por atendente, notificações em tempo real no lugar do polling, feature flags dinâmicas e a auditoria de acessibilidade no CI. Cada item, com o motivo e o gatilho para voltar a ele, está no [README](../README.md#o-que-ficaria-para-uma-próxima-versão). A regra que decidiu os cortes foi a do plano: o obrigatório bem feito primeiro, e cada diferencial só com testes e documentação.
+Ficaram de fora, por escolha: deploy em nuvem, a `triagem.v3` (com o critério de adoção fixado antes de medir), os evals do copiloto, o *grounding* por LLM-as-judge, um DLP com NER, o rate limit por atendente autenticado, notificações em tempo real no lugar do polling, feature flags dinâmicas e a auditoria de acessibilidade no CI. Cada item, com o motivo e o gatilho para voltar a ele, está no [README](../README.md#o-que-ficaria-para-uma-próxima-versão). A regra que decidiu os cortes foi a do plano: o obrigatório bem feito primeiro, e cada diferencial só com testes e documentação.
