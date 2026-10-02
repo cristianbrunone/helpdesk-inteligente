@@ -11,7 +11,7 @@ describe('LayoutBase', () => {
       screen.getByRole('heading', { level: 1, name: 'HelpDesk Inteligente' }),
     ).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Abrir menu' })).toBeInTheDocument();
-    expect(screen.getByRole('heading', { level: 2, name: 'Chamados' })).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { level: 2, name: 'Chamados' })).toBeInTheDocument();
     const navegacao = screen.getByRole('navigation', { name: 'Navegação' });
     expect(navegacao).toContainElement(
       screen.getByRole('link', { name: 'Chamados', current: 'page' }),

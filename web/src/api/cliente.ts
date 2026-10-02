@@ -58,7 +58,9 @@ export async function requisitarComResposta<T>(
   if (!resposta.ok) {
     throw new ErroApi(resposta.status, await lerProblema(resposta));
   }
-  return { dados: (await resposta.json()) as T, headers: resposta.headers };
+  // 204 (ex.: sair): sem corpo para ler.
+  const dados = resposta.status === 204 ? undefined : await resposta.json();
+  return { dados: dados as T, headers: resposta.headers };
 }
 
 export async function requisitar<T>(caminho: string, opcoes?: OpcoesRequisicao): Promise<T> {

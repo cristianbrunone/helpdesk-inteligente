@@ -1,6 +1,7 @@
 import { MantineProvider } from '@mantine/core';
 import { Notifications } from '@mantine/notifications';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { criarQueryClient } from '../api/queryClient';
 import { render, waitFor } from '@testing-library/react';
 import type { ReactElement } from 'react';
 import { createMemoryRouter, MemoryRouter } from 'react-router';
@@ -9,8 +10,11 @@ import { rotas } from '../rotas';
 import { tema, variaveisCss } from '../tema';
 
 function criarQueryClientDeTeste(): QueryClient {
-  // Sem novas tentativas: o teste de erro vê o erro na primeira resposta.
-  return new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  // O mesmo da aplicação (com o 401 que encerra a sessão), mas sem novas tentativas: o teste de erro vê o erro na
+  // primeira resposta.
+  const cliente = criarQueryClient();
+  cliente.setDefaultOptions({ queries: { ...cliente.getDefaultOptions().queries, retry: false } });
+  return cliente;
 }
 
 /** Renderiza um componente com os mesmos providers da aplicação. */
