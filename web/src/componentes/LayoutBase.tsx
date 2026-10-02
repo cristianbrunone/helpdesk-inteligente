@@ -10,6 +10,17 @@ const ITENS_DO_MENU = [
   { rotulo: 'Dashboard', destino: '/dashboard' },
 ];
 
+/**
+ * O item fica marcado também nas sub-rotas dele (o detalhe `/chamados/:id` marca "Chamados"), desde que nenhum outro
+ * item seja exatamente a página atual (`/chamados/novo` marca só "Novo chamado"). Sprint 7, item M1 da análise.
+ */
+function itemAtivo(destino: string, pathname: string): boolean {
+  return (
+    pathname === destino ||
+    (pathname.startsWith(`${destino}/`) && !ITENS_DO_MENU.some((item) => item.destino === pathname))
+  );
+}
+
 /** Casca responsiva: no celular (< sm) a navegação vira um menu aberto pelo botão hambúrguer. */
 export function LayoutBase() {
   const [menuAberto, { toggle, close }] = useDisclosure();
@@ -64,7 +75,8 @@ export function LayoutBase() {
               component={Link}
               to={destino}
               label={ehSolicitante && rotuloSolicitante ? rotuloSolicitante : rotulo}
-              active={pathname === destino}
+              active={itemAtivo(destino, pathname)}
+              // O leitor de tela só ouve "página atual" na própria página: no detalhe, a página não é a lista.
               aria-current={pathname === destino ? 'page' : undefined}
               onClick={close}
             />
