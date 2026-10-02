@@ -49,7 +49,7 @@ Escolhemos **A**, com estes detalhes:
 | **Chamado alheio** | **404**, e não 403: o solicitante não descobre que o chamado existe. |
 | **Triagem** | Interna: a API não devolve a triagem ao solicitante (a sugestão ainda não foi revisada por um humano). |
 | **Identidade nas escritas** | `alteradoPor`, `autor` e `decididaPor` passam a vir do token (o nome do usuário), e não mais do corpo. Os registros antigos mantêm o texto que tinham. |
-| **Usuários** | Criados pelo seed (idempotente), 2 atendentes e 2 solicitantes fictícios, com uma senha de demonstração documentada no README e guardada só como hash. |
+| **Usuários** | Criados pelo seed (idempotente), 2 atendentes e 2 solicitantes fictícios, com a senha de demonstração `HelpDesk@2026`: atendentes `ana.suporte@example.com` e `bruno.suporte@example.com`; solicitantes `marina.costa@example.com` e `paulo.reis@example.com`. Guardada só como hash PBKDF2. |
 
 ## Trade-offs aceitos
 

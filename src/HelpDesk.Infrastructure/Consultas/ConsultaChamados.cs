@@ -182,6 +182,11 @@ internal sealed class ConsultaChamados(HelpDeskDbContext db) : IConsultaChamados
                 @"\"));
         }
 
+        if (filtro.SolicitanteEmail is { } email)
+        {
+            consulta = consulta.Where(c => c.SolicitanteEmail == email);
+        }
+
         return consulta;
     }
 

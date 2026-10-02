@@ -79,6 +79,17 @@ Catálogo de conflitos (**409**):
 
 **204**, apagando o cookie. Sem efeito no servidor: o JWT é sem estado e expira sozinho.
 
+#### Usuários de demonstração (seed)
+
+Senha única para demonstração (documentada no README e nos contratos): `HelpDesk@2026`
+
+| Perfil | Nome | E-mail |
+|---|---|---|
+| **Atendente** | Ana (suporte) | `ana.suporte@example.com` |
+| **Atendente** | Bruno (suporte) | `bruno.suporte@example.com` |
+| **Solicitante** | Marina Costa | `marina.costa@example.com` |
+| **Solicitante** | Paulo Reis | `paulo.reis@example.com` |
+
 #### Perfis e acesso
 
 | Recurso | Atendente | Solicitante |
