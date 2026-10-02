@@ -311,7 +311,7 @@ O eval rodou no Gemini: 180 triagens, 90 por versão, sem nenhuma falha que não
 - **Guardrail de saída (ADR-0020):** buffer de retenção que impede vazamento de dados pessoais mesmo com CPF dividido entre pacotes de rede, e verificação de citações contra os resultados retornados pelas ferramentas. Citação inventada produz evento `aviso` e selo de referência não verificada.
 - **Proteção de cota e Kill Switch (ADR-0021):** rate limiter nativo por IP (10 req/min, 429 com `Retry-After`), orçamento `COPILOTO_MAX_TOKENS_SAIDA` (resposta truncada) e kill switch `IA_COPILOTO_HABILITADO` (503 na API, esconde o painel na interface).
 - **Interface web interativa:** renderização incremental, indicadores de ferramentas em tempo real ("Consultando…"), fontes verificadas com links diretos, selos visuais de alerta e botão Parar com cancelamento via `AbortController`.
-- **Testes:** de 590 para 692 no backend (446 unitários + 240 integração), de 50 para 62 no frontend, e o smoke do Compose passou de 18 para 19 verificações.
+- **Testes:** de 590 para 689 no backend (446 unitários, 237 de integração e 6 de arquitetura), de 50 para 62 no frontend, e o smoke do Compose passou de 18 para 19 verificações.
 
 **Como foi feito:** 10 commits na sequência planejada: ferramentas (unit) → consultas (integração) → guardrail de saída (unit) → telemetria e resiliência (unit) → fake roteirizado (unit) → prompt e caso de uso (unit) → endpoint SSE e rate limiter (integração) → cliente SSE (vitest) → painel no detalhe (vitest) → smoke do compose.
 
@@ -319,7 +319,8 @@ O eval rodou no Gemini: 180 triagens, 90 por versão, sem nenhuma falha que não
 
 - **`TypedResults.ServerSentEvents` nativo do .NET 10 adotado diretamente:** evitou bibliotecas externas de SSE no backend, gerando `SseItem<object>` tipado com overhead zero.
 - **Reafirmação do `Activity.Current` no enumerador assíncrono:** em iteradores assíncronos (`yield return`), o contexto de atividade do OpenTelemetry pode se perder após o `MoveNextAsync`. Reafirmar a atividade garantiu que as ferramentas fiquem aninhadas sob o span `copiloto.responder`.
-- **Modos especializados no fake:** o fake do copiloto ganhou modos configuráveis (`vaza_dados`, `recusa`, `categoria_inexistente`) que permitiram testar os guardrails de saída, rate limit e recusa de escrita em testes de integração sem depender de chamadas reais ao provedor.
+- **Um modo novo no fake:** `vaza_dados`, em que a resposta "vaza" um CPF dividido entre pedaços e cita um chamado inexistente, para testar o guardrail de saída sem provedor real. A recusa de escrita não precisou de modo: é o comportamento normal do fake diante de um pedido de ação.
+- **A revisão antes do PR achou três problemas**, todos corrigidos num commit próprio (`965f05f`): a API, que agora roda o copiloto, não recebia as variáveis de LLM no compose (com o provedor real, ela não subiria); o 429 usava um código fora do contrato (`limite_de_requisicoes` em vez de `limite_excedido`); e a verificação do copiloto no smoke falhava no CI (perguntava sobre um chamado sem semelhantes) e no Windows (o `curl` recodificava o acento da pergunta).
 
 ### Aprendizados
 
@@ -327,3 +328,56 @@ O eval rodou no Gemini: 180 triagens, 90 por versão, sem nenhuma falha que não
 - **Restrição do compilador em iteradores (`yield` dentro de `catch`):** a regra CS1631 proíbe `yield return` diretamente em blocos `catch`. Capturar a exceção e emitir o `event: erro` fora do bloco de tratamento resolve o fluxo de erro de streaming de maneira limpa.
 - **Buffering em proxies quebra o streaming:** proxies reversos acumulam pacotes por padrão; a diretiva `proxy_buffering off` e `proxy_cache off` no Nginx é indispensável para que o Server-Sent Events entregue deltas imediatamente ao navegador.
 
+
+---
+
+## Sprint 5 — Hardening e entrega (Fase 5: padrões de engenharia)
+
+**Artefatos:** E2E em [`web/e2e/`](../web/e2e/) com [`web/playwright.config.ts`](../web/playwright.config.ts); comando único [`scripts/testes.sh`](../scripts/testes.sh); união da cobertura em [`scripts/cobertura.mjs`](../scripts/cobertura.mjs); padrões em [`docs/padroes/`](padroes/LEIAME.md); [ADR-0025](adr/0025-icu-nas-imagens-dotnet.md); tema com contraste AA em `web/src/tema.ts`; rotas com `lazy` em `web/src/rotas.tsx`.
+
+**O que foi entregue:**
+
+- **E2E com Playwright**, no CI, contra o compose de pé: o fluxo do enunciado (criar → ver a triagem → aceitar), o copiloto citando chamados com fontes clicáveis e as quatro telas sem rolagem horizontal em 375 px.
+- **Dois bugs de produção corrigidos**, ambos encontrados pelo E2E (detalhes nos aprendizados).
+- **Acessibilidade:** auditoria com o axe-core; o contraste de cor, único problema encontrado, foi corrigido no tema, e as telas auditadas ficaram com zero violações do WCAG 2.1 AA.
+- **Desempenho do front:** o pacote inicial caiu de 1.112 kB para 429 kB, com o dashboard, o formulário e o detalhe carregados sob demanda.
+- **Cobertura medida** no CI: 96,2% das linhas no backend (os três projetos de teste unidos) e 90,9% no frontend.
+- **Um comando para todos os testes** (`bash scripts/testes.sh`), com um modo que sobe um compose isolado para o smoke e o E2E.
+- **Padrões de engenharia** para o time: guia de testes, convenções de código, checklist de revisão e fluxo de ADR, ao lado do fluxo Git.
+- **README fechado** contra a seção 8 do enunciado, com "o que ficaria para uma próxima versão", o uso de assistentes de IA e um mapa de onde cada item está atendido.
+- **Testes:** o backend segue com 689; o frontend com 62; o smoke passou de 19 para 20 verificações; e o E2E nasceu com 6.
+
+**Como foi feito:** 12 commits. O plano previa 10; o E2E encontrou dois bugs no caminho, e cada correção virou um commit próprio, com o teste que a reproduzia antes da correção e passava depois.
+
+### O que mudou em relação ao plano
+
+- **Dois `fix` entraram no meio da sprint.** O E2E era para provar o fluxo; acabou sendo a camada que achou os únicos bugs de produção da sprint.
+- **Um ADR novo (0025)** para o ICU nas imagens, com duas alternativas medidas: instalar o ICU (+58 MB por imagem) ou reescrever a remoção de acentos sem depender dele.
+- **A auditoria de acessibilidade usou o axe-core sem torná-lo dependência.** Rodou de uma pasta temporária, nas telas do compose; mantê-lo no CI ficou como próxima versão.
+- **O E2E aceita um navegador instalado** (`E2E_NAVEGADOR=msedge`), porque a máquina de desenvolvimento não consegue baixar o Chromium do Playwright atrás da inspeção TLS; o CI usa o Chromium normalmente.
+- **A divisão do bundle**, pendência da Sprint 3, entrou como o primeiro commit de código da sprint.
+
+### Aprendizados
+
+- **O E2E testou o que nenhuma outra camada testava: o caminho do usuário.** Os 689 testes do backend e os 62 do front passavam, e o smoke também; mesmo assim, aceitar a sugestão da IA pelo navegador não funcionava.
+- **O Nginx enfraquecia o `ETag`.** Ao comprimir o JSON da API com gzip, ele troca o `ETag` forte por um fraco (`W/"..."`), como manda o RFC; o `If-Match` usa comparação forte, e toda escrita pelo navegador respondia 412. O smoke não via porque o `curl` não pedia gzip, e o front testa com MSW, sem Nginx. Correção: sem gzip nas rotas da API. E uma lição para o smoke: teste com os cabeçalhos que o usuário manda.
+- **As imagens Alpine do .NET rodam sem ICU.** Em globalização invariante, `Normalize(FormD)` não remove acentos e `IgnoreNonSpace` não ignora: em produção, "Não consigo" não era reconhecido pelo fake, e o mascarador não casaria "João" com "Joao". Os testes rodam no Windows e no runner do CI, que têm ICU, então nunca veriam. A reprodução numa imagem Alpine com o modo invariante isolou a causa em minutos. Lição: o ambiente de teste precisa se parecer com o de produção onde importa, ou um teste precisa rodar no ambiente de produção.
+- **Contraste não se vê a olho.** O cinza das legendas e o indigo da marca pareciam legíveis e estavam abaixo de 4,5:1. A correção foi no tema, num lugar só, com os contrastes calculados antes de escolher os tons.
+- **Unir relatórios exige a mesma chave.** A primeira versão do script de cobertura contava cada arquivo duas vezes, porque cada relatório usava uma raiz diferente, e dava um total menor que o de uma suíte sozinha. O sinal estava no próprio número: a união não pode ser menor que uma das partes.
+- **A paleta de cores padrão não é acessível por padrão.** Os tons 6 da Mantine, usados em quase tudo, não passam de 4,5:1 sobre branco na maioria das cores; `autoContrast` e tons mais escuros resolvem.
+
+---
+
+## Fechamento do projeto
+
+### Lições que valem para o próximo
+
+- **Planejar antes de codificar pagou.** Os requisitos, os ADRs, o modelo de dados e os contratos existiam antes da primeira linha de código. Nas sprints, quase toda discussão foi "como", e não "o quê" ou "por quê"; as mudanças de rumo viraram ADRs novos, e não surpresas.
+- **Cada camada de teste pegou algo que as outras não pegavam:** o teste de concorrência achou um deadlock (Sprint 3); o harness de evals achou um fake lendo o prompt errado (Sprint 3); a revisão achou variáveis faltando no compose (Sprint 4); o E2E achou o ETag e o ICU (Sprint 5).
+- **Quebrar o teste de propósito é barato e revelador.** Ao longo do projeto, essa regra encontrou testes que passavam por acaso (o filtro de status do dashboard, na Sprint 3) e quebras que não compilavam e por isso "passavam" com o binário antigo.
+- **IA tratada como componente não confiável funciona.** Tipos que impedem mandar texto cru ao provedor, validação de toda saída, fake determinístico que passa pelo mesmo pipeline, evals antes de trocar o prompt, guardrail no stream e kill switches. Nenhuma dessas peças é sofisticada; juntas, deixam a IA previsível o bastante para produção.
+- **Medir mudou decisões.** "O RAG melhora a triagem?" virou uma tabela, e a tabela mostrou o que melhorou, o que piorou e quanto custou.
+
+### O que ficou de fora e por quê
+
+Ficaram de fora, por escolha: autenticação com perfis, deploy em nuvem, a `triagem.v3` (com o critério de adoção fixado antes de medir), os evals do copiloto, o *grounding* por LLM-as-judge, um DLP com NER, o rate limit por atendente, notificações em tempo real no lugar do polling, feature flags dinâmicas e a auditoria de acessibilidade no CI. Cada item, com o motivo e o gatilho para voltar a ele, está no [README](../README.md#o-que-ficaria-para-uma-próxima-versão). A regra que decidiu os cortes foi a do plano: o obrigatório bem feito primeiro, e cada diferencial só com testes e documentação.
