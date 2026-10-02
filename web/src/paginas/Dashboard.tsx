@@ -17,6 +17,7 @@ import { AlertaErro } from '../componentes/AlertaErro';
 import { SemPermissao } from '../componentes/SemPermissao';
 import { ROTULO_PRIORIDADE, ROTULO_STATUS } from '../dominio/chamado';
 import { useCelular } from '../hooks/useCelular';
+import { useTituloDaPagina } from '../hooks/useTituloDaPagina';
 
 const NUMERO = new Intl.NumberFormat('pt-BR');
 const HORAS = new Intl.NumberFormat('pt-BR', {
@@ -36,6 +37,7 @@ const LARGURA_ROTULOS_CELULAR = 110;
  */
 export function Dashboard() {
   const { data, isPending, isError, error, refetch, isFetching } = useResumoDashboard();
+  useTituloDaPagina('Dashboard');
 
   return (
     <Stack gap="md" maw={1100}>

@@ -11,6 +11,7 @@ import { HistoricoChamado } from '../componentes/HistoricoChamado';
 import { PainelCopiloto } from '../componentes/PainelCopiloto';
 import { PainelTriagem } from '../componentes/PainelTriagem';
 import { formatarDataHora } from '../dominio/chamado';
+import { useTituloDaPagina } from '../hooks/useTituloDaPagina';
 import classes from './DetalheChamado.module.css';
 
 export function DetalheChamado() {
@@ -19,6 +20,7 @@ export function DetalheChamado() {
   const { data: usuario } = useSessao();
   const ehAtendente = usuario?.perfil === 'Atendente';
   const recarregar = () => void refetch();
+  useTituloDaPagina(data ? `#${data.chamado.numero} · ${data.chamado.titulo}` : 'Chamado');
 
   return (
     <Stack gap="md" maw={1100}>

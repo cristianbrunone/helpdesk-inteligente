@@ -21,6 +21,7 @@ import { ErroApi } from '../api/cliente';
 import { AlertaErro } from '../componentes/AlertaErro';
 import { notificarSucesso } from '../componentes/notificarSucesso';
 import { PRIORIDADES, ROTULO_PRIORIDADE } from '../dominio/chamado';
+import { useTituloDaPagina } from '../hooks/useTituloDaPagina';
 import {
   criarEsquemaNovoChamado,
   paraNovoChamado,
@@ -32,6 +33,7 @@ const CAMPOS = new Set(Object.keys(VALORES_INICIAIS));
 
 export function NovoChamado() {
   const navegar = useNavigate();
+  useTituloDaPagina('Novo chamado');
   const { data: usuario } = useSessao();
   const ehSolicitante = usuario?.perfil === 'Solicitante';
   const { data: categorias = [] } = useCategorias();

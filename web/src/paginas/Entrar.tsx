@@ -17,6 +17,7 @@ import { z } from 'zod';
 import { useEntrar, useSessao } from '../api/autenticacao';
 import { ErroApi, mensagemDeErro } from '../api/cliente';
 import { AlertaErro } from '../componentes/AlertaErro';
+import { useTituloDaPagina } from '../hooks/useTituloDaPagina';
 
 const esquema = z.object({
   email: z.string().trim().min(1, 'Informe o e-mail.').email('Informe um e-mail válido.'),
@@ -35,6 +36,7 @@ export function Entrar() {
   const [parametros] = useSearchParams();
   const destino = destinoSeguro(parametros.get('voltar'));
   const navegar = useNavigate();
+  useTituloDaPagina('Entrar');
   const sessao = useSessao();
   const entrar = useEntrar();
   const {

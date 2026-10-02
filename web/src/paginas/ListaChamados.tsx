@@ -18,6 +18,7 @@ import { BadgePrioridade, BadgeStatus } from '../componentes/BadgesChamado';
 import { FiltrosChamados } from '../componentes/FiltrosChamados';
 import { formatarDataHora } from '../dominio/chamado';
 import { useFiltrosDaUrl } from '../hooks/useFiltrosDaUrl';
+import { useTituloDaPagina } from '../hooks/useTituloDaPagina';
 
 const ITENS_DO_ESQUELETO = 5;
 
@@ -25,13 +26,15 @@ export function ListaChamados() {
   const [filtros, alterar] = useFiltrosDaUrl();
   const { data: usuario } = useSessao();
   const ehSolicitante = usuario?.perfil === 'Solicitante';
+  const titulo = ehSolicitante ? 'Meus chamados' : 'Chamados';
+  useTituloDaPagina(titulo);
   const { data, isPending, isError, error, refetch, isFetching, isPlaceholderData } =
     useChamados(filtros);
 
   return (
     <Stack gap="md" maw={960}>
       <Group justify="space-between" wrap="wrap">
-        <Title order={2}>{ehSolicitante ? 'Meus chamados' : 'Chamados'}</Title>
+        <Title order={2}>{titulo}</Title>
         <Button component={Link} to="/chamados/novo">
           Novo chamado
         </Button>

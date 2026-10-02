@@ -90,6 +90,9 @@ describe('DetalheChamado', () => {
     ).toBeInTheDocument();
     expect(screen.getByText('Permissão reaplicada no perfil.')).toBeInTheDocument();
     expect(screen.getByText('maria@example.com')).toBeInTheDocument();
+    expect(document.title).toBe(
+      '#1042 · Não consigo acessar o portal financeiro — HelpDesk Inteligente',
+    );
     expect(screen.getByText('Em andamento → Resolvido')).toBeInTheDocument();
 
     const acoes = within(screen.getByRole('group', { name: 'Mudar status' }));
