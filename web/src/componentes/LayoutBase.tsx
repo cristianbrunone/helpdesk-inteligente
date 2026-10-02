@@ -39,7 +39,7 @@ export function LayoutBase() {
             HelpDesk Inteligente
           </Title>
           {usuario && (
-            <Group gap="xs" wrap="nowrap" aria-label="Usuário da sessão">
+            <Group gap="xs" wrap="nowrap" aria-label="Usuário da sessão" role="group">
               <Text size="sm" fw={500} visibleFrom="sm">
                 {usuario.nome}
               </Text>
