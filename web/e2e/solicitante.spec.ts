@@ -10,18 +10,18 @@ test.describe('Fluxo do Solicitante', () => {
   test('login, restrições de navegação, abertura simplificada e comentários', async ({
     browser,
   }) => {
-    // Contexto limpo para autenticar como solicitante (Carlos)
+    // Contexto limpo para autenticar como solicitante (Marina Costa)
     const context = await browser.newContext({ storageState: undefined });
     const page = await context.newPage();
 
     // 1. Login com perfil Solicitante
     await page.goto('/entrar');
-    await page.getByLabel('E-mail').fill('carlos.solicitante@example.com');
+    await page.getByLabel('E-mail').fill('marina.costa@example.com');
     await page.getByLabel('Senha').fill('HelpDesk@2026');
     await page.getByRole('button', { name: 'Entrar' }).click();
 
     await expect(page).toHaveURL(/\/chamados/);
-    await expect(page.getByText('Carlos (financeiro)')).toBeVisible();
+    await expect(page.getByText('Marina Costa')).toBeVisible();
     await expect(page.getByText('Solicitante')).toBeVisible();
 
     // 2. Não vê o link do Dashboard no menu de navegação
@@ -59,7 +59,7 @@ test.describe('Fluxo do Solicitante', () => {
 
     const secaoComentarios = page.getByRole('region', { name: /Comentários/ });
     await expect(secaoComentarios.getByText(textoComentario)).toBeVisible();
-    await expect(secaoComentarios.getByText(/Carlos \(financeiro\)/)).toBeVisible();
+    await expect(secaoComentarios.getByText(/Marina Costa/)).toBeVisible();
 
     await context.close();
   });

@@ -10,7 +10,7 @@ Gestão de chamados de suporte com **triagem assistida por IA** (RAG com pgvecto
 
 **Para testar em 10 minutos:** `docker compose up --build`, abra http://localhost:8080 e entre com um dos usuários do seed:
 - **Atendente:** `ana.suporte@example.com` / `HelpDesk@2026` (acesso total: veja a triagem da IA, aceite a sugestão, pergunte ao copiloto "Já tivemos casos parecidos?" e abra o dashboard).
-- **Solicitante:** `carlos.solicitante@example.com` / `HelpDesk@2026` (visão restrita: abra um novo chamado sem precisar preencher dados de contato, acompanhe o status e envie comentários).
+- **Solicitante:** `marina.costa@example.com` / `HelpDesk@2026` (visão restrita: abra um novo chamado sem precisar preencher dados de contato, acompanhe o status e envie comentários).
 Tudo pronto no seed, com IA fake e sem precisar de chave.
 
 ## Documentação
@@ -66,8 +66,8 @@ Para mudar alguma porta ou valor, copie o [`.env.example`](.env.example) para `.
 | E-mail | Senha | Perfil | O que pode fazer |
 |---|---|---|---|
 | `ana.suporte@example.com` | `HelpDesk@2026` | **Atendente** | Acesso total: listar todos os chamados, iniciar/resolver/cancelar chamados, aceitar/rejeitar triagem de IA, copiloto conversacional, dashboard e abrir chamados em nome de terceiros. |
-| `carlos.solicitante@example.com` | `HelpDesk@2026` | **Solicitante** | Acesso restrito: lista apenas seus próprios chamados, abertura simplificada de chamados (dados de solicitante vêm da sessão) e adição de comentários. Não acessa dashboard, nem painéis de IA. |
-| `mariana.solicitante@example.com` | `HelpDesk@2026` | **Solicitante** | Solicitante adicional para testar isolamento de chamados entre contas distintas. |
+| `marina.costa@example.com` | `HelpDesk@2026` | **Solicitante** | Acesso restrito: lista apenas seus próprios chamados, abertura simplificada de chamados (dados de solicitante vêm da sessão) e adição de comentários. Não acessa dashboard, nem painéis de IA. |
+| `paulo.reis@example.com` | `HelpDesk@2026` | **Solicitante** | Solicitante adicional para testar isolamento de chamados entre contas distintas. |
 
 <details>
 <summary><b>Rede corporativa com inspeção TLS</b> (o build falha com <code>UntrustedRoot</code> ou <code>NU1301</code>)</summary>
