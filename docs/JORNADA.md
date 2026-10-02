@@ -433,16 +433,39 @@ O eval rodou no Gemini: 180 triagens, 90 por versão, sem nenhuma falha que não
 
 ---
 
+## Sprint 8 — Deploy de demonstração
+
+**Artefatos:** [ADR-0027](adr/0027-deploy-de-demonstracao-na-vps.md) (decisão de deploy na VPS com Gemini real e HTTPS); [guia operacional de deploy](deploy-vps.md); tela de login sem credenciais em `web/src/paginas/Entrar.tsx`; suporte a certificados remotos e tolerância à inferência do modelo real em `web/playwright.config.ts` e `web/e2e/triagem.spec.ts`.
+
+**O que foi entregue:**
+
+- **Diferencial §9 atendido na nuvem:** publicação do HelpDesk Inteligente em VPS com Ubuntu 24.04, sob subdomínio próprio e terminação TLS com certificado válido Let's Encrypt (Certbot).
+- **IA real ativa (Google Gemini):** o ambiente na nuvem roda com o Gemini 2.5 Flash Lite para chat/triagem e `gemini-embedding-001` para indexação vetorial (RAG) no pgvector, ambos no plano gratuito do Google AI Studio. A triagem processa chamados em ~1,2 s exibindo o modelo real, e o copiloto responde em streaming via SSE citando fontes verificadas.
+- **Isolamento de portas e segurança dos segredos:** as portas internas do Docker Compose foram presas estritamente ao `127.0.0.1` (`8085`, `5080` e `55432`), sem exposição pública na internet além do Nginx reverso nas portas 80 e 443. Os segredos (`LLM_API_KEY`, `JWT_CHAVE` e senha do banco) residem exclusivamente no `.env` da VPS com permissão 600, sem transitar pelo Git ou CI (ADR-0023).
+- **Invariância do ambiente local:** o repositório principal continua subindo com um único comando (`docker compose up --build`) com IA fake sem `.env`, mantendo o CI 100% verde e determinístico.
+- **Validação E2E remota:** a suíte completa de testes Playwright foi executada com sucesso contra o ambiente publicado em HTTPS, validando o fluxo de login, criação de chamado com triagem real pelo Gemini, copiloto e responsividade em 375 px.
+
+### O que mudou em relação ao plano
+
+- **URL privada para avaliadores:** por decisão de segurança e para proteger a cota da IA e a infraestrutura contra tráfego automatizado de robôs, a URL pública não foi fixada no GitHub; o acesso é fornecido diretamente aos avaliadores no processo seletivo.
+
+### Aprendizados
+
+- **Coexistência de projetos em VPS:** usar proxy reverso com redes Docker nomeadas (`docker network connect`) permite que múltiplos sistemas compartilhem a porta 443 com certificados SSL independentes, com custo de infraestrutura zero.
+- **Comportamento da IA real nos testes E2E:** enquanto o provedor fake devolve respostas estáticas previsíveis, o modelo real avalia semanticamente o chamado. Testes de ponta a ponta em produção devem validar o contrato de negócio (ex.: categoria atribuída e remoção do estado "Sem categoria") sem engessar a resposta exata da IA.
+
+---
+
 ## Fechamento do projeto
 
 ### Lições que valem para o próximo
 
 - **Planejar antes de codificar pagou.** Os requisitos, os ADRs, o modelo de dados e os contratos existiam antes da primeira linha de código. Nas sprints, quase toda discussão foi "como", e não "o quê" ou "por quê"; as mudanças de rumo viraram ADRs novos, e não surpresas.
-- **Cada camada de teste pegou algo que as outras não pegavam:** o teste de concorrência achou um deadlock (Sprint 3); o harness de evals achou um fake lendo o prompt errado (Sprint 3); a revisão achou variáveis faltando no compose (Sprint 4); o E2E achou o ETag e o ICU (Sprint 5); os testes de autenticação e perfis pegaram chamados de outros solicitantes vazando na busca (Sprint 6); a auditoria de acessibilidade nos estados de erro e de hover achou contraste abaixo do mínimo (Sprint 7).
+- **Cada camada de teste pegou algo que as outras não pegavam:** o teste de concorrência achou um deadlock (Sprint 3); o harness de evals achou um fake lendo o prompt errado (Sprint 3); a revisão achou variáveis faltando no compose (Sprint 4); o E2E achou o ETag e o ICU (Sprint 5); os testes de autenticação e perfis pegaram chamados de outros solicitantes vazando na busca (Sprint 6); a auditoria de acessibilidade nos estados de erro e de hover achou contraste abaixo do mínimo (Sprint 7); a execução remota na VPS validou o suporte a certificados TLS e a inferência real com o Gemini (Sprint 8).
 - **Quebrar o teste de propósito é barato e revelador.** Ao longo do projeto, essa regra encontrou testes que passavam por acaso (o filtro de status do dashboard, na Sprint 3) e quebras que não compilavam e por isso "passavam" com o binário antigo.
 - **IA tratada como componente não confiável funciona.** Tipos que impedem mandar texto cru ao provedor, validação de toda saída, fake determinístico que passa pelo mesmo pipeline, evals antes de trocar o prompt, guardrail no stream e kill switches. Nenhuma dessas peças é sofisticada; juntas, deixam a IA previsível o bastante para produção.
 - **Medir mudou decisões.** "O RAG melhora a triagem?" virou uma tabela, e a tabela mostrou o que melhorou, o que piorou e quanto custou.
 
 ### O que ficou de fora e por quê
 
-Ficaram de fora, por escolha: deploy em nuvem, a `triagem.v3` (com o critério de adoção fixado antes de medir), os evals do copiloto, o *grounding* por LLM-as-judge, um DLP com NER, o rate limit por atendente autenticado, notificações em tempo real no lugar do polling, feature flags dinâmicas e a auditoria de acessibilidade no CI. Cada item, com o motivo e o gatilho para voltar a ele, está no [README](../README.md#o-que-ficaria-para-uma-próxima-versão). A regra que decidiu os cortes foi a do plano: o obrigatório bem feito primeiro, e cada diferencial só com testes e documentação.
+Ficaram de fora, por escolha: a `triagem.v3` (com o critério de adoção fixado antes de medir), os evals do copiloto, o *grounding* por LLM-as-judge, um DLP com NER, o rate limit por atendente autenticado, notificações em tempo real no lugar do polling, feature flags dinâmicas e a auditoria de acessibilidade no CI. Os dois grandes diferenciais previstos inicialmente como futuros — autenticação com perfis (Sprint 6) e deploy de demonstração em nuvem com IA real e HTTPS (Sprint 8) — foram integralmente implementados e entregues. Cada item restante, com o motivo e o gatilho para voltar a ele, está no [README](../README.md#o-que-ficaria-para-uma-próxima-versão). A regra que decidiu os cortes foi a do plano: o obrigatório bem feito primeiro, e cada diferencial só com testes e documentação.

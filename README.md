@@ -6,9 +6,11 @@ Gestão de chamados de suporte com **triagem assistida por IA** (RAG com pgvecto
 
 [![CI](https://github.com/cristianbrunone/helpdesk-inteligente/actions/workflows/ci.yml/badge.svg)](https://github.com/cristianbrunone/helpdesk-inteligente/actions/workflows/ci.yml)
 
-> **Entregue em sete sprints incrementais** ([plano](docs/05-sprints.md)): walking skeleton e PoC de IA, chamados de ponta a ponta, triagem por IA, RAG + dashboard + evals, copiloto conversacional, hardening (E2E, cobertura, acessibilidade e padrões) e **autenticação JWT com perfis** (ADR-0026). Veja [o que existe](#o-que-existe) e, para quem avalia, o [mapa do enunciado](#mapa-do-enunciado).
+> **Entregue em oito sprints incrementais** ([plano](docs/05-sprints.md)): walking skeleton e PoC de IA, chamados de ponta a ponta, triagem por IA, RAG + dashboard + evals, copiloto conversacional, hardening, autenticação JWT com perfis (ADR-0026), design e experiência e **deploy de demonstração na nuvem com Gemini real e HTTPS** (ADR-0027). Veja [o que existe](#o-que-existe) e o [mapa do enunciado](#mapa-do-enunciado).
 
-**Para testar em 10 minutos:** `docker compose up --build`, abra http://localhost:8080 e entre com um dos usuários do seed:
+> 🌐 **Demonstração em nuvem:** o sistema possui deploy ativo em VPS na nuvem com HTTPS válido e Google Gemini real no plano gratuito ([ADR-0027](docs/adr/0027-deploy-de-demonstracao-na-vps.md) e [guia operacional](docs/deploy-vps.md)). Para proteger a cota da IA e a segurança da infraestrutura contra acessos automatizados, o link de acesso direto é fornecido privadamente durante a avaliação do processo seletivo.
+
+**Para testar localmente em 10 minutos:** `docker compose up --build`, abra http://localhost:8080 e entre com um dos usuários do seed:
 - **Atendente:** `ana.suporte@example.com` / `HelpDesk@2026` (acesso total: veja a triagem da IA, aceite a sugestão, pergunte ao copiloto "Já tivemos casos parecidos?" e abra o dashboard).
 - **Solicitante:** `marina.costa@example.com` / `HelpDesk@2026` (visão restrita: abra um novo chamado sem precisar preencher dados de contato, acompanhe o status e envie comentários).
 Tudo pronto no seed, com IA fake e sem precisar de chave.
@@ -21,6 +23,7 @@ O projeto foi planejado antes de ser codificado. Recomendo ler nesta ordem:
 |---|---|
 | [`docs/JORNADA.md`](docs/JORNADA.md) | Como o projeto foi construído, fase a fase |
 | [`DECISOES.md`](DECISOES.md) | Resumo das decisões técnicas e premissas |
+| [`docs/deploy-vps.md`](docs/deploy-vps.md) | Guia operacional de deploy na VPS com Gemini real e HTTPS |
 | [`docs/01-requisitos.md`](docs/01-requisitos.md) | Requisitos funcionais, regras de negócio e NFRs |
 | [`docs/02-add.md`](docs/02-add.md) | Arquitetura (C4, módulos, fluxos, topologia) |
 | [`docs/03-modelo-de-dados.md`](docs/03-modelo-de-dados.md) | Modelo de dados, índices e consultas |
@@ -541,7 +544,7 @@ A convenção snake_case, o health check do banco e a validação dos dados de e
 
 ## O que ficaria para uma próxima versão
 
-O que ficou de fora foi decidido, não esquecido. Cada item tem o motivo e, quando existe, o ADR com o gatilho de reavaliação. A autenticação com perfis, prevista inicialmente como diferencial futuro, foi implementada e entregue integralmente na Sprint 6 (ADR-0026).
+O que ficou de fora foi decidido, não esquecido. Cada item tem o motivo e, quando existe, o ADR com o gatilho de reavaliação. A autenticação com perfis (Sprint 6, ADR-0026) e o deploy de demonstração em nuvem com IA real e HTTPS (Sprint 8, ADR-0027, diferencial §9), previstos inicialmente como diferenciais futuros, foram implementados e entregues integralmente.
 
 | Tema | O que falta | Por que ficou para depois |
 |---|---|---|
@@ -556,7 +559,6 @@ O que ficou de fora foi decidido, não esquecido. Cada item tem o motivo e, quan
 | **Acessibilidade no CI** | Auditoria com o axe-core no E2E, falhando o build em nova violação | A auditoria foi feita nas Sprints 5 e 7, com zero violações, mas ainda não roda a cada push; na Sprint 7 ela achou contraste em estados que a anterior não visitou (campos com erro, hover) |
 | **Histórico do copiloto** | Persistir as conversas | Fora do escopo de propósito (P-08): evita guardar conversas com possíveis dados pessoais |
 | **Fila e escala** | Mensageria (RabbitMQ, Service Bus) | A fila em tabela com `SKIP LOCKED` atende o volume com zero infraestrutura extra (ADR-0003) |
-| **Deploy** | Ambiente em nuvem com link acessível | Diferencial do enunciado, fora do prazo |
 
 ## Uso de assistentes de IA no desenvolvimento
 

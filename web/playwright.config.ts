@@ -19,6 +19,7 @@ export default defineConfig({
   reporter: process.env.CI ? [['list'], ['html', { open: 'never' }]] : 'list',
   use: {
     baseURL: process.env.E2E_BASE_URL ?? 'http://localhost:8080',
+    ignoreHTTPSErrors: true,
     locale: 'pt-BR',
     trace: 'retain-on-failure',
     screenshot: 'only-on-failure',

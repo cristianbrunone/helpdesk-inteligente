@@ -3,11 +3,9 @@ import {
   Alert,
   Button,
   Center,
-  Code,
   Paper,
   PasswordInput,
   Stack,
-  Text,
   TextInput,
   Title,
 } from '@mantine/core';
@@ -99,15 +97,6 @@ export function Entrar() {
               Entrar
             </Button>
           </Stack>
-        </Paper>
-        <Paper withBorder p="sm" radius="md" bg="gray.0">
-          <Text size="xs" fw={600}>
-            Ambiente de demonstração
-          </Text>
-          <Text size="xs" c="dimmed">
-            Atendente: <Code>ana.suporte@example.com</Code> · Solicitante:{' '}
-            <Code>marina.costa@example.com</Code> · Senha: <Code>HelpDesk@2026</Code>
-          </Text>
         </Paper>
       </Stack>
     </Center>
