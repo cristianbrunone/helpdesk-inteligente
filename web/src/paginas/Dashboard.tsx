@@ -12,7 +12,9 @@ import {
 } from '@mantine/core';
 import type { ReactNode } from 'react';
 import { useResumoDashboard, type ResumoDashboard } from '../api/dashboard';
+import { ErroApi } from '../api/cliente';
 import { AlertaErro } from '../componentes/AlertaErro';
+import { SemPermissao } from '../componentes/SemPermissao';
 import { ROTULO_PRIORIDADE, ROTULO_STATUS } from '../dominio/chamado';
 
 const NUMERO = new Intl.NumberFormat('pt-BR');
@@ -44,6 +46,8 @@ export function Dashboard() {
           </SimpleGrid>
           <Skeleton height={ALTURA_GRAFICO} radius="md" />
         </Stack>
+      ) : isError && error instanceof ErroApi && error.status === 403 ? (
+        <SemPermissao />
       ) : isError ? (
         <AlertaErro
           titulo="Não foi possível carregar o dashboard"

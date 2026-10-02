@@ -174,6 +174,28 @@ describe('Dashboard', () => {
     expect(await screen.findByRole('region', { name: 'Total de chamados' })).toBeInTheDocument();
   });
 
+  it('com 403 (perfil sem acesso), explica sem alerta de erro nem "Tentar novamente"', async () => {
+    servidor.use(
+      http.get('/api/dashboard/resumo', () =>
+        HttpResponse.json(
+          { detail: 'O seu perfil não permite esta operação.', codigo: 'acesso_negado' },
+          { status: 403, headers: { 'Content-Type': 'application/problem+json' } },
+        ),
+      ),
+    );
+    await renderizarApp('/dashboard');
+
+    expect(
+      await screen.findByRole('heading', { name: 'Sem acesso a esta página' }),
+    ).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Voltar para os chamados' })).toHaveAttribute(
+      'href',
+      '/chamados',
+    );
+    expect(screen.queryByText('Não foi possível carregar o dashboard')).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Tentar novamente' })).not.toBeInTheDocument();
+  });
+
   it('aparece no menu de navegação', async () => {
     servir(resumo());
     await renderizarApp('/chamados');
