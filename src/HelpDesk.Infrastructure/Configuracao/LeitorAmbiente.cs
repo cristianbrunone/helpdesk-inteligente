@@ -14,6 +14,7 @@ public sealed class LeitorAmbiente(Func<string, string?> ler)
 {
     public const string IaTriagemHabilitada = "IA_TRIAGEM_HABILITADA";
     public const string IaCopilotoHabilitado = "IA_COPILOTO_HABILITADO";
+    public const string CopilotoRateLimitPorMinuto = "COPILOTO_RATE_LIMIT_POR_MINUTO";
 
     public string? Texto(string chave) => ler(chave) is { } valor && !string.IsNullOrWhiteSpace(valor)
         ? valor.Trim()
@@ -74,12 +75,15 @@ public sealed class LeitorAmbiente(Func<string, string?> ler)
     public const string LlmTimeoutSeconds = "LLM_TIMEOUT_SECONDS";
     public const string LlmMaxRetries = "LLM_MAX_RETRIES";
     public const string TriagemMaxTokensSaida = "TRIAGEM_MAX_TOKENS_SAIDA";
+    public const string CopilotoMaxTokensSaida = "COPILOTO_MAX_TOKENS_SAIDA";
     public const string LlmFakeModo = "LLM_FAKE_MODO";
     public const string LlmFakeAtrasoMs = "LLM_FAKE_ATRASO_MS";
 
     public OpcoesIA OpcoesIA() => new(
         TriagemHabilitada: Booleano(IaTriagemHabilitada, padrao: true),
         CopilotoHabilitado: Booleano(IaCopilotoHabilitado, padrao: true));
+
+    public int RateLimitCopilotoPorMinuto() => Inteiro(CopilotoRateLimitPorMinuto, padrao: 10, minimo: 1, maximo: 600);
 
     /// <summary>
     /// Provedor de LLM (ADR-0005). O padrão é o fake. Com <c>openai-compatible</c>, URL e chave são obrigatórias, e
@@ -129,6 +133,7 @@ public sealed class LeitorAmbiente(Func<string, string?> ler)
             Timeout = TimeSpan.FromSeconds(Inteiro(LlmTimeoutSeconds, OpcoesLlmPadrao.TimeoutSegundos, 1, 600)),
             MaxRetries = Inteiro(LlmMaxRetries, OpcoesLlmPadrao.MaxRetries, 0, 10),
             MaxTokensSaidaTriagem = Inteiro(TriagemMaxTokensSaida, OpcoesLlmPadrao.MaxTokensSaidaTriagem, 50, 8192),
+            MaxTokensSaidaCopiloto = Inteiro(CopilotoMaxTokensSaida, OpcoesLlmPadrao.MaxTokensSaidaCopiloto, 50, 8192),
             ModoFake = ModoDoFake(),
             AtrasoFake = TimeSpan.FromMilliseconds(Inteiro(LlmFakeAtrasoMs, OpcoesLlmPadrao.AtrasoFakeMs, 0, 600_000)),
         };
@@ -168,6 +173,7 @@ public sealed class LeitorAmbiente(Func<string, string?> ler)
         public const int TimeoutSegundos = 60;
         public const int MaxRetries = 3;
         public const int MaxTokensSaidaTriagem = 800;
+        public const int MaxTokensSaidaCopiloto = 800;
         public const int AtrasoFakeMs = 30_000;
     }
 

@@ -95,6 +95,7 @@ public sealed class LeitorAmbienteTests
         opcoes.Timeout.ShouldBe(TimeSpan.FromSeconds(60));
         opcoes.MaxRetries.ShouldBe(3);
         opcoes.MaxTokensSaidaTriagem.ShouldBe(800);
+        opcoes.MaxTokensSaidaCopiloto.ShouldBe(800);
         opcoes.ModoFake.ShouldBe(ModoFake.Normal);
     }
 
@@ -113,6 +114,10 @@ public sealed class LeitorAmbienteTests
         opcoes.ModeloEfetivo.ShouldBe("gemini-3.5-flash-lite");
         opcoes.MaxRetries.ShouldBe(0);
     }
+
+    [Fact]
+    public void OpcoesLlm_OrcamentoDoCopiloto_LidoDoAmbiente() =>
+        ComVariaveis(("COPILOTO_MAX_TOKENS_SAIDA", "300")).OpcoesLlm().MaxTokensSaidaCopiloto.ShouldBe(300);
 
     [Fact]
     public void OpcoesLlm_ToString_NuncaMostraAChave()
@@ -143,6 +148,7 @@ public sealed class LeitorAmbienteTests
     [InlineData("LLM_FAKE_MODO", "explodir")]
     [InlineData("LLM_TIMEOUT_SECONDS", "0")]
     [InlineData("TRIAGEM_MAX_TOKENS_SAIDA", "10")]
+    [InlineData("COPILOTO_MAX_TOKENS_SAIDA", "9000")]
     public void OpcoesLlm_ValorInvalido_ImpedeASubida(string chave, string valor)
     {
         Should.Throw<InvalidOperationException>(() => ComVariaveis((chave, valor)).OpcoesLlm())

@@ -56,6 +56,19 @@ public static class ServicosInfraestrutura
         return services;
     }
 
+    /// <summary>
+    /// O copiloto (ADR-0004, ADR-0012): o agente com ferramentas e o montador do prompt. Depende do cliente de LLM e
+    /// do gerador de embeddings (<see cref="AdicionarClienteLlm"/>), que as buscas das ferramentas usam.
+    /// </summary>
+    public static IServiceCollection AdicionarCopiloto(this IServiceCollection services, OpcoesRag opcoesRag)
+    {
+        services.TryAddSingleton<MascaradorDadosPessoais>();
+        services.TryAddSingleton(opcoesRag);
+        services.AddSingleton<MontadorPromptCopiloto>();
+        services.AddSingleton<ICopilotoLlm, CopilotoLlm>();
+        return services;
+    }
+
     /// <summary>Cliente de LLM do provedor configurado, com resiliência e telemetria (ADR-0005).</summary>
     public static IServiceCollection AdicionarClienteLlm(this IServiceCollection services, OpcoesLlm opcoes)
     {

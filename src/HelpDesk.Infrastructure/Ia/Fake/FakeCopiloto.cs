@@ -154,6 +154,11 @@ internal static class FakeCopiloto
                 "passos descritos nele.";
         }
 
+        if (Propriedade(json, "erro") is { } erro)
+        {
+            return $"A consulta não foi aceita: {erro}";
+        }
+
         if (Propriedade(json, "statusAtual") is { } status)
         {
             var mudancas = Elemento(json, "mudancas")?.GetArrayLength() ?? 0;

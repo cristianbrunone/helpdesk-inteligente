@@ -1,4 +1,5 @@
 using HelpDesk.Application.Conhecimento;
+using HelpDesk.Application.Copiloto;
 using HelpDesk.Application.Triagem;
 using HelpDesk.Infrastructure.Ia;
 using Microsoft.Extensions.DependencyInjection;
@@ -27,7 +28,8 @@ public static class Tracing
     public static readonly string[] Fontes =
     [
         PipelineTriagem.NomeFonteAtividades, ReconciliarIndiceRag.NomeFonteAtividades,
-        ResilienciaChatClient.NomeFonteAtividades, FonteChat, FonteEmbeddings,
+        ConversarComCopiloto.NomeFonteAtividades, ResilienciaChatClient.NomeFonteAtividades, FonteChat,
+        FonteEmbeddings,
     ];
 
     public static IServiceCollection AdicionarTracing(
