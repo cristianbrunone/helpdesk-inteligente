@@ -21,7 +21,7 @@ public sealed class CopilotoEndpointsTests(ApiFactory api) : IClassFixture<ApiFa
     public async Task Conversar_JaTivemosCasosParecidos_SequenciaCompletaDeEventosSse()
     {
         var chamadoId = await CriarChamadoAsync("Erro 403 ao emitir boletos");
-        var cliente = api.CreateClient();
+        var cliente = api.CriarClienteAtendente();
 
         using var resposta = await cliente.PostAsJsonAsync($"/api/chamados/{chamadoId}/copiloto",
             Corpo([Pergunta("Já tivemos casos parecidos?")]), Ct);
@@ -61,7 +61,7 @@ public sealed class CopilotoEndpointsTests(ApiFactory api) : IClassFixture<ApiFa
     public async Task Conversar_FerramentaDeHistorico_RespeitaOChamadoDaRota()
     {
         var idA = await CriarChamadoAsync("Chamado A para histórico");
-        var cliente = api.CreateClient();
+        var cliente = api.CriarClienteAtendente();
 
         using var resposta = await cliente.PostAsJsonAsync($"/api/chamados/{idA}/copiloto",
             Corpo([Pergunta("Qual é o histórico deste chamado?")]), Ct);
@@ -82,7 +82,7 @@ public sealed class CopilotoEndpointsTests(ApiFactory api) : IClassFixture<ApiFa
     {
         await using var comLimite = api.WithWebHostBuilder(b =>
             b.UseSetting("COPILOTO_RATE_LIMIT_POR_MINUTO", "2"));
-        var cliente = comLimite.CreateClient();
+        var cliente = comLimite.CriarClienteAtendente();
         var chamadoId = await CriarChamadoAsync("Chamado para teste de rate limit");
 
         // 2 requisições dentro da cota
@@ -110,7 +110,7 @@ public sealed class CopilotoEndpointsTests(ApiFactory api) : IClassFixture<ApiFa
     {
         await using var fakeVaza = api.WithWebHostBuilder(b =>
             b.UseSetting("LLM_FAKE_MODO", "vaza_dados"));
-        var cliente = fakeVaza.CreateClient();
+        var cliente = fakeVaza.CriarClienteAtendente();
         var chamadoId = await CriarChamadoAsync("Chamado para teste de guardrail");
 
         using var resposta = await cliente.PostAsJsonAsync($"/api/chamados/{chamadoId}/copiloto",
@@ -142,7 +142,7 @@ public sealed class CopilotoEndpointsTests(ApiFactory api) : IClassFixture<ApiFa
     {
         await using var semCopiloto = api.WithWebHostBuilder(b =>
             b.UseSetting("IA_COPILOTO_HABILITADO", "false"));
-        var cliente = semCopiloto.CreateClient();
+        var cliente = semCopiloto.CriarClienteAtendente();
         var chamadoId = await CriarChamadoAsync("Chamado para teste de kill switch");
 
         using var resposta = await cliente.PostAsJsonAsync($"/api/chamados/{chamadoId}/copiloto",
@@ -160,7 +160,7 @@ public sealed class CopilotoEndpointsTests(ApiFactory api) : IClassFixture<ApiFa
     public async Task Conversar_ClienteCancelaRequisicao_InterrompeSemErro500()
     {
         var chamadoId = await CriarChamadoAsync("Chamado para cancelamento");
-        var cliente = api.CreateClient();
+        var cliente = api.CriarClienteAtendente();
 
         using var cts = CancellationTokenSource.CreateLinkedTokenSource(Ct);
         using var request = new HttpRequestMessage(HttpMethod.Post, $"/api/chamados/{chamadoId}/copiloto")
@@ -192,7 +192,7 @@ public sealed class CopilotoEndpointsTests(ApiFactory api) : IClassFixture<ApiFa
     public async Task Conversar_ChamadoInexistente_Retorna404RecursoNaoEncontrado()
     {
         var inexistente = Guid.CreateVersion7();
-        using var resposta = await api.CreateClient().PostAsJsonAsync($"/api/chamados/{inexistente}/copiloto",
+        using var resposta = await api.CriarClienteAtendente().PostAsJsonAsync($"/api/chamados/{inexistente}/copiloto",
             Corpo([Pergunta("Olá")]), Ct);
 
         resposta.StatusCode.ShouldBe(HttpStatusCode.NotFound);
@@ -204,7 +204,7 @@ public sealed class CopilotoEndpointsTests(ApiFactory api) : IClassFixture<ApiFa
     public async Task Conversar_MensagensVazias_Retorna422DadosInvalidos()
     {
         var chamadoId = await CriarChamadoAsync("Chamado para validação");
-        using var resposta = await api.CreateClient().PostAsJsonAsync($"/api/chamados/{chamadoId}/copiloto",
+        using var resposta = await api.CriarClienteAtendente().PostAsJsonAsync($"/api/chamados/{chamadoId}/copiloto",
             new { mensagens = Array.Empty<object>() }, Ct);
 
         resposta.StatusCode.ShouldBe(HttpStatusCode.UnprocessableEntity);
@@ -220,7 +220,7 @@ public sealed class CopilotoEndpointsTests(ApiFactory api) : IClassFixture<ApiFa
 
     private async Task<Guid> CriarChamadoAsync(string titulo)
     {
-        using var resposta = await api.CreateClient().PostAsJsonAsync("/api/chamados", new
+        using var resposta = await api.CriarClienteAtendente().PostAsJsonAsync("/api/chamados", new
         {
             titulo,
             descricao = "Descrição detalhada do chamado para testes do copiloto.",

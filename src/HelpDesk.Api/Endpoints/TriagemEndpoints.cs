@@ -1,3 +1,4 @@
+using HelpDesk.Api.Autenticacao;
 using HelpDesk.Application.Chamados;
 using HelpDesk.Application.Triagem;
 using Microsoft.AspNetCore.Http.HttpResults;
@@ -9,7 +10,8 @@ internal static class TriagemEndpoints
 {
     public static IEndpointRouteBuilder MapTriagem(this IEndpointRouteBuilder app)
     {
-        var grupo = app.MapGroup("/api/chamados/{id:guid}/triagem").WithTags("Triagem por IA");
+        var grupo = app.MapGroup("/api/chamados/{id:guid}/triagem").WithTags("Triagem por IA")
+            .RequireAuthorization(ConfiguracaoAutenticacao.PoliticaAtendente);
 
         grupo.MapPost("/", Refazer)
             .WithName("RefazerTriagem")

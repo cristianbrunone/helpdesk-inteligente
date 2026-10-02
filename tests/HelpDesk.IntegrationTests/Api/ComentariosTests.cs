@@ -33,7 +33,7 @@ public sealed class ComentariosTests(ApiFactory api, BancoFixture banco) : IClas
         comentario.EnumerateObject().Select(p => p.Name).ShouldBe(["id", "autor", "texto", "criadoEm"]);
         comentario.GetProperty("texto").GetString().ShouldBe("Pode me enviar um print?");
 
-        using var detalhe = await api.CreateClient().GetAsync($"/api/chamados/{id}", Ct);
+        using var detalhe = await api.CriarClienteAtendente().GetAsync($"/api/chamados/{id}", Ct);
         detalhe.Headers.ETag.ShouldBe(resposta.Headers.ETag);
         (await LerAsync(detalhe)).GetProperty("comentarios").EnumerateArray()
             .ShouldContain(c => c.GetProperty("id").GetGuid() == comentario.GetProperty("id").GetGuid());
@@ -130,12 +130,12 @@ public sealed class ComentariosTests(ApiFactory api, BancoFixture banco) : IClas
             requisicao.Headers.TryAddWithoutValidation("If-Match", ifMatch);
         }
 
-        return await api.CreateClient().SendAsync(requisicao, Ct);
+        return await api.CriarClienteAtendente().SendAsync(requisicao, Ct);
     }
 
     private async Task<string> ETagAsync(Guid id)
     {
-        using var resposta = await api.CreateClient().GetAsync($"/api/chamados/{id}", Ct);
+        using var resposta = await api.CriarClienteAtendente().GetAsync($"/api/chamados/{id}", Ct);
         return resposta.Headers.ETag!.ToString();
     }
 

@@ -27,7 +27,7 @@ public sealed class TriagemEndpointsTests(ApiFactory api, BancoFixture banco) : 
     {
         var id = await CriarAsync(StatusTriagem.Falhou);
 
-        using var resposta = await api.CreateClient().PostAsync($"/api/chamados/{id}/triagem", null, Ct);
+        using var resposta = await api.CriarClienteAtendente().PostAsync($"/api/chamados/{id}/triagem", null, Ct);
 
         resposta.StatusCode.ShouldBe(HttpStatusCode.Accepted);
         resposta.Headers.Location!.ToString().ShouldBe($"/api/chamados/{id}");
@@ -41,7 +41,7 @@ public sealed class TriagemEndpointsTests(ApiFactory api, BancoFixture banco) : 
     {
         var id = await CriarAsync(StatusTriagem.Pendente);
 
-        using var resposta = await api.CreateClient().PostAsync($"/api/chamados/{id}/triagem", null, Ct);
+        using var resposta = await api.CriarClienteAtendente().PostAsync($"/api/chamados/{id}/triagem", null, Ct);
 
         resposta.StatusCode.ShouldBe(HttpStatusCode.Conflict);
         (await LerAsync(resposta)).GetProperty("codigo").GetString().ShouldBe("triagem_em_andamento");
@@ -51,7 +51,7 @@ public sealed class TriagemEndpointsTests(ApiFactory api, BancoFixture banco) : 
     public async Task Refazer_DuasVezesAoMesmoTempo_UmaCriaEAOutraRecebe409()
     {
         var id = await CriarAsync(StatusTriagem.Falhou);
-        var cliente = api.CreateClient();
+        var cliente = api.CriarClienteAtendente();
 
         var respostas = await Task.WhenAll(
             cliente.PostAsync($"/api/chamados/{id}/triagem", null, Ct),
@@ -69,7 +69,7 @@ public sealed class TriagemEndpointsTests(ApiFactory api, BancoFixture banco) : 
     {
         var id = await CriarAsync(StatusTriagem.Falhou, finalizar: true);
 
-        using var resposta = await api.CreateClient().PostAsync($"/api/chamados/{id}/triagem", null, Ct);
+        using var resposta = await api.CriarClienteAtendente().PostAsync($"/api/chamados/{id}/triagem", null, Ct);
 
         resposta.StatusCode.ShouldBe(HttpStatusCode.Conflict);
         (await LerAsync(resposta)).GetProperty("codigo").GetString().ShouldBe("chamado_finalizado");
@@ -78,7 +78,7 @@ public sealed class TriagemEndpointsTests(ApiFactory api, BancoFixture banco) : 
     [Fact]
     public async Task Refazer_ChamadoInexistente_Retorna404()
     {
-        using var resposta = await api.CreateClient().PostAsync($"/api/chamados/{Guid.CreateVersion7()}/triagem", null, Ct);
+        using var resposta = await api.CriarClienteAtendente().PostAsync($"/api/chamados/{Guid.CreateVersion7()}/triagem", null, Ct);
 
         resposta.StatusCode.ShouldBe(HttpStatusCode.NotFound);
     }
@@ -89,7 +89,7 @@ public sealed class TriagemEndpointsTests(ApiFactory api, BancoFixture banco) : 
         var id = await CriarAsync(StatusTriagem.Falhou);
         await using var semTriagem = api.WithWebHostBuilder(b => b.UseSetting("IA_TRIAGEM_HABILITADA", "false"));
 
-        using var resposta = await semTriagem.CreateClient().PostAsync($"/api/chamados/{id}/triagem", null, Ct);
+        using var resposta = await semTriagem.CriarClienteAtendente().PostAsync($"/api/chamados/{id}/triagem", null, Ct);
 
         resposta.StatusCode.ShouldBe(HttpStatusCode.ServiceUnavailable);
         var problema = await LerAsync(resposta);
@@ -122,7 +122,7 @@ public sealed class TriagemEndpointsTests(ApiFactory api, BancoFixture banco) : 
     {
         var id = await CriarAsync(StatusTriagem.Concluida);
         var etagLido = await ETagAsync(id);
-        using (await api.CreateClient().PostAsJsonAsync($"/api/chamados/{id}/comentarios",
+        using (await api.CriarClienteAtendente().PostAsJsonAsync($"/api/chamados/{id}/comentarios",
                    new { autor = "Bruno", texto = "Alterei antes." }, Ct))
         {
         }
@@ -261,12 +261,12 @@ public sealed class TriagemEndpointsTests(ApiFactory api, BancoFixture banco) : 
             requisicao.Headers.TryAddWithoutValidation("If-Match", ifMatch);
         }
 
-        return await api.CreateClient().SendAsync(requisicao, Ct);
+        return await api.CriarClienteAtendente().SendAsync(requisicao, Ct);
     }
 
     private async Task<string> ETagAsync(Guid id)
     {
-        using var resposta = await api.CreateClient().GetAsync($"/api/chamados/{id}", Ct);
+        using var resposta = await api.CriarClienteAtendente().GetAsync($"/api/chamados/{id}", Ct);
         return resposta.Headers.ETag!.ToString();
     }
 

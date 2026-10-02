@@ -1,3 +1,4 @@
+using HelpDesk.Api.Autenticacao;
 using HelpDesk.Application.Chamados;
 using HelpDesk.Domain.Chamados;
 using Microsoft.AspNetCore.Http.HttpResults;
@@ -28,6 +29,7 @@ internal static class ChamadosEndpoints
             .ProducesProblem(StatusCodes.Status400BadRequest);
 
         grupo.MapPatch("/{id:guid}/status", MudarStatus)
+            .RequireAuthorization(ConfiguracaoAutenticacao.PoliticaAtendente)
             .WithName("MudarStatusChamado")
             .WithSummary("Muda o status pela máquina de estados. If-Match opcional (412 se desatualizado).")
             .ProducesProblem(StatusCodes.Status404NotFound)

@@ -18,7 +18,7 @@ public sealed class ObterChamadoTests(ApiFactory api, BancoFixture banco) : ICla
     [Fact]
     public async Task Obter_ChamadoRecemCriado_RetornaOMesmoDetalheEETagDoPost()
     {
-        var cliente = api.CreateClient();
+        var cliente = api.CriarClienteAtendente();
         using var criacao = await cliente.PostAsJsonAsync("/api/chamados", new
         {
             titulo = "Impressora não imprime",
@@ -81,7 +81,7 @@ public sealed class ObterChamadoTests(ApiFactory api, BancoFixture banco) : ICla
     {
         var chamado = NovoChamado();
         await SalvarAsync(chamado);
-        using var antes = await api.CreateClient().GetAsync($"/api/chamados/{chamado.Id}", Ct);
+        using var antes = await api.CriarClienteAtendente().GetAsync($"/api/chamados/{chamado.Id}", Ct);
 
         await using (var servicos = banco.CriarServicos())
         await using (var escopo = servicos.CreateAsyncScope())
@@ -92,7 +92,7 @@ public sealed class ObterChamadoTests(ApiFactory api, BancoFixture banco) : ICla
             await db.SaveChangesAsync(Ct);
         }
 
-        using var depois = await api.CreateClient().GetAsync($"/api/chamados/{chamado.Id}", Ct);
+        using var depois = await api.CriarClienteAtendente().GetAsync($"/api/chamados/{chamado.Id}", Ct);
 
         antes.Headers.ETag.ShouldNotBeNull();
         depois.Headers.ETag.ShouldNotBeNull();
@@ -104,7 +104,7 @@ public sealed class ObterChamadoTests(ApiFactory api, BancoFixture banco) : ICla
     {
         var id = Guid.CreateVersion7();
 
-        using var resposta = await api.CreateClient().GetAsync($"/api/chamados/{id}", Ct);
+        using var resposta = await api.CriarClienteAtendente().GetAsync($"/api/chamados/{id}", Ct);
 
         resposta.StatusCode.ShouldBe(HttpStatusCode.NotFound);
         var problema = await LerAsync(resposta);
@@ -116,7 +116,7 @@ public sealed class ObterChamadoTests(ApiFactory api, BancoFixture banco) : ICla
     [Fact]
     public async Task Obter_IdQueNaoEGuid_Retorna404NaoEncontrado()
     {
-        using var resposta = await api.CreateClient().GetAsync("/api/chamados/abc", Ct);
+        using var resposta = await api.CriarClienteAtendente().GetAsync("/api/chamados/abc", Ct);
 
         resposta.StatusCode.ShouldBe(HttpStatusCode.NotFound);
         (await LerAsync(resposta)).GetProperty("codigo").GetString().ShouldBe("nao_encontrado");
@@ -139,7 +139,7 @@ public sealed class ObterChamadoTests(ApiFactory api, BancoFixture banco) : ICla
 
     private async Task<JsonElement> ObterAsync(Guid id)
     {
-        using var resposta = await api.CreateClient().GetAsync($"/api/chamados/{id}", Ct);
+        using var resposta = await api.CriarClienteAtendente().GetAsync($"/api/chamados/{id}", Ct);
         resposta.StatusCode.ShouldBe(HttpStatusCode.OK);
         return await LerAsync(resposta);
     }

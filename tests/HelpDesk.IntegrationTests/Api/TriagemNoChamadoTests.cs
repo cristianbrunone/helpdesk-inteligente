@@ -22,7 +22,7 @@ public sealed class TriagemNoChamadoTests(ApiFactory api, BancoFixture banco) : 
     [Fact]
     public async Task Criar_TriagemHabilitada_DevolveTriagemPendenteGravadaNaMesmaOperacao()
     {
-        using var resposta = await api.CreateClient().PostAsJsonAsync("/api/chamados", NovoChamado(), Ct);
+        using var resposta = await api.CriarClienteAtendente().PostAsJsonAsync("/api/chamados", NovoChamado(), Ct);
 
         resposta.StatusCode.ShouldBe(HttpStatusCode.Created);
         var chamado = await LerAsync(resposta);
@@ -42,10 +42,10 @@ public sealed class TriagemNoChamadoTests(ApiFactory api, BancoFixture banco) : 
     public async Task Listar_ChamadoRecemCriado_TrazOStatusDaTriagemVigente()
     {
         var marcador = $"zt{Guid.NewGuid():N}"[..12];
-        using var criacao = await api.CreateClient()
+        using var criacao = await api.CriarClienteAtendente()
             .PostAsJsonAsync("/api/chamados", NovoChamado($"Erro ao emitir boleto {marcador}"), Ct);
 
-        using var lista = await api.CreateClient().GetAsync($"/api/chamados?q={marcador}", Ct);
+        using var lista = await api.CriarClienteAtendente().GetAsync($"/api/chamados?q={marcador}", Ct);
 
         var item = (await LerAsync(lista)).GetProperty("itens").EnumerateArray().ShouldHaveSingleItem();
         item.GetProperty("triagemStatus").GetString().ShouldBe("Pendente");
@@ -68,7 +68,7 @@ public sealed class TriagemNoChamadoTests(ApiFactory api, BancoFixture banco) : 
             return await db.SaveChangesAsync(Ct);
         });
 
-        using var resposta = await api.CreateClient().GetAsync($"/api/chamados/{chamado.Id}", Ct);
+        using var resposta = await api.CriarClienteAtendente().GetAsync($"/api/chamados/{chamado.Id}", Ct);
 
         var triagem = (await LerAsync(resposta)).GetProperty("triagem");
         triagem.GetProperty("id").GetGuid().ShouldBe(vigente.Id);
@@ -96,7 +96,7 @@ public sealed class TriagemNoChamadoTests(ApiFactory api, BancoFixture banco) : 
             return await db.SaveChangesAsync(Ct);
         });
 
-        using var resposta = await api.CreateClient().GetAsync($"/api/chamados/{chamado.Id}", Ct);
+        using var resposta = await api.CriarClienteAtendente().GetAsync($"/api/chamados/{chamado.Id}", Ct);
 
         var detalhe = (await LerAsync(resposta)).GetProperty("triagem");
         detalhe.GetProperty("status").GetString().ShouldBe("Falhou");
@@ -106,7 +106,7 @@ public sealed class TriagemNoChamadoTests(ApiFactory api, BancoFixture banco) : 
     [Fact]
     public async Task ConfigIA_PorPadrao_InformaTriagemECopilotoAtivos()
     {
-        using var resposta = await api.CreateClient().GetAsync("/api/config/ia", Ct);
+        using var resposta = await api.CriarClienteAtendente().GetAsync("/api/config/ia", Ct);
 
         resposta.StatusCode.ShouldBe(HttpStatusCode.OK);
         (await LerAsync(resposta)).GetRawText().ShouldBe("""{"triagem":true,"copiloto":true}""");
@@ -116,7 +116,7 @@ public sealed class TriagemNoChamadoTests(ApiFactory api, BancoFixture banco) : 
     public async Task Criar_TriagemDesativada_CriaOChamadoSemTriagemENadaNaFila()
     {
         await using var semTriagem = api.WithWebHostBuilder(b => b.UseSetting("IA_TRIAGEM_HABILITADA", "false"));
-        var cliente = semTriagem.CreateClient();
+        var cliente = semTriagem.CriarClienteAtendente();
 
         using var config = await cliente.GetAsync("/api/config/ia", Ct);
         using var resposta = await cliente.PostAsJsonAsync("/api/chamados", NovoChamado(), Ct);

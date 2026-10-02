@@ -22,7 +22,9 @@ internal static class SaudeEndpoints
 
     public static IEndpointRouteBuilder MapSaude(this IEndpointRouteBuilder app)
     {
+        // Público: o Docker e o balanceador consultam sem sessão (só estado, nenhum dado).
         app.MapHealthChecks(Rota, new HealthCheckOptions { ResponseWriter = EscreverAsync })
+            .AllowAnonymous()
             .WithTags("Saúde");
         return app;
     }

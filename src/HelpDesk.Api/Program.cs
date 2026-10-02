@@ -94,17 +94,20 @@ app.UseMiddleware<CorrelacaoMiddleware>();
 app.UseExceptionHandler();
 app.UseStatusCodePages();
 app.UseRateLimiter();
-app.UseAuthentication();
-app.UseAuthorization();
 
 // Documento OpenAPI nativo + Swagger UI (só a UI) apontando para ele (ADR-0013).
-app.MapOpenApi();
+app.MapOpenApi().AllowAnonymous();
 app.UseSwaggerUI(options =>
 {
     options.SwaggerEndpoint("/openapi/v1.json", "HelpDesk API v1");
     options.RoutePrefix = "swagger";
     options.DocumentTitle = "HelpDesk Inteligente — API";
 });
+
+// Depois do Swagger UI (HTML estático, sem dados): com a política de fallback, a autorização também vale para
+// requisições sem endpoint, e a interface da documentação precisa abrir sem sessão (ADR-0026).
+app.UseAuthentication();
+app.UseAuthorization();
 
 app.MapSaude();
 app.MapAutenticacao();

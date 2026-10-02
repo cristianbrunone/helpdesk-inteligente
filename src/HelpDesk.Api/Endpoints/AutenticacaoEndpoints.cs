@@ -15,6 +15,7 @@ internal static class AutenticacaoEndpoints
         var grupo = app.MapGroup("/api/auth").WithTags("Autenticação");
 
         grupo.MapPost("/login", Entrar)
+            .AllowAnonymous()
             .WithName("Entrar")
             .WithSummary("Confere e-mail e senha e grava a sessão num cookie httpOnly (o token não vem no corpo).")
             .ProducesProblem(StatusCodes.Status401Unauthorized)
@@ -31,6 +32,7 @@ internal static class AutenticacaoEndpoints
                 http.Response.Cookies.Delete(ConfiguracaoAutenticacao.NomeCookie, OpcoesCookie(opcoes, expiraEm: null));
                 return TypedResults.NoContent();
             })
+            .AllowAnonymous()
             .WithName("Sair")
             .WithSummary("Apaga o cookie da sessão.");
 

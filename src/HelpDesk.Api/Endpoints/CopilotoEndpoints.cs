@@ -1,5 +1,6 @@
 using System.Net.ServerSentEvents;
 using System.Runtime.CompilerServices;
+using HelpDesk.Api.Autenticacao;
 using HelpDesk.Application;
 using HelpDesk.Application.Copiloto;
 using HelpDesk.Domain.Erros;
@@ -22,6 +23,7 @@ internal static class CopilotoEndpoints
     public static IEndpointRouteBuilder MapCopiloto(this IEndpointRouteBuilder app)
     {
         app.MapPost("/api/chamados/{id:guid}/copiloto", Conversar)
+            .RequireAuthorization(ConfiguracaoAutenticacao.PoliticaAtendente)
             .RequireRateLimiting(NomePoliticaRateLimit)
             .WithName("ConversarComCopiloto")
             .WithSummary("Conversa com o copiloto sobre o chamado em contexto via SSE (Server-Sent Events).")

@@ -197,7 +197,7 @@ public sealed class MudarStatusTests(ApiFactory api, BancoFixture banco) : IClas
         var id = await CriarEmAsync(StatusChamado.Aberto);
         using var conteudo = new StringContent(corpo, Encoding.UTF8, "application/json");
 
-        using var resposta = await api.CreateClient().PatchAsync($"/api/chamados/{id}/status", conteudo, Ct);
+        using var resposta = await api.CriarClienteAtendente().PatchAsync($"/api/chamados/{id}/status", conteudo, Ct);
 
         resposta.StatusCode.ShouldBe(HttpStatusCode.BadRequest);
     }
@@ -250,18 +250,18 @@ public sealed class MudarStatusTests(ApiFactory api, BancoFixture banco) : IClas
             requisicao.Headers.TryAddWithoutValidation("If-Match", ifMatch);
         }
 
-        return await api.CreateClient().SendAsync(requisicao, Ct);
+        return await api.CriarClienteAtendente().SendAsync(requisicao, Ct);
     }
 
     private async Task<string> ETagAsync(Guid id)
     {
-        using var resposta = await api.CreateClient().GetAsync($"/api/chamados/{id}", Ct);
+        using var resposta = await api.CriarClienteAtendente().GetAsync($"/api/chamados/{id}", Ct);
         return resposta.Headers.ETag!.ToString();
     }
 
     private async Task<JsonElement> ObterAsync(Guid id)
     {
-        using var resposta = await api.CreateClient().GetAsync($"/api/chamados/{id}", Ct);
+        using var resposta = await api.CriarClienteAtendente().GetAsync($"/api/chamados/{id}", Ct);
         return await LerAsync(resposta);
     }
 

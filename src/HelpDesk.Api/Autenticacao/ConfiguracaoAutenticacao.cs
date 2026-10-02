@@ -3,6 +3,7 @@ using HelpDesk.Application.Autenticacao;
 using HelpDesk.Domain.Usuarios;
 using HelpDesk.Infrastructure.Seguranca;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.IdentityModel.Tokens;
 
@@ -24,6 +25,9 @@ internal static class ConfiguracaoAutenticacao
     public const string ClaimNome = "name";
     public const string ClaimEmail = "email";
     public const string ClaimPerfil = "role";
+
+    /// <summary>Política dos endpoints só do atendente: status, triagem, copiloto e dashboard (contrato §3).</summary>
+    public const string PoliticaAtendente = "Atendente";
 
     public static IServiceCollection AdicionarAutenticacao(this IServiceCollection services, OpcoesSessao opcoes)
     {
@@ -66,7 +70,11 @@ internal static class ConfiguracaoAutenticacao
                         StatusCodes.Status403Forbidden, "O seu perfil não permite esta operação."),
                 };
             });
-        services.AddAuthorization();
+        // Tudo exige sessão por padrão (fallback): um endpoint novo nasce protegido. As exceções são explícitas
+        // (AllowAnonymous): /health, o OpenAPI, o login e a saída.
+        services.AddAuthorizationBuilder()
+            .SetFallbackPolicy(new AuthorizationPolicyBuilder().RequireAuthenticatedUser().Build())
+            .AddPolicy(PoliticaAtendente, politica => politica.RequireRole(nameof(PerfilUsuario.Atendente)));
         return services;
     }
 
