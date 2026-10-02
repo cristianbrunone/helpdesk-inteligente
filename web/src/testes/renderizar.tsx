@@ -6,7 +6,7 @@ import type { ReactElement } from 'react';
 import { createMemoryRouter, MemoryRouter } from 'react-router';
 import { RouterProvider } from 'react-router/dom';
 import { rotas } from '../rotas';
-import { tema } from '../tema';
+import { tema, variaveisCss } from '../tema';
 
 function criarQueryClientDeTeste(): QueryClient {
   // Sem novas tentativas: o teste de erro vê o erro na primeira resposta.
@@ -16,7 +16,7 @@ function criarQueryClientDeTeste(): QueryClient {
 /** Renderiza um componente com os mesmos providers da aplicação. */
 export function renderizar(ui: ReactElement, { rota = '/' }: { rota?: string } = {}) {
   return render(
-    <MantineProvider theme={tema} env="test">
+    <MantineProvider theme={tema} cssVariablesResolver={variaveisCss} env="test">
       <Notifications />
       <QueryClientProvider client={criarQueryClientDeTeste()}>
         <MemoryRouter initialEntries={[rota]}>{ui}</MemoryRouter>
@@ -32,7 +32,7 @@ export function renderizar(ui: ReactElement, { rota = '/' }: { rota?: string } =
 export async function renderizarApp(rota = '/') {
   const roteador = createMemoryRouter(rotas, { initialEntries: [rota] });
   const resultado = render(
-    <MantineProvider theme={tema} env="test">
+    <MantineProvider theme={tema} cssVariablesResolver={variaveisCss} env="test">
       <Notifications />
       <QueryClientProvider client={criarQueryClientDeTeste()}>
         <RouterProvider router={roteador} />

@@ -232,7 +232,7 @@ function Sugestao({ triagem }: { triagem: TriagemDetalhe }) {
       {triagem.fontes.length > 0 && <Fontes fontes={triagem.fontes} />}
 
       {triagem.decididaPor && triagem.decididaEm && (
-        <Text size="xs" c={triagem.status === 'Aceita' ? 'teal' : 'red'}>
+        <Text size="xs" c={triagem.status === 'Aceita' ? 'teal.9' : 'red.9'}>
           {triagem.status === 'Aceita' ? 'Aceita' : 'Rejeitada'} por {triagem.decididaPor} em{' '}
           {formatarDataHora(triagem.decididaEm)}
         </Text>
