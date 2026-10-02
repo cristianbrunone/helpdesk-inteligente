@@ -34,7 +34,7 @@ const abrir = () => userEvent.click(screen.getByRole('button', { name: 'Abrir ch
 describe('NovoChamado', () => {
   it('valida no cliente e não envia nada enquanto houver erro', async () => {
     const corpos = capturarCriacao();
-    renderizarApp('/chamados/novo');
+    await renderizarApp('/chamados/novo');
 
     await userEvent.type(screen.getByLabelText(/^Título/), 'abc');
     await userEvent.type(screen.getByLabelText(/^E-mail do solicitante/), 'maria@');
@@ -52,7 +52,7 @@ describe('NovoChamado', () => {
 
   it('envia os dados aparados, sem categoria nem prioridade, e abre o chamado criado', async () => {
     const corpos = capturarCriacao();
-    const { roteador } = renderizarApp('/chamados/novo');
+    const { roteador } = await renderizarApp('/chamados/novo');
 
     await preencherValido();
     await abrir();
@@ -72,7 +72,7 @@ describe('NovoChamado', () => {
 
   it('envia categoria e prioridade quando escolhidas', async () => {
     const corpos = capturarCriacao();
-    renderizarApp('/chamados/novo');
+    await renderizarApp('/chamados/novo');
     await screen.findByRole('option', { name: 'Financeiro' });
 
     await preencherValido();
@@ -98,7 +98,7 @@ describe('NovoChamado', () => {
         { status: 422, headers: { 'Content-Type': 'application/problem+json' } },
       ),
     );
-    const { roteador } = renderizarApp('/chamados/novo');
+    const { roteador } = await renderizarApp('/chamados/novo');
 
     await preencherValido();
     await abrir();
@@ -121,7 +121,7 @@ describe('NovoChamado', () => {
         { status: 500, headers: { 'Content-Type': 'application/problem+json' } },
       ),
     );
-    renderizarApp('/chamados/novo');
+    await renderizarApp('/chamados/novo');
 
     await preencherValido();
     await abrir();

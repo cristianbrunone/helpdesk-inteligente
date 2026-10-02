@@ -4,7 +4,7 @@ import { renderizarApp } from '../testes/renderizar';
 
 describe('LayoutBase', () => {
   it('abre na lista de chamados, com o título, o menu móvel e a navegação', async () => {
-    const { roteador } = renderizarApp('/');
+    const { roteador } = await renderizarApp('/');
 
     await waitFor(() => expect(roteador.state.location.pathname).toBe('/chamados'));
     expect(
@@ -19,7 +19,7 @@ describe('LayoutBase', () => {
   });
 
   it('mostra a página de não encontrada para uma rota inexistente', async () => {
-    renderizarApp('/rota-que-nao-existe');
+    await renderizarApp('/rota-que-nao-existe');
 
     expect(
       await screen.findByRole('heading', { name: 'Página não encontrada' }),

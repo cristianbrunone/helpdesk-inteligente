@@ -19,12 +19,12 @@ function capturarListagem(resposta: ResultadoPaginado<ChamadoResumo> = paginaDe(
   return consultas;
 }
 
-const urlAtual = (roteador: ReturnType<typeof renderizarApp>['roteador']) =>
+const urlAtual = (roteador: Awaited<ReturnType<typeof renderizarApp>>['roteador']) =>
   new URLSearchParams(roteador.state.location.search);
 
 describe('ListaChamados', () => {
   it('lista os chamados com badges em pt-BR, categoria e link para o detalhe', async () => {
-    renderizarApp('/chamados');
+    await renderizarApp('/chamados');
 
     const link = await screen.findByRole('link', {
       name: '#1042 · Não consigo acessar o portal financeiro',
@@ -42,7 +42,7 @@ describe('ListaChamados', () => {
   it('abre com os filtros da URL aplicados na tela e na consulta à API (recarregar mantém)', async () => {
     const consultas = capturarListagem();
 
-    renderizarApp('/chamados?status=Resolvido&q=boleto&ordenarPor=prioridade&pagina=2');
+    await renderizarApp('/chamados?status=Resolvido&q=boleto&ordenarPor=prioridade&pagina=2');
 
     await waitFor(() => expect(consultas).toHaveLength(1));
     expect(consultas[0]?.toString()).toBe(
@@ -57,7 +57,7 @@ describe('ListaChamados', () => {
 
   it('reflete na URL o filtro escolhido e volta para a página 1', async () => {
     const consultas = capturarListagem();
-    const { roteador } = renderizarApp('/chamados?pagina=2');
+    const { roteador } = await renderizarApp('/chamados?pagina=2');
     await screen.findByText('2 chamados');
 
     await userEvent.click(screen.getByRole('checkbox', { name: 'Aberto' }));
@@ -77,7 +77,7 @@ describe('ListaChamados', () => {
   });
 
   it('busca com debounce, só a partir de 3 caracteres', async () => {
-    const { roteador } = renderizarApp('/chamados');
+    const { roteador } = await renderizarApp('/chamados');
     const busca = await screen.findByRole('searchbox', { name: 'Buscar no título e na descrição' });
 
     await userEvent.type(busca, 'co');
@@ -91,7 +91,7 @@ describe('ListaChamados', () => {
 
   it('troca de página pela paginação e grava a página na URL', async () => {
     capturarListagem(paginaDe(chamadosPadrao, { totalItens: 45, totalPaginas: 3 }));
-    const { roteador } = renderizarApp('/chamados?status=Aberto');
+    const { roteador } = await renderizarApp('/chamados?status=Aberto');
 
     await userEvent.click(await screen.findByRole('button', { name: 'Página 2' }));
 
@@ -100,7 +100,7 @@ describe('ListaChamados', () => {
 
   it('mostra o estado vazio e limpa os filtros', async () => {
     capturarListagem(paginaDe([]));
-    const { roteador } = renderizarApp('/chamados?status=Fechado&q=inexistente');
+    const { roteador } = await renderizarApp('/chamados?status=Fechado&q=inexistente');
 
     expect(
       await screen.findByText('Nenhum chamado encontrado com esses filtros.'),
@@ -126,7 +126,7 @@ describe('ListaChamados', () => {
         { once: true },
       ),
     );
-    renderizarApp('/chamados');
+    await renderizarApp('/chamados');
 
     expect(await screen.findByText('Não foi possível carregar os chamados')).toBeInTheDocument();
     expect(screen.getByText('Código de rastreio: rastreio-456')).toBeInTheDocument();
