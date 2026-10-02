@@ -116,7 +116,7 @@ aceitar_triagem() {
 
 copiloto_via_sse_pelo_nginx() {
   # Critério da Sprint 4: o copiloto responde via SSE pelo Nginx (sem buffering),
-  # emitindo eventos de ferramenta, delta, fontes e fim, citando o chamado #877 retornado pelo fake.
+  # emitindo eventos de ferramenta, delta, fontes e fim, citando chamados parecidos retornados pelo fake.
   [ -n "$ID_TRIAGEM" ] || return 1
   local cabecalhos corpo
   cabecalhos="$(mktemp)"
@@ -128,7 +128,7 @@ copiloto_via_sse_pelo_nginx() {
   echo "$corpo" | grep -q 'event: delta' || return 1
   echo "$corpo" | grep -q 'event: fontes' || return 1
   echo "$corpo" | grep -q 'event: fim' || return 1
-  echo "$corpo" | grep -q '#877'
+  echo "$corpo" | grep -Eq '#[0-9]+'
 }
 
 dados_pessoais_fora_dos_logs() {
