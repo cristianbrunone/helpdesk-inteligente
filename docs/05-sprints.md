@@ -349,11 +349,11 @@ Os cortes acontecem nesta ordem, do primeiro ao último:
 
 **Critérios de aceite:**
 
-- [ ] O link abre com HTTPS válido, e o login funciona.
-- [ ] A triagem usa o Gemini (o painel mostra o modelo real).
-- [ ] O copiloto responde em streaming e cita fontes.
-- [ ] As portas internas (API, banco e web) não respondem de fora da VPS.
-- [ ] Um clone limpo continua subindo com a IA fake, sem .env (CI verde).
+- [x] O link abre com HTTPS válido, e o login funciona.
+- [x] A triagem usa o Gemini (o painel mostra o modelo real).
+- [x] O copiloto responde em streaming e cita fontes.
+- [x] As portas internas (API, banco e web) não respondem de fora da VPS.
+- [x] Um clone limpo continua subindo com a IA fake, sem .env (CI verde).
 
 **Testes:** smoke e E2E existentes executados contra o link publicado com HTTPS.
 
