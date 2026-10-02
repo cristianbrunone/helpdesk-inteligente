@@ -73,7 +73,7 @@ public static class GeradorSeedChamados
         for (var i = 0; i < quantidade; i++)
         {
             var (status, prioridade) = i < combinacoes.Length ? combinacoes[i] : Sortear(faker);
-            var (chamado, triagem) = GerarChamado(faker, categorias, agora, status, prioridade);
+            var (chamado, triagem) = GerarChamado(faker, categorias, agora, status, prioridade, DonoDemonstracao(i));
             chamados.Add(chamado);
             if (triagem is not null)
             {
@@ -84,6 +84,17 @@ public static class GeradorSeedChamados
         // Ordem de criação: o número amigável (identity) cresce com a data.
         return new DadosSeed([.. chamados.OrderBy(c => c.CriadoEm)], triagens);
     }
+
+    /// <summary>
+    /// 1 em cada 10 chamados é da Marina e 1 em cada 10 é do Paulo, os solicitantes de demonstração (ADR-0026): ao
+    /// entrar com eles, há chamados em todos os status para ver. Os demais são de solicitantes sem login.
+    /// </summary>
+    private static UsuarioDemonstracao? DonoDemonstracao(int indice) => (indice % 10) switch
+    {
+        3 => GeradorSeedUsuarios.MarinaSolicitante,
+        7 => GeradorSeedUsuarios.PauloSolicitante,
+        _ => null,
+    };
 
     private static (StatusChamado, Prioridade) Sortear(Faker faker)
     {
@@ -99,7 +110,8 @@ public static class GeradorSeedChamados
         IReadOnlyDictionary<string, short> categorias,
         DateTimeOffset agora,
         StatusChamado status,
-        Prioridade prioridade)
+        Prioridade prioridade,
+        UsuarioDemonstracao? dono)
     {
         var nomeCategoria = faker.PickRandom(ModelosChamado.PorCategoria.Keys.ToArray());
         var modelo = faker.PickRandom(ModelosChamado.PorCategoria[nomeCategoria]);
@@ -123,7 +135,9 @@ public static class GeradorSeedChamados
         short? categoriaId = !aceita && faker.Random.Bool(0.5f) ? categoriaCorreta : null;
 
         var atendente = faker.PickRandom(_atendentes);
-        var solicitante = $"{primeiroNome} {sobrenome}";
+        // O nome sorteado é consumido mesmo quando o dono é de demonstração: a sequência do Bogus (e, com ela, todo o
+        // resto do seed) não muda.
+        var solicitante = dono?.Nome ?? $"{primeiroNome} {sobrenome}";
         var (passos, duracao) = LinhaDoTempo(faker, status, atendente, Preencher(modelo.Resolucao));
 
         // Criação dentro da janela de 90 dias, com espaço para toda a linha do tempo terminar antes de "agora".
@@ -148,7 +162,7 @@ public static class GeradorSeedChamados
             Capitalizar(Preencher(modelo.Titulo)),
             descricao,
             solicitante,
-            $"{Slug(primeiroNome)}.{Slug(sobrenome)}@example.com",
+            dono?.Email ?? $"{Slug(primeiroNome)}.{Slug(sobrenome)}@example.com",
             categoriaId,
             aceita ? null : prioridade,
             criadoEm);

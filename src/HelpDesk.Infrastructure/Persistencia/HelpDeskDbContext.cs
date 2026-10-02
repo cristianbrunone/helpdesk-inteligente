@@ -2,6 +2,7 @@ using HelpDesk.Domain.Categorias;
 using HelpDesk.Domain.Chamados;
 using HelpDesk.Domain.Conhecimento;
 using HelpDesk.Domain.Triagem;
+using HelpDesk.Domain.Usuarios;
 using Microsoft.EntityFrameworkCore;
 
 namespace HelpDesk.Infrastructure.Persistencia;
@@ -26,6 +27,8 @@ public sealed class HelpDeskDbContext(DbContextOptions<HelpDeskDbContext> option
 
     public DbSet<DocumentoRag> DocumentosRag => Set<DocumentoRag>();
 
+    public DbSet<Usuario> Usuarios => Set<Usuario>();
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         // Busca vetorial (ADR-0007); busca por substring e sem acento (ADR-0008).
@@ -39,7 +42,8 @@ public sealed class HelpDeskDbContext(DbContextOptions<HelpDeskDbContext> option
         modelBuilder
             .HasPostgresEnum("status_chamado", Rotulos<StatusChamado>())
             .HasPostgresEnum("prioridade_chamado", Rotulos<Prioridade>())
-            .HasPostgresEnum("status_triagem", Rotulos<StatusTriagem>());
+            .HasPostgresEnum("status_triagem", Rotulos<StatusTriagem>())
+            .HasPostgresEnum("perfil_usuario", Rotulos<PerfilUsuario>());
 
         modelBuilder.HasDbFunction(typeof(HelpDeskDbContext).GetMethod(nameof(FUnaccent))!).HasName("f_unaccent");
 

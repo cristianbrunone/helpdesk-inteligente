@@ -1,3 +1,4 @@
+using HelpDesk.Application.Autenticacao;
 using HelpDesk.Domain.Categorias;
 using HelpDesk.Infrastructure.Persistencia.Seed;
 using Microsoft.EntityFrameworkCore;
@@ -9,6 +10,7 @@ namespace HelpDesk.Infrastructure.Persistencia;
 public sealed class InicializadorBanco(
     HelpDeskDbContext db,
     TimeProvider relogio,
+    IHashSenha hasher,
     ILogger<InicializadorBanco> logger)
 {
     private static readonly string[] _categoriasPadrao =
@@ -20,6 +22,7 @@ public sealed class InicializadorBanco(
         await AplicarSeedCategoriasAsync(cancellationToken);
         await AplicarSeedChamadosAsync(cancellationToken);
         await AplicarSeedArtigosAsync(cancellationToken);
+        await AplicarSeedUsuariosAsync(cancellationToken);
     }
 
     private async Task AplicarSeedCategoriasAsync(CancellationToken cancellationToken)
@@ -72,5 +75,21 @@ public sealed class InicializadorBanco(
         await db.SaveChangesAsync(cancellationToken);
 
         logger.LogInformation("Seed de artigos: {Artigos} artigos", artigos.Count);
+    }
+
+    // Por e-mail, como o de categorias (ADR-0026): um banco anterior à Sprint 6 também recebe os usuários de
+    // demonstração, e um usuário que já existe nunca é sobrescrito (a senha dele continua a mesma).
+    private async Task AplicarSeedUsuariosAsync(CancellationToken cancellationToken)
+    {
+        var existentes = await db.Usuarios.Select(u => u.Email).ToListAsync(cancellationToken);
+        var novos = GeradorSeedUsuarios.Todos.Any(u => !existentes.Contains(u.Email))
+            ? GeradorSeedUsuarios.Gerar(hasher, relogio.GetUtcNow()).Where(u => !existentes.Contains(u.Email)).ToList()
+            : [];
+
+        db.Usuarios.AddRange(novos);
+        await db.SaveChangesAsync(cancellationToken);
+
+        logger.LogInformation("Seed de usuários: {Inseridos} inseridos, {Existentes} já existiam",
+            novos.Count, existentes.Count);
     }
 }
