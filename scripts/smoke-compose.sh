@@ -67,15 +67,20 @@ EMAIL_SMOKE="smoke.$(date +%s).$RANDOM@example.com"
 
 ciclo_do_chamado() {
   # Cria (201) → muda status com o ETag atual (200) → repete com o ETag antigo (412 versao_desatualizada).
+  # --compressed pede gzip, como o navegador: se o Nginx comprimir a resposta da API, o ETag vira fraco (W/"...")
+  # e o If-Match deixa de casar. Sem isso, o smoke não via o 412 que todo navegador recebia.
   local cabecalhos corpo id etag
   cabecalhos="$(mktemp)"
-  corpo="$(curl -fsS --max-time 10 -D "$cabecalhos" -H 'Content-Type: application/json' \
+  corpo="$(curl -fsS --compressed --max-time 10 -D "$cabecalhos" -H 'Content-Type: application/json' \
     -d "{\"titulo\":\"Smoke test do compose\",\"descricao\":\"Chamado criado pelo smoke test. CPF 123.456.789-09.\",\"solicitanteNome\":\"Pessoa Smoke\",\"solicitanteEmail\":\"$EMAIL_SMOKE\"}" \
     "$WEB/api/chamados")" || return 1
   grep -qi '^HTTP/[0-9.]* 201' "$cabecalhos" || return 1
   id="$(echo "$corpo" | campo_json id)"
+  [ -n "$id" ] || return 1
+  # O ETag vem do detalhe (200), como na tela: o Nginx só comprime respostas 200, não o 201 da criação.
+  curl -fsS --compressed --max-time 10 -D "$cabecalhos" -o /dev/null "$WEB/api/chamados/$id" || return 1
   etag="$(grep -i '^etag:' "$cabecalhos" | cut -d' ' -f2- | tr -d '\r')"
-  [ -n "$id" ] && [ -n "$etag" ] || return 1
+  [ -n "$etag" ] || return 1
   [ "$(patch_status "$id" EmAndamento "$etag")" = "200" ] || return 1
   [ "$(patch_status "$id" Resolvido "$etag")" = "412" ]
 }
