@@ -370,27 +370,27 @@ O eval rodou no Gemini: 180 triagens, 90 por versão, sem nenhuma falha que não
 
 ## Sprint 6 — Autenticação JWT e Perfis (ADR-0026)
 
-**Artefatos:** [ADR-0026](adr/0026-autenticacao-jwt-com-usuarios-do-seed.md); entidade `Usuario` e enum `PerfilUsuario` em `src/HelpDesk.Domain/Usuarios/`; PBKDF2 e JWT em `src/HelpDesk.Infrastructure/Autenticacao/` (`HasherSenha`, `TokenJwtServico`); endpoints de autenticação em `src/HelpDesk.Api/Endpoints/AutenticacaoEndpoints.cs` (`POST /api/auth/login`, `GET /api/auth/sessao`, `POST /api/auth/logout`); políticas de autorização `Atendente` e `Autenticado` em `src/HelpDesk.Api/Program.cs`; migração `AdicionarUsuarios` e seed determinístico com senhas seguras em `src/HelpDesk.Infrastructure/Persistencia/Seed/GeradorSeedUsuarios.cs`; filtro por `solicitanteId` em `ConsultaChamados`; tela de login `web/src/paginas/Entrar.tsx`, rotas protegidas em `web/src/componentes/RotaProtegida.tsx` e gestão de sessão em `web/src/api/autenticacao.ts`; fluxo E2E do solicitante em `web/e2e/solicitante.spec.ts`.
+**Artefatos:** [ADR-0026](adr/0026-autenticacao-jwt-com-usuarios-do-seed.md); entidade `Usuario` e enum `PerfilUsuario` em `src/HelpDesk.Domain/Usuarios/`; caso de uso `EntrarNoSistema` e porta `IHashSenha` em `src/HelpDesk.Application/Autenticacao/`; hash PBKDF2 em `src/HelpDesk.Infrastructure/Seguranca/HashSenhaPbkdf2.cs`; emissão do JWT e políticas (`PoliticaAtendente` e a política de fallback "autenticado") em `src/HelpDesk.Api/Autenticacao/` (`EmissorToken`, `ConfiguracaoAutenticacao`); endpoints `POST /api/auth/login`, `GET /api/auth/eu` e `POST /api/auth/sair` em `src/HelpDesk.Api/Endpoints/AutenticacaoEndpoints.cs`; migration `Usuarios` e seed em `src/HelpDesk.Infrastructure/Persistencia/Seed/GeradorSeedUsuarios.cs`; filtro pelo e-mail do solicitante em `ConsultaChamados`; tela de login `web/src/paginas/Entrar.tsx`, rotas protegidas em `web/src/componentes/RotaProtegida.tsx` e sessão em `web/src/api/autenticacao.ts`; fluxo E2E do solicitante em `web/e2e/solicitante.spec.ts`.
 
 **O que foi entregue:**
 
-- **Autenticação robusta por Cookie HttpOnly:** JWT assinado com HMAC-SHA256, encapsulado num cookie seguro com `HttpOnly`, `SameSite=Lax` e `Path=/`. Imune a ataques de roubo de token via XSS no frontend e compatível com clientes sem navegador via cabeçalho `Authorization: Bearer`.
+- **Autenticação robusta por Cookie HttpOnly:** JWT assinado com HMAC-SHA256, encapsulado num cookie com `HttpOnly`, `Secure` e `SameSite=Strict`, válido por 8 horas. Imune a ataques de roubo de token via XSS no frontend e compatível com clientes sem navegador via cabeçalho `Authorization: Bearer`.
 - **Perfis de usuário estritos (`Atendente` e `Solicitante`):**
   - **Atendente:** acesso completo à triagem por IA, copiloto conversacional, transições de status da máquina de estados, dashboard executivo e abertura de chamado em nome de solicitantes.
-  - **Solicitante:** visão restrita e personalizada. Na API e na interface, visualiza e consulta apenas os chamados associados à sua própria conta (`solicitanteId`). O formulário de abertura de chamado omite campos de contato (vinculados diretamente à sessão ativa), o menu omite o dashboard, e o detalhe do chamado oculta painéis de IA e botões de alteração de status, mantendo acesso a leitura e envio de comentários.
+  - **Solicitante:** visão restrita e personalizada. Na API e na interface, visualiza e consulta apenas os chamados cujo e-mail do solicitante é o da sua conta (sem diferenciar maiúsculas); o chamado de outra pessoa responde 404, e não 403, para não revelar que existe. O formulário de abertura de chamado omite campos de contato (vinculados diretamente à sessão ativa), o menu omite o dashboard, e o detalhe do chamado oculta painéis de IA e botões de alteração de status, mantendo acesso a leitura e envio de comentários.
 - **Identidade confiável e inviolável:** remoção total de campos de identidade do corpo das requisições (`alteradoPor`, `autor`, `decididaPor`). O backend extrai a identidade unicamente do `ClaimsPrincipal` assinado, impedindo qualquer falsificação de autoria de comentários, alterações de status ou decisões de triagem.
-- **Segurança de credenciais:** senhas com salt criptográfico de 16 bytes e hash PBKDF2 com HMAC-SHA256 em 100.000 iterações, comparadas em tempo constante contra ataques de temporização.
+- **Segurança de credenciais:** senhas com salt criptográfico de 16 bytes e hash PBKDF2 com HMAC-SHA256 em 600.000 iterações, comparadas em tempo constante; um e-mail inexistente também calcula um hash, para o tempo de resposta não revelar quais contas existem.
 - **Testes:** a suíte do backend cresceu de 689 para 780 testes (482 unitários, 292 de integração e 6 de arquitetura); o frontend passou de 62 para 70 testes no Vitest; os testes E2E com Playwright aumentaram de 6 para 8 cenários, cobrindo o fluxo do solicitante e autenticação; e o script de smoke do compose foi atualizado para operar autenticado.
 
-**Como foi feito:** 8 commits estruturados e validados isoladamente:
-1. `feat(db): adiciona a tabela de usuários com perfis e a migration`
-2. `feat(db): popula usuários com perfis no seed com senhas seguras`
-3. `feat(api): adiciona o login com JWT e cookie HttpOnly + /api/auth/sessao e logout`
-4. `feat(web): adiciona o login, a sessão e o guard de rotas no front + smoke e E2E autenticados`
-5. `feat(api): exige autenticação nos endpoints e restringe ações de atendente`
-6. `feat(api): restringe o solicitante aos próprios chamados e documenta os usuários de teste`
-7. `refactor(api): tira a identidade do corpo das requisições + o front sem o campo 'Seu nome (atendente)' e o formulário por perfil`
-8. `test(e2e): cobre o fluxo do solicitante`
+**Como foi feito:** 15 commits, do planejamento (`docs: planeja a Sprint 6 e decide a autenticação (ADR-0026)`) às correções finais. Os principais:
+1. `feat(db): adiciona os usuários com perfis e o seed de demonstração`
+2. `feat(api): adiciona o login com JWT em cookie httpOnly`
+3. `feat(web): adiciona o login, a sessão e o menu do usuário + smoke e E2E fazendo login`
+4. `feat(api): exige autenticação e aplica os perfis`
+5. `feat(app): restringe o solicitante aos próprios chamados e documenta usuários do seed`
+6. `refactor(api): tira a identidade do corpo das requisições + o front sem o campo 'Seu nome (atendente)' e o formulário por perfil`
+7. `test(e2e): cobre o fluxo do solicitante`
+8. `fix(infra): lista os chamados do solicitante sem diferenciar maiúsculas no e-mail`, achado na revisão antes do PR: o detalhe e o comentário já ignoravam maiúsculas, mas a lista não, e um chamado aberto pelo atendente com "Marina.Costa@..." sumia da lista dela.
 
 ### O que mudou em relação ao plano
 
@@ -403,6 +403,34 @@ O eval rodou no Gemini: 180 triagens, 90 por versão, sem nenhuma falha que não
 - **Segurança defensiva contra falsificação:** confiar na identidade enviada no payload JSON (ex.: `"alteradoPor": "Ana"`) é uma vulnerabilidade clássica. Ao amarrar a autoria ao token JWT assinado, eliminou-se uma superfície inteira de ataque sem adicionar complexidade ao domínio.
 - **Cookie HttpOnly vs LocalStorage:** armazenar JWT no `localStorage` expõe a aplicação a vazamento por XSS. O uso de cookie HttpOnly gerenciado pelo navegador, com suporte opcional a `Bearer` para testes de API e scripts, combinou segurança máxima na UI e flexibilidade em integrações.
 
+## Sprint 7 — Design e experiência
+
+**Artefatos:** [análise de experiência](06-analise-de-experiencia.md); layout do detalhe em `web/src/paginas/DetalheChamado.module.css`; hooks `useCelular` e `useTituloDaPagina` em `web/src/hooks/`; `notificarSucesso` e `SemPermissao` em `web/src/componentes/`; ajustes de contraste e largura do conteúdo em `web/src/tema.ts` (com `tema.test.ts`); favicon em `web/public/favicon.svg`; E2E de consistência em `web/e2e/layout.spec.ts`.
+
+**O que foi entregue:**
+
+- **Análise antes do código.** As telas foram percorridas com o Playwright nos dois perfis, em 1366 e 375 px, e o resultado virou um documento com 12 problemas priorizados. Cada commit da sprint resolve um item da lista, e o documento registra o que ficou de fora.
+- **Prioridade alta (4):** ações e triagem antes do conteúdo no detalhe em telas pequenas; filtros recolhíveis no celular; notificação de sucesso nas ações cujo resultado não aparece onde o usuário está olhando; "Meus chamados" e um estado vazio próprio para o solicitante.
+- **Prioridade média (5):** menu ativo nas sub-rotas; nome e perfil no menu do celular; dashboard com 403 explicado, sem alerta de erro; gráficos e consumo de IA legíveis em 375 px; título da aba por página.
+- **Consistência visual,** pedida durante a sprint: a mesma largura de conteúdo na lista, no detalhe e no dashboard; ícones no menu e no cabeçalho (`@tabler/icons-react`, justificada no CLAUDE.md); cantos arredondados no item ativo; favicon.
+- **Acessibilidade:** nova auditoria com o axe-core, agora em 38 telas e estados, contra um compose isolado com o banco limpo. Achou dois problemas de contraste que a auditoria da Sprint 5 não viu, porque ela não visitou esses estados: o vermelho dos campos com erro (3,28:1) e o hover da variante "light" dos botões (indigo 4,13:1, red 3,76:1). Ambos foram corrigidos no tema, com zero violações no fim.
+- **Testes:** o frontend passou de 70 para 92 testes no Vitest, e o E2E de 8 para 12 cenários. O backend não mudou (sem mudança de contrato).
+
+**Como foi feito:** um commit por item da análise, cada um com os testes de componente afetados, o E2E e uma quebra proposital para provar que o teste detecta o problema.
+
+### O que mudou em relação ao plano
+
+- **O README ficou sem capturas de tela.** O plano pedia "o que mudou na experiência, com as telas"; por decisão do desenvolvedor, a seção descreve as mudanças em texto.
+- **Entraram itens fora da análise:** a largura única, os ícones, o favicon e os cantos do menu, pedidos ao ver as telas durante a sprint. Do grupo de baixa prioridade, só o B1 (ícones) foi feito; o cartão inteiro clicável (B2) e a padronização dos botões (B3) ficaram registrados.
+- **Um teste instável foi corrigido no caminho:** o primeiro teste de alguns arquivos passava às vezes dos 5 s, porque carregava a página sob demanda a frio. Antes da correção, 2 de 3 rodadas falhavam; depois, 5 de 5 passaram.
+
+### Aprendizados
+
+- **Uma auditoria vale pelos estados que ela visita.** A da Sprint 5 deu zero violações e estava certa para as telas paradas. A da Sprint 7 enviou formulários vazios e passou o mouse nos botões, e encontrou contraste abaixo do mínimo em componentes que existiam desde a Sprint 1.
+- **A quebra proposital precisa compilar.** Duas vezes a quebra derrubou o build da imagem, e o E2E rodou contra o contêiner antigo e "passou". Conferir o código de saída do build virou parte da rotina.
+- **Ordem do HTML é decisão de UX.** Mover as ações para cima no celular com áreas de CSS grid, e não duplicando o bloco, também mudou a ordem do teclado e do leitor de tela, e deu um teste simples: a ordem no DOM.
+- **Dados de teste criados à mão podem quebrar o E2E.** Os dois chamados abertos para a análise tinham "403" no texto e passaram a ser os escolhidos pelo teste do copiloto, sem casos parecidos indexados. O ambiente isolado (`testes.sh --completo`) é a referência; o banco de desenvolvimento, não.
+
 ---
 
 ## Fechamento do projeto
@@ -410,7 +438,7 @@ O eval rodou no Gemini: 180 triagens, 90 por versão, sem nenhuma falha que não
 ### Lições que valem para o próximo
 
 - **Planejar antes de codificar pagou.** Os requisitos, os ADRs, o modelo de dados e os contratos existiam antes da primeira linha de código. Nas sprints, quase toda discussão foi "como", e não "o quê" ou "por quê"; as mudanças de rumo viraram ADRs novos, e não surpresas.
-- **Cada camada de teste pegou algo que as outras não pegavam:** o teste de concorrência achou um deadlock (Sprint 3); o harness de evals achou um fake lendo o prompt errado (Sprint 3); a revisão achou variáveis faltando no compose (Sprint 4); o E2E achou o ETag e o ICU (Sprint 5); os testes de autenticação e perfis pegaram chamados de outros solicitantes vazando na busca (Sprint 6).
+- **Cada camada de teste pegou algo que as outras não pegavam:** o teste de concorrência achou um deadlock (Sprint 3); o harness de evals achou um fake lendo o prompt errado (Sprint 3); a revisão achou variáveis faltando no compose (Sprint 4); o E2E achou o ETag e o ICU (Sprint 5); os testes de autenticação e perfis pegaram chamados de outros solicitantes vazando na busca (Sprint 6); a auditoria de acessibilidade nos estados de erro e de hover achou contraste abaixo do mínimo (Sprint 7).
 - **Quebrar o teste de propósito é barato e revelador.** Ao longo do projeto, essa regra encontrou testes que passavam por acaso (o filtro de status do dashboard, na Sprint 3) e quebras que não compilavam e por isso "passavam" com o binário antigo.
 - **IA tratada como componente não confiável funciona.** Tipos que impedem mandar texto cru ao provedor, validação de toda saída, fake determinístico que passa pelo mesmo pipeline, evals antes de trocar o prompt, guardrail no stream e kill switches. Nenhuma dessas peças é sofisticada; juntas, deixam a IA previsível o bastante para produção.
 - **Medir mudou decisões.** "O RAG melhora a triagem?" virou uma tabela, e a tabela mostrou o que melhorou, o que piorou e quanto custou.

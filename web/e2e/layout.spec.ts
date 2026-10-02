@@ -31,3 +31,21 @@ test('lista, detalhe e dashboard ocupam a mesma largura', async ({ page, request
   expect(detalhe).toEqual(lista);
   expect(dashboard).toEqual(lista);
 });
+
+test('o favicon é servido como SVG e o item ativo do menu tem cantos arredondados', async ({
+  page,
+  request,
+}) => {
+  // Sem o arquivo, o fallback do SPA no Nginx responderia 200 com o index.html: o tipo é o que prova.
+  const favicon = await request.get('/favicon.svg');
+  expect(favicon.ok()).toBeTruthy();
+  expect(favicon.headers()['content-type']).toContain('image/svg+xml');
+
+  await page.goto('/chamados');
+  await expect(page.locator('link[rel="icon"]')).toHaveAttribute('href', '/favicon.svg');
+  const ativo = page
+    .getByRole('navigation', { name: 'Navegação' })
+    .getByRole('link', { name: 'Chamados' });
+  const raio = await ativo.evaluate((el) => getComputedStyle(el).borderTopLeftRadius);
+  expect(raio).not.toBe('0px');
+});

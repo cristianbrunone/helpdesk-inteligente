@@ -42,3 +42,31 @@ A base está correta: todas as telas tratam carregando, vazio e erro, funcionam 
 | M1–M5 | um commit por item, na ordem, se sobrar tempo antes de 06/10 |
 
 Cada commit traz os testes de componente afetados. Ao final: o E2E, a auditoria do axe-core (zero violações) e as capturas no README.
+
+## Resultado (fim da sprint)
+
+| Item | Situação | Commit |
+|---|---|---|
+| A1 | ✅ Resolvido | `feat(web): ações e triagem antes do conteúdo no detalhe em telas pequenas` |
+| A2 | ✅ Resolvido | `feat(web): filtros da lista recolhíveis no celular` |
+| A3 | ✅ Resolvido | `feat(web): confirma com notificação as ações que deram certo` |
+| A4 | ✅ Resolvido | `feat(web): lista do solicitante com título e estado vazio próprios` |
+| M1 | ✅ Resolvido | `feat(web): menu marca "Chamados" também no detalhe do chamado` |
+| M2 | ✅ Resolvido | `feat(web): nome e perfil do usuário no menu do celular` |
+| M3 | ✅ Resolvido | `feat(web): dashboard explica a falta de permissão sem alerta de erro` |
+| M4 | ✅ Resolvido | `feat(web): gráficos e consumo de IA legíveis no dashboard em 375 px` |
+| M5 | ✅ Resolvido | `feat(web): título da aba do navegador por página` |
+| B1 | ✅ Resolvido | `feat(web): ícones no menu lateral e no cabeçalho` (a biblioteca `@tabler/icons-react` foi aprovada) |
+| B2 | Para a próxima versão | Cartão inteiro clicável |
+| B3 | Para a próxima versão | Padronizar tamanhos e rótulos dos botões |
+
+**Fora da análise, pedidos ao ver as telas:** a mesma largura de conteúdo na lista, no detalhe e no dashboard (antes 960, 1100 e 1100 px); cantos arredondados no item ativo do menu; favicon.
+
+**Auditoria de acessibilidade (axe-core, WCAG 2.1 AA):** 38 telas e estados, nos dois perfis, em 1366 e 375 px, incluindo formulários com erro, filtros abertos, o menu do celular e botões em hover. Rodou contra um compose isolado com o banco limpo, com o axe-core instalado fora do repositório, como na Sprint 5. Achou dois problemas de contraste, ambos corrigidos no tema (`web/src/tema.ts`), e terminou com **zero violações**:
+
+| Problema | Antes | Depois |
+|---|---|---|
+| Texto e mensagem dos campos com erro (`red.6` sobre branco) | 3,28:1 | 5,46:1 (`red.9`) |
+| Hover da variante "light" dos botões (texto tom 9 sobre fundo tom 2) | indigo 4,13:1, red 3,76:1 | indigo 5,34:1, red 4,51:1 (fundo tom 1) |
+
+**Testes:** o frontend passou de 70 para 92 testes, e o E2E de 8 para 12 cenários. O contraste das cores ajustadas é recalculado num teste de unidade (`web/src/tema.test.ts`).
