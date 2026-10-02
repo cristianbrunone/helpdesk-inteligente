@@ -25,6 +25,18 @@ test('lista de chamados cabe em 375 px', async ({ page }) => {
   await semRolagemHorizontal(page);
 });
 
+test('no celular, o menu mostra quem está logado (o cabeçalho só tem "Sair")', async ({ page }) => {
+  await page.goto('/chamados');
+  const banner = page.getByRole('banner');
+  await expect(banner.getByText('Ana (suporte)')).toBeHidden();
+
+  await page.getByRole('button', { name: 'Abrir menu' }).click();
+  const usuario = page.getByRole('group', { name: 'Usuário da sessão no menu' });
+  await expect(usuario.getByText('Ana (suporte)')).toBeVisible();
+  await expect(usuario.getByText('Atendente')).toBeVisible();
+  await semRolagemHorizontal(page);
+});
+
 test('novo chamado cabe em 375 px', async ({ page }) => {
   await page.goto('/chamados/novo');
   await expect(page.getByRole('button', { name: 'Abrir chamado' })).toBeVisible();

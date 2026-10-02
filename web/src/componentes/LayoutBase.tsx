@@ -68,6 +68,25 @@ export function LayoutBase() {
       </AppShell.Header>
 
       <AppShell.Navbar p="sm" component="nav" aria-label="Navegação">
+        {/* No celular o cabeçalho não tem espaço para o nome e o perfil: eles abrem o menu (item M2 da análise). */}
+        {usuario && (
+          <Group
+            hiddenFrom="sm"
+            gap="xs"
+            px="sm"
+            pb="sm"
+            mb="xs"
+            wrap="nowrap"
+            role="group"
+            aria-label="Usuário da sessão no menu"
+            style={{ borderBottom: '1px solid var(--mantine-color-gray-3)' }}
+          >
+            <Text size="sm" fw={500}>
+              {usuario.nome}
+            </Text>
+            <Badge variant="light">{usuario.perfil}</Badge>
+          </Group>
+        )}
         {ITENS_DO_MENU.filter((item) => !(ehSolicitante && item.destino === '/dashboard')).map(
           ({ rotulo, rotuloSolicitante, destino }) => (
             <NavLink

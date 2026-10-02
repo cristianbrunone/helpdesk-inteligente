@@ -21,7 +21,7 @@ test.describe('Login e sessão', () => {
 
     await expect(page).toHaveURL(/\/dashboard/);
     await expect(page.getByRole('heading', { name: 'Dashboard' })).toBeVisible();
-    await expect(page.getByText('Ana (suporte)')).toBeVisible();
+    await expect(page.getByRole('banner').getByText('Ana (suporte)')).toBeVisible();
 
     await context.close();
   });

@@ -41,6 +41,17 @@ describe('LayoutBase', () => {
     expect(navegacao.getByRole('link', { name: 'Chamados' })).not.toHaveAttribute('data-active');
   });
 
+  it('o menu (que no celular abre pelo hambúrguer) mostra o nome e o perfil do usuário', async () => {
+    await renderizarApp('/chamados');
+    const navegacao = within(screen.getByRole('navigation', { name: 'Navegação' }));
+
+    const usuario = within(
+      await navegacao.findByRole('group', { name: 'Usuário da sessão no menu' }),
+    );
+    expect(usuario.getByText('Ana (suporte)')).toBeInTheDocument();
+    expect(usuario.getByText('Atendente')).toBeInTheDocument();
+  });
+
   it('mostra a página de não encontrada para uma rota inexistente', async () => {
     await renderizarApp('/rota-que-nao-existe');
 
