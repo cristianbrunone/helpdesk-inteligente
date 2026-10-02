@@ -23,6 +23,7 @@ O projeto foi planejado antes de ser codificado. Recomendo ler nesta ordem:
 | [`docs/03-modelo-de-dados.md`](docs/03-modelo-de-dados.md) | Modelo de dados, índices e consultas |
 | [`docs/04-contratos-api.md`](docs/04-contratos-api.md) | Contratos da API |
 | [`docs/adr/`](docs/adr/) | Registros de decisão de arquitetura (ADRs) |
+| [`docs/padroes/`](docs/padroes/LEIAME.md) | Padrões de engenharia: fluxo Git, convenções de código, guia de testes, checklist de revisão e fluxo de ADR |
 
 ---
 

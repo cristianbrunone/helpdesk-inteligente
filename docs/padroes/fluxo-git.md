@@ -20,9 +20,9 @@ main ●──────────────●─────────
 | `sprint/0-walking-skeleton` | Esqueleto + PoC de IA | `v0.1.0` |
 | `sprint/1-chamados` | Chamados de ponta a ponta | `v0.2.0` |
 | `sprint/2-triagem-ia` | Triagem por IA | `v0.3.0` |
-| `sprint/3-rag-dashboard` | RAG + Dashboard | `v0.4.0` |
+| `sprint/3-rag-dashboard-evals` | RAG + Dashboard + Evals | `v0.4.0` |
 | `sprint/4-copiloto` | Copiloto conversacional | `v0.5.0` |
-| `sprint/5-entrega` | Hardening e entrega | `v1.0.0` |
+| `sprint/5-hardening` | Hardening e entrega | `v1.0.0` |
 
 **Regras:**
 
