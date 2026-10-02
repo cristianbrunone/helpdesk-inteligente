@@ -14,6 +14,9 @@ public enum ModoFake
     JsonInvalido,
     CategoriaInexistente,
     RateLimit,
+
+    /// <summary>Copiloto: a resposta "vaza" um CPF e cita um chamado inexistente (teste do guardrail, ADR-0020).</summary>
+    VazaDados,
 }
 
 /// <summary>
@@ -46,6 +49,9 @@ public sealed class OpcoesLlm
 
     /// <summary>Orçamento de saída da triagem (ADR-0021).</summary>
     public required int MaxTokensSaidaTriagem { get; init; }
+
+    /// <summary>Orçamento de saída de cada resposta do copiloto (ADR-0021).</summary>
+    public int MaxTokensSaidaCopiloto { get; init; } = Configuracao.LeitorAmbiente.OpcoesLlmPadrao.MaxTokensSaidaCopiloto;
 
     public ModoFake ModoFake { get; init; } = ModoFake.Normal;
 

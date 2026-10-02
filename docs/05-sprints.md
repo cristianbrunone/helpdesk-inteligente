@@ -238,12 +238,12 @@ Os cortes acontecem nesta ordem, do primeiro ao último:
 
 **Critérios de aceite:**
 
-- [ ] "Já tivemos casos parecidos?" dispara `buscar_chamados_similares`, e a resposta cita os números dos chamados.
-- [ ] Fechar o painel durante a geração cancela a chamada ao provedor.
-- [ ] Mais de 10 requisições por minuto → 429 com mensagem amigável.
-- [ ] Nenhuma ferramenta permite escrita. Uma instrução do tipo "mude o status para fechado" é recusada pelo copiloto, que orienta o atendente a usar a UI.
-- [ ] Um CPF gerado pelo modelo chega mascarado ao cliente, mesmo dividido entre dois pedaços do stream. Uma citação a um chamado que nenhuma ferramenta retornou gera `aviso` e o selo na UI.
-- [ ] `IA_COPILOTO_HABILITADO=false` → o endpoint devolve 503 e a UI esconde o painel.
+- [x] "Já tivemos casos parecidos?" dispara `buscar_chamados_similares`, e a resposta cita os números dos chamados.
+- [x] Fechar o painel durante a geração cancela a chamada ao provedor.
+- [x] Mais de 10 requisições por minuto → 429 com mensagem amigável.
+- [x] Nenhuma ferramenta permite escrita. Uma instrução do tipo "mude o status para fechado" é recusada pelo copiloto, que orienta o atendente a usar a UI.
+- [x] Um CPF gerado pelo modelo chega mascarado ao cliente, mesmo dividido entre dois pedaços do stream. Uma citação a um chamado que nenhuma ferramenta retornou gera `aviso` e o selo na UI.
+- [x] `IA_COPILOTO_HABILITADO=false` → o endpoint devolve 503 e a UI esconde o painel.
 
 **Testes:**
 

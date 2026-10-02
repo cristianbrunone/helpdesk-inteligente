@@ -123,7 +123,7 @@ Os testes rodam sobre o **Microsoft.Testing.Platform** (habilitado no `global.js
 
 Máquina atrás de proxy com inspeção TLS: defina `CA_EXTRA_PEM` no `.env` local (veja o README). A CA vale só no build das imagens: em tempo de execução, os contêineres não falam com provedores na internet. Para testar um provedor real nessa rede, rode o Worker fora do contêiner.
 
-O fake tem modos de falha para teste e demonstração (`LLM_FAKE_MODO`: `lento`, `json_invalido`, `categoria_inexistente`, `rate_limit`).
+O fake tem modos de falha para teste e demonstração (`LLM_FAKE_MODO`: `lento`, `json_invalido`, `categoria_inexistente`, `rate_limit`, `vaza_dados`).
 
 (Atualize esta seção se os comandos mudarem.)
 

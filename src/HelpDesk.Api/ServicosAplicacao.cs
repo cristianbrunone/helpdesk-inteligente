@@ -1,5 +1,6 @@
 using HelpDesk.Application.Categorias;
 using HelpDesk.Application.Chamados;
+using HelpDesk.Application.Copiloto;
 using HelpDesk.Application.Dashboard;
 using HelpDesk.Application.Triagem;
 
@@ -22,6 +23,7 @@ internal static class ServicosAplicacao
         services.AddScoped<RefazerTriagem>();
         services.AddScoped<DecidirTriagem>();
         services.AddScoped<ObterResumoDashboard>();
+        services.AddScoped<ConversarComCopiloto>();
         return services;
     }
 }

@@ -1,6 +1,7 @@
 using HelpDesk.Application.Categorias;
 using HelpDesk.Application.Chamados;
 using HelpDesk.Application.Conhecimento;
+using HelpDesk.Application.Copiloto;
 using HelpDesk.Application.Dashboard;
 using HelpDesk.Application.Triagem;
 using HelpDesk.Infrastructure.Consultas;
@@ -24,6 +25,7 @@ public static class ServicosInfraestrutura
         services.AddScoped<IRepositorioChamados, RepositorioChamados>();
         services.AddScoped<IConsultaChamados, ConsultaChamados>();
         services.AddScoped<IConsultaDashboard, ConsultaDashboard>();
+        services.AddScoped<IConsultasCopiloto, ConsultasCopiloto>();
         services.AddScoped<IRepositorioTriagens, RepositorioTriagens>();
         services.AddScoped<IFilaTriagem, FilaTriagem>();
         services.AddSingleton<ICatalogoPrompts, CatalogoPromptsArquivo>();
@@ -51,6 +53,19 @@ public static class ServicosInfraestrutura
         services.AddSingleton(opcoes);
         services.AddScoped<IBuscaSemantica, BuscaSemantica>();
         services.AddScoped<IRecuperadorContexto, RecuperadorRag>();
+        return services;
+    }
+
+    /// <summary>
+    /// O copiloto (ADR-0004, ADR-0012): o agente com ferramentas e o montador do prompt. Depende do cliente de LLM e
+    /// do gerador de embeddings (<see cref="AdicionarClienteLlm"/>), que as buscas das ferramentas usam.
+    /// </summary>
+    public static IServiceCollection AdicionarCopiloto(this IServiceCollection services, OpcoesRag opcoesRag)
+    {
+        services.TryAddSingleton<MascaradorDadosPessoais>();
+        services.TryAddSingleton(opcoesRag);
+        services.AddSingleton<MontadorPromptCopiloto>();
+        services.AddSingleton<ICopilotoLlm, CopilotoLlm>();
         return services;
     }
 

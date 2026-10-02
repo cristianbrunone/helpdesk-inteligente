@@ -1,5 +1,6 @@
 using System.ClientModel;
 using System.Diagnostics;
+using System.Runtime.CompilerServices;
 using HelpDesk.Infrastructure.Persistencia;
 using Microsoft.Extensions.AI;
 using Microsoft.Extensions.Logging;
@@ -18,7 +19,69 @@ public sealed partial class TelemetriaChatClient(
     ILogger<TelemetriaChatClient> logger,
     TimeProvider? relogio = null) : DelegatingChatClient(interno)
 {
+    /// <summary>O consumidor parou o stream (o atendente fechou o painel): não é falha do provedor.</summary>
+    public const string TipoCancelado = "cancelado";
+
     private readonly TimeProvider _relogio = relogio ?? TimeProvider.System;
+
+    /// <summary>
+    /// Streaming (copiloto, ADR-0012): um registro por stream, gravado no fim, no erro ou quando o consumidor
+    /// para de ler (cancelamento). Os tokens vêm do <see cref="UsageContent"/> que o provedor manda no último pedaço.
+    /// </summary>
+    public override async IAsyncEnumerable<ChatResponseUpdate> GetStreamingResponseAsync(
+        IEnumerable<ChatMessage> messages,
+        ChatOptions? options = null,
+        [EnumeratorCancellation] CancellationToken cancellationToken = default)
+    {
+        var inicio = Stopwatch.GetTimestamp();
+        string? modelo = null;
+        UsageDetails? uso = null;
+        string? erroTipo = TipoCancelado; // até chegar ao fim ou a um erro, sair do laço é cancelamento
+
+        await using var enumerador = base.GetStreamingResponseAsync(messages, options, cancellationToken)
+            .GetAsyncEnumerator(cancellationToken);
+        try
+        {
+            while (true)
+            {
+                bool temProximo;
+                try
+                {
+                    temProximo = await enumerador.MoveNextAsync();
+                }
+                catch (OperationCanceledException) when (!ContextoUsoLlm.PrazoEsgotado(options)
+                                                         && cancellationToken.IsCancellationRequested)
+                {
+                    throw; // quem consome parou: fica "cancelado"
+                }
+                catch (Exception erro)
+                {
+                    erroTipo = TipoDoErro(erro);
+                    throw;
+                }
+
+                if (!temProximo)
+                {
+                    erroTipo = null;
+                    break;
+                }
+
+                var atualizacao = enumerador.Current;
+                modelo ??= atualizacao.ModelId;
+                foreach (var conteudo in atualizacao.Contents.OfType<UsageContent>())
+                {
+                    uso ??= new UsageDetails();
+                    uso.Add(conteudo.Details);
+                }
+
+                yield return atualizacao;
+            }
+        }
+        finally
+        {
+            await RegistrarAsync(options, inicio, modelo, uso, erroTipo);
+        }
+    }
 
     public override async Task<ChatResponse> GetResponseAsync(
         IEnumerable<ChatMessage> messages,

@@ -296,3 +296,34 @@ O eval rodou no Gemini: 180 triagens, 90 por versão, sem nenhuma falha que não
 - **Um teste de SQL que passava por acaso.** Ao tirar de propósito o filtro de status da consulta de aceitação, o teste continuou verde: na massa, o `JOIN` já excluía as pendentes. Uma triagem concluída e não decidida na massa tornou a regra observável.
 - **Medir mudou a conversa.** "O RAG melhora a triagem?" virou uma tabela: melhora a categoria, piora a prioridade num padrão identificável, dobra os tokens. A próxima versão do prompt já tem alvo e régua.
 
+---
+
+## Sprint 4 — Copiloto conversacional
+
+**Artefatos:** prompt versionado em [`prompts/copiloto.v1.md`](../prompts/copiloto.v1.md); ferramentas, guardrail e caso de uso em `src/HelpDesk.Application/Copiloto/` (`ConversarComCopiloto`, `MontadorPromptCopiloto`, `FiltroSaidaCopiloto`, `FerramentasCopiloto`); adaptador de LLM e fake em `src/HelpDesk.Infrastructure/Ia/` (`CopilotoLlm`, `FakeCopiloto`); endpoint e rate limiting em `src/HelpDesk.Api/Endpoints/CopilotoEndpoints.cs` e `Program.cs`; proxy sem buffer em `web/nginx.conf`; cliente SSE e painel em `web/src/api/copiloto.ts` e `web/src/componentes/PainelCopiloto.tsx`; smoke test atualizado em `scripts/smoke-compose.sh`.
+
+**O que foi entregue:**
+
+- **Agente com ferramentas (tool calling / ReAct):** o modelo decide quando chamar ferramentas para embasar a resposta (até 3 rodadas), ligado ao prompt versionado `copiloto.v1.md`.
+- **4 ferramentas somente leitura:** busca de chamados similares (pgvector), busca de artigos na base de conhecimento, métricas da categoria e histórico do chamado. A ferramenta de histórico é *poka-yoke*: não aceita parâmetro de ID, garantindo que o modelo nunca consulte o histórico de outro chamado.
+- **Recusa de escrita:** o copiloto ajuda a entender e decidir, mas recusa pedidos de ação ("feche o chamado", "mude a prioridade") e direciona o usuário para a interface.
+- **Streaming SSE nativo:** endpoint `POST /api/chamados/{id}/copiloto` usando `TypedResults.ServerSentEvents` do .NET 10, com eventos tipados (`ferramenta`, `delta`, `fontes`, `aviso`, `fim`). O Nginx desativa o buffering para entrega incremental em tempo real.
+- **Guardrail de saída (ADR-0020):** buffer de retenção que impede vazamento de dados pessoais mesmo com CPF dividido entre pacotes de rede, e verificação de citações contra os resultados retornados pelas ferramentas. Citação inventada produz evento `aviso` e selo de referência não verificada.
+- **Proteção de cota e Kill Switch (ADR-0021):** rate limiter nativo por IP (10 req/min, 429 com `Retry-After`), orçamento `COPILOTO_MAX_TOKENS_SAIDA` (resposta truncada) e kill switch `IA_COPILOTO_HABILITADO` (503 na API, esconde o painel na interface).
+- **Interface web interativa:** renderização incremental, indicadores de ferramentas em tempo real ("Consultando…"), fontes verificadas com links diretos, selos visuais de alerta e botão Parar com cancelamento via `AbortController`.
+- **Testes:** de 590 para 692 no backend (446 unitários + 240 integração), de 50 para 62 no frontend, e o smoke do Compose passou de 18 para 19 verificações.
+
+**Como foi feito:** 10 commits na sequência planejada: ferramentas (unit) → consultas (integração) → guardrail de saída (unit) → telemetria e resiliência (unit) → fake roteirizado (unit) → prompt e caso de uso (unit) → endpoint SSE e rate limiter (integração) → cliente SSE (vitest) → painel no detalhe (vitest) → smoke do compose.
+
+### O que mudou em relação ao plano
+
+- **`TypedResults.ServerSentEvents` nativo do .NET 10 adotado diretamente:** evitou bibliotecas externas de SSE no backend, gerando `SseItem<object>` tipado com overhead zero.
+- **Reafirmação do `Activity.Current` no enumerador assíncrono:** em iteradores assíncronos (`yield return`), o contexto de atividade do OpenTelemetry pode se perder após o `MoveNextAsync`. Reafirmar a atividade garantiu que as ferramentas fiquem aninhadas sob o span `copiloto.responder`.
+- **Modos especializados no fake:** o fake do copiloto ganhou modos configuráveis (`vaza_dados`, `recusa`, `categoria_inexistente`) que permitiram testar os guardrails de saída, rate limit e recusa de escrita em testes de integração sem depender de chamadas reais ao provedor.
+
+### Aprendizados
+
+- **Testes de mutação garantem a efetividade dos testes:** quebrar intencionalmente o código (remover filtro de texto, não repassar o número do chamado no contexto, estourar exceção sem devolver `{ erro }` ou remover `Activity.Current`) fez os testes falharem exatamente nos pontos esperados, comprovando que a suíte não tem testes passando por acaso.
+- **Restrição do compilador em iteradores (`yield` dentro de `catch`):** a regra CS1631 proíbe `yield return` diretamente em blocos `catch`. Capturar a exceção e emitir o `event: erro` fora do bloco de tratamento resolve o fluxo de erro de streaming de maneira limpa.
+- **Buffering em proxies quebra o streaming:** proxies reversos acumulam pacotes por padrão; a diretiva `proxy_buffering off` e `proxy_cache off` no Nginx é indispensável para que o Server-Sent Events entregue deltas imediatamente ao navegador.
+
