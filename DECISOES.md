@@ -85,6 +85,16 @@ Nenhum ADR novo: as decisões abaixo aplicam os ADRs 0004, 0012, 0020 e 0021 e f
 | Rate limit por IP de origem, **limitação conhecida** atrás do Nginx (todos chegam com o IP do proxy) | Particionar pelo `X-Forwarded-For` exige confiar só no proxy; sem isso, qualquer um burlaria o limite chamando a API direto. Fica para a próxima versão |
 | O prompt `copiloto.v1` não passou pelo harness de evals | O harness (ADR-0018) cobre só a triagem; evals do copiloto ficam para a próxima versão |
 
+### Decisões da Sprint 5 (hardening)
+
+| # | Decisão | Alternativa rejeitada | Trade-off principal |
+|---|---|---|---|
+| [0025](docs/adr/0025-icu-nas-imagens-dotnet.md) | ICU nas imagens do .NET (copiado da imagem do SDK), sem globalização invariante | Código independente do ICU (tabela própria de acentos) | +58 MB por imagem em troca de produção se comportar como os testes ao remover e comparar acentos (mascarador de nomes, validador da IA, copiloto). |
+
+| Decisão | Motivo |
+|---|---|
+| O Nginx não comprime as respostas da API (`gzip off` em `/api/`) | Ao comprimir, ele trocava o ETag forte por um fraco (`W/"..."`), e o `If-Match` de toda escrita feita pelo navegador dava 412; os assets seguem comprimidos |
+
 ### Decisões de implementação (Sprint 1)
 
 Decisões menores, que não contrariam nem acrescentam ADR, registradas para quem lê o código.

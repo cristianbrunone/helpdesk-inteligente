@@ -16,7 +16,7 @@ O projeto foi **planejado antes de ser codificado**. As decisões já tomadas es
 | `docs/03-modelo-de-dados.md` | ER, constraints, índices justificados, SQL do dashboard, seed. |
 | `docs/04-contratos-api.md` | Endpoints, payloads, catálogo de erros, eventos SSE. |
 | `docs/05-sprints.md` | Escopo, critérios de aceite e testes de cada sprint. |
-| `docs/adr/` | Decisões (ADRs). **Antes de implementar algo, leia o ADR relacionado.** Os números 0015–0017 e 0022–0023 são da Sprint 0 (plataforma); os 0018–0021 vieram da revisão de 30/09; o 0024 é da Sprint 2. |
+| `docs/adr/` | Decisões (ADRs). **Antes de implementar algo, leia o ADR relacionado.** Os números 0015–0017 e 0022–0023 são da Sprint 0 (plataforma); os 0018–0021 vieram da revisão de 30/09; o 0024 é da Sprint 2; o 0025 é da Sprint 5. |
 | `docs/revisoes/` | Registros de revisões de arquitetura (o que motivou, o que foi adotado e o que foi rejeitado). |
 | `docs/JORNADA.md` | Narrativa do projeto por fase. |
 | `DECISOES.md` | Índice curto das decisões e premissas (entregável do enunciado). |

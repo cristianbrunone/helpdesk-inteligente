@@ -97,6 +97,26 @@ saude_com_fila_de_triagem() {
 
 ID_TRIAGEM=""
 
+texto_acentuado_na_triagem() {
+  # ADR-0025: as imagens .NET rodam com ICU. Em globalização invariante (o padrão das imagens Alpine), a remoção de
+  # acentos não funciona: o fake não reconhece "Não consigo" (prioridade Alta), e o mascarador de nomes e o
+  # validador da saída da IA falham do mesmo jeito. O corpo vai pelo stdin para o UTF-8 chegar intacto.
+  local corpo id
+  corpo="$(printf '%s' "{\"titulo\":\"Não consigo acessar o relatório\",\"descricao\":\"Desde ontem não consigo abrir o relatório mensal.\",\"solicitanteNome\":\"Pessoa Smoke\",\"solicitanteEmail\":\"$EMAIL_SMOKE\"}" |
+    curl -fsS --max-time 10 -H 'Content-Type: application/json' --data-binary @- "$WEB/api/chamados")" || return 1
+  id="$(echo "$corpo" | campo_json id)"
+  [ -n "$id" ] || return 1
+  for _ in $(seq 1 30); do
+    corpo="$(curl -fsS --max-time 10 "$WEB/api/chamados/$id")"
+    if echo "$corpo" | grep -q '"triagem":{"id":"[^"]*","status":"Concluida"'; then
+      echo "$corpo" | grep -q '"prioridadeSugerida":"Alta"'
+      return
+    fi
+    sleep 1
+  done
+  return 1
+}
+
 triagem_concluida_pelo_worker() {
   # Critério da Sprint 2: com o fake, a triagem fica Concluida em segundos (o Worker consome a fila).
   local corpo
@@ -205,6 +225,7 @@ verificar "GET /api/config/ia → triagem e copiloto ativos" config_ia
 verificar "GET /health traz o check filaTriagem" saude_com_fila_de_triagem
 verificar "criar chamado → Worker conclui a triagem (fake) em até 30 s" triagem_concluida_pelo_worker
 verificar "aceitar a triagem pelo Nginx → Aceita" aceitar_triagem
+verificar "texto acentuado: o Worker remove acentos (ICU na imagem, ADR-0025)" texto_acentuado_na_triagem
 verificar "resolvidos e artigos do seed indexados no RAG (sem ação manual)" indice_rag_completo
 # Depois do índice completo: as buscas do copiloto dependem dele (sem isso, a ordem dependeria da velocidade da máquina).
 verificar "POST /copiloto via SSE pelo Nginx → stream com ferramenta, delta, fim e fontes verificadas" copiloto_via_sse_pelo_nginx

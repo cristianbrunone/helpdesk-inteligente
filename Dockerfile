@@ -35,8 +35,22 @@ RUN dotnet publish src/HelpDesk.Api/HelpDesk.Api.csproj -c Release --no-restore 
  && dotnet publish src/HelpDesk.Worker/HelpDesk.Worker.csproj -c Release --no-restore -o /out/worker -p:UseAppHost=false \
  && dotnet publish src/HelpDesk.Migrator/HelpDesk.Migrator.csproj -c Release --no-restore -o /out/migrator -p:UseAppHost=false
 
+# ---------- Bases de runtime com ICU (ADR-0025) ----------
+# As imagens Alpine do .NET rodam em globalização invariante: sem ICU, remover acentos (Normalize FormD) e comparar
+# ignorando acento não funcionam, e o mascarador de nomes, o validador da IA e o copiloto erram com "João"/"Joao".
+# O ICU vem da imagem do SDK (mesmo Alpine 3.23, já instalado): sem rede nem apk nas imagens finais.
+FROM mcr.microsoft.com/dotnet/aspnet:10.0.12-alpine3.23 AS base-aspnet
+COPY --from=build /usr/lib/libicu* /usr/lib/
+COPY --from=build /usr/share/icu/ /usr/share/icu/
+ENV DOTNET_SYSTEM_GLOBALIZATION_INVARIANT=false
+
+FROM mcr.microsoft.com/dotnet/runtime:10.0.12-alpine3.23 AS base-runtime
+COPY --from=build /usr/lib/libicu* /usr/lib/
+COPY --from=build /usr/share/icu/ /usr/share/icu/
+ENV DOTNET_SYSTEM_GLOBALIZATION_INVARIANT=false
+
 # ---------- API ----------
-FROM mcr.microsoft.com/dotnet/aspnet:10.0.12-alpine3.23 AS api
+FROM base-aspnet AS api
 WORKDIR /app
 COPY --from=build /out/api .
 # Usuário não-root das imagens oficiais do .NET; a API escuta na 8080 (ASPNETCORE_HTTP_PORTS).
@@ -45,14 +59,14 @@ EXPOSE 8080
 ENTRYPOINT ["dotnet", "HelpDesk.Api.dll"]
 
 # ---------- Worker ----------
-FROM mcr.microsoft.com/dotnet/runtime:10.0.12-alpine3.23 AS worker
+FROM base-runtime AS worker
 WORKDIR /app
 COPY --from=build /out/worker .
 USER $APP_UID
 ENTRYPOINT ["dotnet", "HelpDesk.Worker.dll"]
 
 # ---------- Migrator (one-shot, ADR-0015) ----------
-FROM mcr.microsoft.com/dotnet/runtime:10.0.12-alpine3.23 AS migrator
+FROM base-runtime AS migrator
 WORKDIR /app
 COPY --from=build /out/migrator .
 USER $APP_UID
