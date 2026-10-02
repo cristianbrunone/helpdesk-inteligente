@@ -22,6 +22,20 @@ public sealed partial class GeradorSeedChamadosTests
     private static readonly IReadOnlyList<Chamado> _chamados = _seed.Chamados;
 
     [Fact]
+    public void Gerar_SolicitantesDeDemonstracao_TemVinteChamadosCadaEmStatusVariados()
+    {
+        // ADR-0026: ao entrar como Marina ou Paulo, há chamados em vários status para acompanhar.
+        foreach (var dono in new[] { GeradorSeedUsuarios.MarinaSolicitante, GeradorSeedUsuarios.PauloSolicitante })
+        {
+            var deles = _chamados.Where(c => c.SolicitanteEmail == dono.Email).ToList();
+
+            deles.Count.ShouldBe(20);
+            deles.ShouldAllBe(c => c.SolicitanteNome == dono.Nome);
+            deles.Select(c => c.Status).Distinct().Count().ShouldBeGreaterThanOrEqualTo(4);
+        }
+    }
+
+    [Fact]
     public void Gerar_MesmaSemente_ProduzOMesmoConteudo()
     {
         var outra = GeradorSeedChamados.Gerar(_categorias, _agora);
