@@ -26,11 +26,10 @@ test('criar chamado, ver a triagem da IA e aceitar a sugestão', async ({ page }
   await expect(painel.getByText('Gerado por IA')).toBeVisible({ timeout: 30_000 });
   await expect(painel).toContainText('Financeiro');
 
-  // 4. Aceitar exige o nome do atendente e aplica categoria e prioridade ao chamado.
-  await page.getByLabel('Seu nome (atendente)').fill('Ana (E2E)');
+  // 4. Aceitar aplica categoria e prioridade ao chamado (identidade vem da sessão autenticada).
   await painel.getByRole('button', { name: 'Aceitar sugestão' }).click();
 
-  await expect(painel.getByText(/Aceita por Ana \(E2E\)/)).toBeVisible();
+  await expect(painel.getByText(/Aceita por Ana/)).toBeVisible();
   await expect(cabecalho).toContainText('Financeiro');
   await expect(cabecalho).toContainText('Alta');
 });
