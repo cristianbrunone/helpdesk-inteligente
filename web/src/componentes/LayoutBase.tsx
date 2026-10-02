@@ -1,14 +1,29 @@
 import { AppShell, Badge, Burger, Button, Group, NavLink, Text, Title } from '@mantine/core';
 import { useDisclosure } from '@mantine/hooks';
+import {
+  IconChartBar,
+  IconCirclePlus,
+  IconLifebuoy,
+  IconLogout,
+  IconTicket,
+} from '@tabler/icons-react';
 import { Link, Outlet, useLocation, useNavigate } from 'react-router';
 import { useSair, useSessao } from '../api/autenticacao';
 
-// O solicitante só vê os próprios chamados (ADR-0026): o rótulo diz isso.
+// O solicitante só vê os próprios chamados (ADR-0026): o rótulo diz isso. Os ícones são decorativos (o nome do item
+// é o texto) e ajudam a achar o item de relance (Sprint 7, item B1 da análise de experiência).
 const ITENS_DO_MENU = [
-  { rotulo: 'Chamados', rotuloSolicitante: 'Meus chamados', destino: '/chamados' },
-  { rotulo: 'Novo chamado', destino: '/chamados/novo' },
-  { rotulo: 'Dashboard', destino: '/dashboard' },
+  {
+    rotulo: 'Chamados',
+    rotuloSolicitante: 'Meus chamados',
+    destino: '/chamados',
+    Icone: IconTicket,
+  },
+  { rotulo: 'Novo chamado', destino: '/chamados/novo', Icone: IconCirclePlus },
+  { rotulo: 'Dashboard', destino: '/dashboard', Icone: IconChartBar },
 ];
+
+const TAMANHO_ICONE = 18;
 
 /**
  * O item fica marcado também nas sub-rotas dele (o detalhe `/chamados/:id` marca "Chamados"), desde que nenhum outro
@@ -48,9 +63,17 @@ export function LayoutBase() {
             size="sm"
             aria-label={menuAberto ? 'Fechar menu' : 'Abrir menu'}
           />
-          <Title order={1} size="h4" style={{ flex: 1 }}>
-            HelpDesk Inteligente
-          </Title>
+          <Group gap={8} wrap="nowrap" style={{ flex: 1 }}>
+            <IconLifebuoy
+              size={24}
+              stroke={1.75}
+              color="var(--mantine-primary-color-filled)"
+              aria-hidden
+            />
+            <Title order={1} size="h4">
+              HelpDesk Inteligente
+            </Title>
+          </Group>
           {usuario && (
             <Group gap="xs" wrap="nowrap" aria-label="Usuário da sessão" role="group">
               <Text size="sm" fw={500} visibleFrom="sm">
@@ -59,7 +82,13 @@ export function LayoutBase() {
               <Badge variant="light" visibleFrom="sm">
                 {usuario.perfil}
               </Badge>
-              <Button size="xs" variant="default" onClick={aoSair} loading={sair.isPending}>
+              <Button
+                size="xs"
+                variant="default"
+                onClick={aoSair}
+                loading={sair.isPending}
+                leftSection={<IconLogout size={14} aria-hidden />}
+              >
                 Sair
               </Button>
             </Group>
@@ -88,12 +117,13 @@ export function LayoutBase() {
           </Group>
         )}
         {ITENS_DO_MENU.filter((item) => !(ehSolicitante && item.destino === '/dashboard')).map(
-          ({ rotulo, rotuloSolicitante, destino }) => (
+          ({ rotulo, rotuloSolicitante, destino, Icone }) => (
             <NavLink
               key={destino}
               component={Link}
               to={destino}
               label={ehSolicitante && rotuloSolicitante ? rotuloSolicitante : rotulo}
+              leftSection={<Icone size={TAMANHO_ICONE} stroke={1.75} aria-hidden />}
               active={itemAtivo(destino, pathname)}
               // O leitor de tela só ouve "página atual" na própria página: no detalhe, a página não é a lista.
               aria-current={pathname === destino ? 'page' : undefined}

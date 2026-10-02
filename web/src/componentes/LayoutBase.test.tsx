@@ -52,6 +52,17 @@ describe('LayoutBase', () => {
     expect(usuario.getByText('Atendente')).toBeInTheDocument();
   });
 
+  it('cada item do menu tem um ícone decorativo, fora do nome lido pelo leitor de tela', async () => {
+    await renderizarApp('/chamados');
+    const navegacao = within(screen.getByRole('navigation', { name: 'Navegação' }));
+
+    for (const nome of ['Chamados', 'Novo chamado', 'Dashboard']) {
+      const icone = navegacao.getByRole('link', { name: nome }).querySelector('svg');
+      expect(icone, `o item "${nome}" deveria ter um ícone`).not.toBeNull();
+      expect(icone).toHaveAttribute('aria-hidden', 'true');
+    }
+  });
+
   it('mostra a página de não encontrada para uma rota inexistente', async () => {
     await renderizarApp('/rota-que-nao-existe');
 

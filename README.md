@@ -509,6 +509,7 @@ A convenção snake_case, o health check do banco e a validação dos dados de e
 | TanStack Query | Cache, estados de carregamento e erro e novas tentativas para os dados da API |
 | Mantine (`core`, `hooks`, `notifications`) | Componentes acessíveis e responsivos (AppShell, chips, timeline, modal), o debounce da busca e o aviso de conflito no 412 (ADR-0017) |
 | @mantine/charts + recharts | Gráficos do dashboard no mesmo tema da Mantine; o Recharts é a dependência que desenha o SVG (ADR-0017) |
+| @tabler/icons-react | Ícones do menu lateral (Sprint 7). É a biblioteca usada nos exemplos da Mantine, MIT, e só os ícones importados entram no pacote |
 | React Hook Form + Zod + @hookform/resolvers | Formulários sem re-render a cada tecla e esquema de validação tipado, com as mesmas regras e mensagens da API. O resolver é o adaptador oficial entre os dois |
 | ESLint (typescript-eslint strict) + Prettier | Qualidade e formatação; proíbe `any` |
 | Vitest + Testing Library + MSW | Testes de componente com a API simulada no nível da rede |
