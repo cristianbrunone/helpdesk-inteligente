@@ -12,7 +12,7 @@ public sealed class DashboardTests(ApiFactory api) : IClassFixture<ApiFactory>
     [Fact]
     public async Task Resumo_BancoComSeed_RetornaOFormatoDoContrato()
     {
-        using var resposta = await api.CreateClient().GetAsync("/api/dashboard/resumo", Ct);
+        using var resposta = await api.CriarClienteAtendente().GetAsync("/api/dashboard/resumo", Ct);
 
         resposta.StatusCode.ShouldBe(HttpStatusCode.OK);
         using var json = JsonDocument.Parse(await resposta.Content.ReadAsStringAsync(Ct));

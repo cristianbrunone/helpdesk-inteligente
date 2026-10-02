@@ -11,15 +11,17 @@ import {
   TextInput,
   Title,
 } from '@mantine/core';
+import { useMemo } from 'react';
 import { useForm } from 'react-hook-form';
 import { Link, useNavigate } from 'react-router';
+import { useSessao } from '../api/autenticacao';
 import { useCategorias } from '../api/categorias';
 import { useCriarChamado } from '../api/chamados';
 import { ErroApi } from '../api/cliente';
 import { AlertaErro } from '../componentes/AlertaErro';
 import { PRIORIDADES, ROTULO_PRIORIDADE } from '../dominio/chamado';
 import {
-  esquemaNovoChamado,
+  criarEsquemaNovoChamado,
   paraNovoChamado,
   VALORES_INICIAIS,
   type ValoresNovoChamado,
@@ -29,14 +31,17 @@ const CAMPOS = new Set(Object.keys(VALORES_INICIAIS));
 
 export function NovoChamado() {
   const navegar = useNavigate();
+  const { data: usuario } = useSessao();
+  const ehSolicitante = usuario?.perfil === 'Solicitante';
   const { data: categorias = [] } = useCategorias();
   const criacao = useCriarChamado();
+  const esquema = useMemo(() => criarEsquemaNovoChamado(ehSolicitante), [ehSolicitante]);
   const {
     register,
     handleSubmit,
     setError,
     formState: { errors, isSubmitting },
-  } = useForm({ resolver: zodResolver(esquemaNovoChamado), defaultValues: VALORES_INICIAIS });
+  } = useForm({ resolver: zodResolver(esquema), defaultValues: VALORES_INICIAIS });
 
   const enviar = handleSubmit(async (valores) => {
     try {
@@ -85,21 +90,25 @@ export function NovoChamado() {
             {...register('descricao')}
           />
           <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="sm">
-            <TextInput
-              label="Nome do solicitante"
-              withAsterisk
-              autoComplete="name"
-              error={errors.solicitanteNome?.message}
-              {...register('solicitanteNome')}
-            />
-            <TextInput
-              label="E-mail do solicitante"
-              withAsterisk
-              type="email"
-              autoComplete="email"
-              error={errors.solicitanteEmail?.message}
-              {...register('solicitanteEmail')}
-            />
+            {!ehSolicitante && (
+              <>
+                <TextInput
+                  label="Nome do solicitante"
+                  withAsterisk
+                  autoComplete="name"
+                  error={errors.solicitanteNome?.message}
+                  {...register('solicitanteNome')}
+                />
+                <TextInput
+                  label="E-mail do solicitante"
+                  withAsterisk
+                  type="email"
+                  autoComplete="email"
+                  error={errors.solicitanteEmail?.message}
+                  {...register('solicitanteEmail')}
+                />
+              </>
+            )}
             <NativeSelect
               label="Categoria"
               description="Opcional: a triagem por IA sugere."

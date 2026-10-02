@@ -1,3 +1,4 @@
+using HelpDesk.Application.Autenticacao;
 using HelpDesk.Application.Categorias;
 using HelpDesk.Application.Chamados;
 using HelpDesk.Application.Conhecimento;
@@ -7,6 +8,7 @@ using HelpDesk.Application.Triagem;
 using HelpDesk.Infrastructure.Consultas;
 using HelpDesk.Infrastructure.Ia;
 using HelpDesk.Infrastructure.Persistencia;
+using HelpDesk.Infrastructure.Seguranca;
 using Microsoft.Extensions.AI;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
@@ -21,6 +23,8 @@ public static class ServicosInfraestrutura
         services.TryAddSingleton(TimeProvider.System);
         services.AddDbContext<HelpDeskDbContext>(options => ConfiguracaoBanco.Configurar(options, connectionString));
         services.AddScoped<InicializadorBanco>();
+        services.TryAddSingleton<IHashSenha, HashSenhaPbkdf2>();
+        services.AddScoped<IConsultaUsuarios, ConsultaUsuarios>();
         services.AddScoped<IConsultaCategorias, ConsultaCategorias>();
         services.AddScoped<IRepositorioChamados, RepositorioChamados>();
         services.AddScoped<IConsultaChamados, ConsultaChamados>();

@@ -23,7 +23,7 @@ public sealed class ComentariosTests(ApiFactory api, BancoFixture banco) : IClas
         var id = await CriarEmAsync(status);
         var etagAntes = await ETagAsync(id);
 
-        using var resposta = await ComentarAsync(id, new { autor = "Ana (suporte)", texto = "  Pode me enviar um print?  " });
+        using var resposta = await ComentarAsync(id, new { texto = "  Pode me enviar um print?  " });
 
         resposta.StatusCode.ShouldBe(HttpStatusCode.Created);
         resposta.Headers.Location!.ToString().ShouldBe($"/api/chamados/{id}");
@@ -31,9 +31,10 @@ public sealed class ComentariosTests(ApiFactory api, BancoFixture banco) : IClas
         resposta.Headers.ETag.ToString().ShouldNotBe(etagAntes);
         var comentario = await LerAsync(resposta);
         comentario.EnumerateObject().Select(p => p.Name).ShouldBe(["id", "autor", "texto", "criadoEm"]);
+        comentario.GetProperty("autor").GetString().ShouldBe("Ana (suporte)");
         comentario.GetProperty("texto").GetString().ShouldBe("Pode me enviar um print?");
 
-        using var detalhe = await api.CreateClient().GetAsync($"/api/chamados/{id}", Ct);
+        using var detalhe = await api.CriarClienteAtendente().GetAsync($"/api/chamados/{id}", Ct);
         detalhe.Headers.ETag.ShouldBe(resposta.Headers.ETag);
         (await LerAsync(detalhe)).GetProperty("comentarios").EnumerateArray()
             .ShouldContain(c => c.GetProperty("id").GetGuid() == comentario.GetProperty("id").GetGuid());
@@ -46,7 +47,7 @@ public sealed class ComentariosTests(ApiFactory api, BancoFixture banco) : IClas
     {
         var id = await CriarEmAsync(status);
 
-        using var resposta = await ComentarAsync(id, new { autor = "Ana", texto = "Olá" });
+        using var resposta = await ComentarAsync(id, new { texto = "Olá" });
 
         resposta.StatusCode.ShouldBe(HttpStatusCode.Conflict);
         (await LerAsync(resposta)).GetProperty("codigo").GetString().ShouldBe("chamado_finalizado");
@@ -57,13 +58,13 @@ public sealed class ComentariosTests(ApiFactory api, BancoFixture banco) : IClas
     {
         var id = await CriarEmAsync(StatusChamado.Aberto);
 
-        using var vazio = await ComentarAsync(id, new { autor = "Ana", texto = " " });
-        using var longo = await ComentarAsync(id, new { autor = "", texto = new string('x', 4001) });
+        using var vazio = await ComentarAsync(id, new { texto = " " });
+        using var longo = await ComentarAsync(id, new { texto = new string('x', 4001) });
 
         vazio.StatusCode.ShouldBe(HttpStatusCode.UnprocessableEntity);
         Campos(await LerAsync(vazio)).ShouldBe(["texto"]);
         longo.StatusCode.ShouldBe(HttpStatusCode.UnprocessableEntity);
-        Campos(await LerAsync(longo)).ShouldBe(["autor", "texto"], ignoreOrder: true);
+        Campos(await LerAsync(longo)).ShouldBe(["texto"]);
     }
 
     [Fact]
@@ -71,12 +72,12 @@ public sealed class ComentariosTests(ApiFactory api, BancoFixture banco) : IClas
     {
         var id = await CriarEmAsync(StatusChamado.Aberto);
         var etagLido = await ETagAsync(id);
-        using (var primeiro = await ComentarAsync(id, new { autor = "Bruno", texto = "Primeiro" }, etagLido))
+        using (var primeiro = await ComentarAsync(id, new { texto = "Primeiro" }, etagLido))
         {
             primeiro.StatusCode.ShouldBe(HttpStatusCode.Created);
         }
 
-        using var resposta = await ComentarAsync(id, new { autor = "Ana", texto = "Segundo" }, etagLido);
+        using var resposta = await ComentarAsync(id, new { texto = "Segundo" }, etagLido);
 
         resposta.StatusCode.ShouldBe(HttpStatusCode.PreconditionFailed);
         (await LerAsync(resposta)).GetProperty("codigo").GetString().ShouldBe("versao_desatualizada");
@@ -85,7 +86,7 @@ public sealed class ComentariosTests(ApiFactory api, BancoFixture banco) : IClas
     [Fact]
     public async Task Comentar_ChamadoInexistente_Retorna404()
     {
-        using var resposta = await ComentarAsync(Guid.CreateVersion7(), new { autor = "Ana", texto = "Olá" });
+        using var resposta = await ComentarAsync(Guid.CreateVersion7(), new { texto = "Olá" });
 
         resposta.StatusCode.ShouldBe(HttpStatusCode.NotFound);
     }
@@ -130,12 +131,12 @@ public sealed class ComentariosTests(ApiFactory api, BancoFixture banco) : IClas
             requisicao.Headers.TryAddWithoutValidation("If-Match", ifMatch);
         }
 
-        return await api.CreateClient().SendAsync(requisicao, Ct);
+        return await api.CriarClienteAtendente().SendAsync(requisicao, Ct);
     }
 
     private async Task<string> ETagAsync(Guid id)
     {
-        using var resposta = await api.CreateClient().GetAsync($"/api/chamados/{id}", Ct);
+        using var resposta = await api.CriarClienteAtendente().GetAsync($"/api/chamados/{id}", Ct);
         return resposta.Headers.ETag!.ToString();
     }
 

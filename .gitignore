@@ -57,6 +57,8 @@ playwright-report/
 test-results/
 blob-report/
 playwright/.cache/
+playwright/.auth/
+web/playwright/.auth/
 
 # ---------- IDEs ----------
 .idea/

@@ -230,7 +230,7 @@ public sealed class ListarChamadosTests(ApiFactory api, BancoFixture banco) : IC
     [InlineData("criadoDe=01/02/2026x")]
     public async Task Listar_ParametroInvalido_Retorna400RequisicaoInvalida(string query)
     {
-        using var resposta = await api.CreateClient().GetAsync($"/api/chamados?{query}", Ct);
+        using var resposta = await api.CriarClienteAtendente().GetAsync($"/api/chamados?{query}", Ct);
 
         resposta.StatusCode.ShouldBe(HttpStatusCode.BadRequest);
         using var json = JsonDocument.Parse(await resposta.Content.ReadAsStringAsync(Ct));
@@ -243,7 +243,7 @@ public sealed class ListarChamadosTests(ApiFactory api, BancoFixture banco) : IC
 
     private async Task<JsonElement> ListarAsync(string query)
     {
-        using var resposta = await api.CreateClient().GetAsync($"/api/chamados?{query}", Ct);
+        using var resposta = await api.CriarClienteAtendente().GetAsync($"/api/chamados?{query}", Ct);
         resposta.StatusCode.ShouldBe(HttpStatusCode.OK, await resposta.Content.ReadAsStringAsync(Ct));
         using var json = JsonDocument.Parse(await resposta.Content.ReadAsStringAsync(Ct));
         return json.RootElement.Clone();

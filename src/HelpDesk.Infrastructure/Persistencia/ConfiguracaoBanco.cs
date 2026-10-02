@@ -1,5 +1,6 @@
 using HelpDesk.Domain.Chamados;
 using HelpDesk.Domain.Triagem;
+using HelpDesk.Domain.Usuarios;
 using Microsoft.EntityFrameworkCore;
 using Pgvector.EntityFrameworkCore;
 
@@ -17,5 +18,6 @@ public static class ConfiguracaoBanco
             .UseVector()
             .MapEnum<StatusChamado>("status_chamado")
             .MapEnum<Prioridade>("prioridade_chamado")
-            .MapEnum<StatusTriagem>("status_triagem"));
+            .MapEnum<StatusTriagem>("status_triagem")
+            .MapEnum<PerfilUsuario>("perfil_usuario"));
 }

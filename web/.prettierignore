@@ -2,5 +2,7 @@ dist
 coverage
 playwright-report
 test-results
+# Sessão salva pelo Playwright (contém o JWT; também no .gitignore).
+playwright/.auth
 node_modules
 package-lock.json

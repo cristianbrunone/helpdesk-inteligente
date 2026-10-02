@@ -129,4 +129,36 @@ describe('NovoChamado', () => {
     expect(await screen.findByText('Não foi possível abrir o chamado')).toBeInTheDocument();
     expect(screen.getByText('Código de rastreio: rastreio-789')).toBeInTheDocument();
   });
+
+  it('para perfil solicitante, não exibe os campos de nome e e-mail do solicitante', async () => {
+    servidor.use(
+      http.get('/api/auth/eu', () =>
+        HttpResponse.json({
+          id: '0192f0c1-0000-7000-8000-0000000000bb',
+          nome: 'Marina Costa',
+          email: 'marina.costa@example.com',
+          perfil: 'Solicitante',
+        }),
+      ),
+    );
+    const corpos = capturarCriacao();
+    const { roteador } = await renderizarApp('/chamados/novo');
+
+    expect(screen.queryByLabelText(/^Nome do solicitante/)).not.toBeInTheDocument();
+    expect(screen.queryByLabelText(/^E-mail do solicitante/)).not.toBeInTheDocument();
+
+    await userEvent.type(screen.getByLabelText(/^Título/), 'Meu problema de acesso');
+    await userEvent.type(
+      screen.getByLabelText(/^Descrição/),
+      'Não consigo acessar nada desde hoje cedo.',
+    );
+    await abrir();
+
+    await waitFor(() => expect(roteador.state.location.pathname).toBe(`/chamados/${ID_CRIADO}`));
+    expect(corpos).toHaveLength(1);
+    expect(corpos[0]).toMatchObject({
+      titulo: 'Meu problema de acesso',
+      descricao: 'Não consigo acessar nada desde hoje cedo.',
+    });
+  });
 });

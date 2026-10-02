@@ -182,6 +182,14 @@ internal sealed class ConsultaChamados(HelpDeskDbContext db) : IConsultaChamados
                 @"\"));
         }
 
+        // O e-mail do token já vem em minúsculas; o do chamado fica como foi digitado (um atendente pode abrir em nome
+        // de "Marina.Costa@..."). Sem diferenciar maiúsculas, como no detalhe e no comentário (ADR-0026).
+        if (filtro.SolicitanteEmail is { } email)
+        {
+            var emailNormalizado = email.ToLowerInvariant();
+            consulta = consulta.Where(c => c.SolicitanteEmail.ToLower() == emailNormalizado);
+        }
+
         return consulta;
     }
 

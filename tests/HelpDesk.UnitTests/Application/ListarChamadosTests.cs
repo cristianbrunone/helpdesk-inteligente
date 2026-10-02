@@ -87,4 +87,12 @@ public sealed class ListarChamadosTests
         Should.Throw<RequisicaoInvalidaException>(() =>
             ListarChamados.Validar(Parametros(pagina: int.MaxValue, tamanhoPagina: 100)));
     }
+
+    [Fact]
+    public void Validar_ComSolicitanteEmail_RepassaAoFiltro()
+    {
+        var filtro = ListarChamados.Validar(Parametros(), "solicitante@example.com");
+
+        filtro.SolicitanteEmail.ShouldBe("solicitante@example.com");
+    }
 }

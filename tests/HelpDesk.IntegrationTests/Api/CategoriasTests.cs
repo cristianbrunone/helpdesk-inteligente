@@ -11,7 +11,7 @@ public sealed class CategoriasTests(ApiFactory api) : IClassFixture<ApiFactory>
     [Fact]
     public async Task ListarCategorias_BancoComSeed_RetornaAsCincoOrdenadasPorNomeNoFormatoDoContrato()
     {
-        using var resposta = await api.CreateClient().GetAsync("/api/categorias", Ct);
+        using var resposta = await api.CriarClienteAtendente().GetAsync("/api/categorias", Ct);
 
         resposta.StatusCode.ShouldBe(HttpStatusCode.OK);
         using var json = JsonDocument.Parse(await resposta.Content.ReadAsStringAsync(Ct));

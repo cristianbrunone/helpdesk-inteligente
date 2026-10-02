@@ -4,11 +4,11 @@ using HelpDesk.Domain.Triagem;
 
 namespace HelpDesk.Application.Triagem;
 
-/// <summary>Corpo de <c>POST /api/chamados/{id}/triagem/aceitar</c>.</summary>
-public sealed record AceiteTriagem(string? DecididaPor);
+/// <summary>Corpo de <c>POST /api/chamados/{id}/triagem/aceitar</c>. Quem decide vem do token (ADR-0026).</summary>
+public sealed record AceiteTriagem;
 
-/// <summary>Corpo de <c>POST /api/chamados/{id}/triagem/rejeitar</c>. O motivo é opcional.</summary>
-public sealed record RejeicaoTriagem(string? DecididaPor, string? Motivo);
+/// <summary>Corpo de <c>POST /api/chamados/{id}/triagem/rejeitar</c>. O motivo é opcional. Quem decide vem do token (ADR-0026).</summary>
+public sealed record RejeicaoTriagem(string? Motivo);
 
 /// <summary>
 /// "Refazer" (RF-12): nova triagem pendente, preservando as anteriores (P-04). Não altera o chamado, então não
@@ -51,14 +51,14 @@ public sealed class DecidirTriagem(
     TimeProvider relogio)
 {
     public Task<ChamadoVersionado> AceitarAsync(
-        Guid chamadoId, AceiteTriagem dados, IReadOnlyCollection<string>? versoesAceitas, CancellationToken ct) =>
+        Guid chamadoId, string decididaPor, IReadOnlyCollection<string>? versoesAceitas, CancellationToken ct) =>
         DecidirAsync(chamadoId, versoesAceitas, (chamado, triagem, agora) =>
-            triagem.Aceitar(chamado, dados.DecididaPor, agora), ct);
+            triagem.Aceitar(chamado, decididaPor, agora), ct);
 
     public Task<ChamadoVersionado> RejeitarAsync(
-        Guid chamadoId, RejeicaoTriagem dados, IReadOnlyCollection<string>? versoesAceitas, CancellationToken ct) =>
+        Guid chamadoId, RejeicaoTriagem? dados, string decididaPor, IReadOnlyCollection<string>? versoesAceitas, CancellationToken ct) =>
         DecidirAsync(chamadoId, versoesAceitas, (chamado, triagem, agora) =>
-            triagem.Rejeitar(chamado, dados.DecididaPor, dados.Motivo, agora), ct);
+            triagem.Rejeitar(chamado, decididaPor, dados?.Motivo, agora), ct);
 
     private async Task<ChamadoVersionado> DecidirAsync(
         Guid chamadoId,

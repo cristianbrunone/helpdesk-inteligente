@@ -29,7 +29,7 @@ public sealed class MudarStatusTests(ApiFactory api, BancoFixture banco) : IClas
         var id = await CriarEmAsync(origem);
         var etagAntes = await ETagAsync(id);
 
-        using var resposta = await PatchAsync(id, new { status = destino, alteradoPor = "Ana (suporte)" });
+        using var resposta = await PatchAsync(id, new { status = destino });
 
         resposta.StatusCode.ShouldBe(HttpStatusCode.OK);
         resposta.Headers.ETag.ShouldNotBeNull();
@@ -47,8 +47,8 @@ public sealed class MudarStatusTests(ApiFactory api, BancoFixture banco) : IClas
     {
         var id = await CriarEmAsync(StatusChamado.EmAndamento);
 
-        using var resolvido = await PatchAsync(id, new { status = "Resolvido", alteradoPor = "Ana" });
-        using var reaberto = await PatchAsync(id, new { status = "EmAndamento", alteradoPor = "Ana" });
+        using var resolvido = await PatchAsync(id, new { status = "Resolvido" });
+        using var reaberto = await PatchAsync(id, new { status = "EmAndamento" });
 
         (await LerAsync(resolvido)).GetProperty("resolvidoEm").ValueKind.ShouldBe(JsonValueKind.String);
         (await LerAsync(reaberto)).GetProperty("resolvidoEm").ValueKind.ShouldBe(JsonValueKind.Null);
@@ -60,7 +60,7 @@ public sealed class MudarStatusTests(ApiFactory api, BancoFixture banco) : IClas
         var id = await CriarEmAsync(StatusChamado.EmAndamento);
 
         using var resposta = await PatchAsync(id,
-            new { status = "Resolvido", alteradoPor = "Ana (suporte)", comentario = "Permissão reaplicada no perfil." });
+            new { status = "Resolvido", comentario = "Permissão reaplicada no perfil." });
 
         var detalhe = await LerAsync(resposta);
         var comentario = detalhe.GetProperty("comentarios").EnumerateArray().ShouldHaveSingleItem();
@@ -78,7 +78,7 @@ public sealed class MudarStatusTests(ApiFactory api, BancoFixture banco) : IClas
         var id = await CriarEmAsync(StatusChamado.Aberto);
 
         using var resposta = await PatchAsync(id,
-            new { status = "Resolvido", alteradoPor = "Ana", comentario = "Não deveria ser gravado." });
+            new { status = "Resolvido", comentario = "Não deveria ser gravado." });
 
         resposta.StatusCode.ShouldBe(HttpStatusCode.Conflict);
         var problema = await LerAsync(resposta);
@@ -100,7 +100,7 @@ public sealed class MudarStatusTests(ApiFactory api, BancoFixture banco) : IClas
     {
         var id = await CriarEmAsync(finalizado);
 
-        using var resposta = await PatchAsync(id, new { status = "EmAndamento", alteradoPor = "Ana" });
+        using var resposta = await PatchAsync(id, new { status = "EmAndamento" });
 
         resposta.StatusCode.ShouldBe(HttpStatusCode.Conflict);
         (await LerAsync(resposta)).GetProperty("codigo").GetString().ShouldBe("chamado_finalizado");
@@ -111,7 +111,7 @@ public sealed class MudarStatusTests(ApiFactory api, BancoFixture banco) : IClas
     {
         var id = await CriarEmAsync(StatusChamado.Aberto, Prioridade.Critica);
 
-        using var resposta = await PatchAsync(id, new { status = "Cancelado", alteradoPor = "Ana" });
+        using var resposta = await PatchAsync(id, new { status = "Cancelado" });
 
         resposta.StatusCode.ShouldBe(HttpStatusCode.Conflict);
         (await LerAsync(resposta)).GetProperty("codigo").GetString().ShouldBe("critico_nao_cancelavel");
@@ -125,12 +125,12 @@ public sealed class MudarStatusTests(ApiFactory api, BancoFixture banco) : IClas
         var id = await CriarEmAsync(StatusChamado.Aberto);
         var etagLido = await ETagAsync(id);
         // Outro atendente muda o chamado depois da leitura.
-        using (var outro = await PatchAsync(id, new { status = "EmAndamento", alteradoPor = "Bruno" }, etagLido))
+        using (var outro = await PatchAsync(id, new { status = "EmAndamento" }, etagLido))
         {
             outro.StatusCode.ShouldBe(HttpStatusCode.OK);
         }
 
-        using var resposta = await PatchAsync(id, new { status = "Resolvido", alteradoPor = "Ana" }, etagLido);
+        using var resposta = await PatchAsync(id, new { status = "Resolvido" }, etagLido);
 
         resposta.StatusCode.ShouldBe(HttpStatusCode.PreconditionFailed);
         var problema = await LerAsync(resposta);
@@ -147,7 +147,7 @@ public sealed class MudarStatusTests(ApiFactory api, BancoFixture banco) : IClas
         var id = await CriarEmAsync(StatusChamado.Aberto);
         var valor = ifMatch == "atual" ? await ETagAsync(id) : ifMatch;
 
-        using var resposta = await PatchAsync(id, new { status = "EmAndamento", alteradoPor = "Ana" }, valor);
+        using var resposta = await PatchAsync(id, new { status = "EmAndamento" }, valor);
 
         resposta.StatusCode.ShouldBe(HttpStatusCode.OK);
     }
@@ -158,8 +158,8 @@ public sealed class MudarStatusTests(ApiFactory api, BancoFixture banco) : IClas
         var id = await CriarEmAsync(StatusChamado.Aberto);
         var atual = await ETagAsync(id);
 
-        using var fraco = await PatchAsync(id, new { status = "EmAndamento", alteradoPor = "Ana" }, $"W/{atual}");
-        using var malformado = await PatchAsync(id, new { status = "EmAndamento", alteradoPor = "Ana" }, "sem-aspas");
+        using var fraco = await PatchAsync(id, new { status = "EmAndamento" }, $"W/{atual}");
+        using var malformado = await PatchAsync(id, new { status = "EmAndamento" }, "sem-aspas");
 
         fraco.StatusCode.ShouldBe(HttpStatusCode.PreconditionFailed);
         malformado.StatusCode.ShouldBe(HttpStatusCode.PreconditionFailed);
@@ -168,14 +168,16 @@ public sealed class MudarStatusTests(ApiFactory api, BancoFixture banco) : IClas
     // ---------- Validação e requisição ----------
 
     [Fact]
-    public async Task Patch_SemAlteradoPor_Retorna422NoCampoAlteradoPor()
+    public async Task Patch_SemAlteradoPorNoCorpo_UsaIdentidadeDoUsuarioAutenticado()
     {
         var id = await CriarEmAsync(StatusChamado.Aberto);
 
         using var resposta = await PatchAsync(id, new { status = "EmAndamento" });
 
-        resposta.StatusCode.ShouldBe(HttpStatusCode.UnprocessableEntity);
-        (await LerAsync(resposta)).GetProperty("errors").EnumerateObject().Select(p => p.Name).ShouldBe(["alteradoPor"]);
+        resposta.StatusCode.ShouldBe(HttpStatusCode.OK);
+        var detalhe = await LerAsync(resposta);
+        detalhe.GetProperty("historico").EnumerateArray().Last().GetProperty("alteradoPor").GetString()
+            .ShouldBe("Ana (suporte)");
     }
 
     [Fact]
@@ -183,21 +185,21 @@ public sealed class MudarStatusTests(ApiFactory api, BancoFixture banco) : IClas
     {
         var id = await CriarEmAsync(StatusChamado.Aberto);
 
-        using var resposta = await PatchAsync(id, new { alteradoPor = "Ana" });
+        using var resposta = await PatchAsync(id, new { comentario = "Sem status" });
 
         resposta.StatusCode.ShouldBe(HttpStatusCode.UnprocessableEntity);
         (await LerAsync(resposta)).GetProperty("errors").EnumerateObject().Select(p => p.Name).ShouldBe(["status"]);
     }
 
     [Theory]
-    [InlineData("{ \"status\": \"Voando\", \"alteradoPor\": \"Ana\" }")]
-    [InlineData("{ \"status\": 1, \"alteradoPor\": \"Ana\" }")]
+    [InlineData("{ \"status\": \"Voando\" }")]
+    [InlineData("{ \"status\": 1 }")]
     public async Task Patch_StatusForaDoContrato_Retorna400(string corpo)
     {
         var id = await CriarEmAsync(StatusChamado.Aberto);
         using var conteudo = new StringContent(corpo, Encoding.UTF8, "application/json");
 
-        using var resposta = await api.CreateClient().PatchAsync($"/api/chamados/{id}/status", conteudo, Ct);
+        using var resposta = await api.CriarClienteAtendente().PatchAsync($"/api/chamados/{id}/status", conteudo, Ct);
 
         resposta.StatusCode.ShouldBe(HttpStatusCode.BadRequest);
     }
@@ -205,7 +207,7 @@ public sealed class MudarStatusTests(ApiFactory api, BancoFixture banco) : IClas
     [Fact]
     public async Task Patch_ChamadoInexistente_Retorna404()
     {
-        using var resposta = await PatchAsync(Guid.CreateVersion7(), new { status = "EmAndamento", alteradoPor = "Ana" });
+        using var resposta = await PatchAsync(Guid.CreateVersion7(), new { status = "EmAndamento" });
 
         resposta.StatusCode.ShouldBe(HttpStatusCode.NotFound);
     }
@@ -250,18 +252,18 @@ public sealed class MudarStatusTests(ApiFactory api, BancoFixture banco) : IClas
             requisicao.Headers.TryAddWithoutValidation("If-Match", ifMatch);
         }
 
-        return await api.CreateClient().SendAsync(requisicao, Ct);
+        return await api.CriarClienteAtendente().SendAsync(requisicao, Ct);
     }
 
     private async Task<string> ETagAsync(Guid id)
     {
-        using var resposta = await api.CreateClient().GetAsync($"/api/chamados/{id}", Ct);
+        using var resposta = await api.CriarClienteAtendente().GetAsync($"/api/chamados/{id}", Ct);
         return resposta.Headers.ETag!.ToString();
     }
 
     private async Task<JsonElement> ObterAsync(Guid id)
     {
-        using var resposta = await api.CreateClient().GetAsync($"/api/chamados/{id}", Ct);
+        using var resposta = await api.CriarClienteAtendente().GetAsync($"/api/chamados/{id}", Ct);
         return await LerAsync(resposta);
     }
 

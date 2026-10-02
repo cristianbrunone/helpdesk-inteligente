@@ -39,6 +39,7 @@ public sealed class InicializadorBancoTests(BancoFixture banco)
     [InlineData("prioridade_chamado", new[] { "baixa", "media", "alta", "critica" })]
     [InlineData("status_chamado", new[] { "aberto", "em_andamento", "resolvido", "fechado", "cancelado" })]
     [InlineData("status_triagem", new[] { "pendente", "concluida", "falhou", "aceita", "rejeitada" })]
+    [InlineData("perfil_usuario", new[] { "atendente", "solicitante" })]
     public async Task MigrarEAplicarSeed_Executado_CriaEnumComRotulosNaOrdemDeNegocio(string tipo, string[] esperados)
     {
         await ExecutarInicializadorAsync();

@@ -1,5 +1,9 @@
+using System.Security.Claims;
+using HelpDesk.Api.Autenticacao;
+using HelpDesk.Application.Autenticacao;
 using HelpDesk.Application.Chamados;
 using HelpDesk.Domain.Chamados;
+using HelpDesk.Domain.Usuarios;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Mvc;
 
@@ -28,6 +32,7 @@ internal static class ChamadosEndpoints
             .ProducesProblem(StatusCodes.Status400BadRequest);
 
         grupo.MapPatch("/{id:guid}/status", MudarStatus)
+            .RequireAuthorization(ConfiguracaoAutenticacao.PoliticaAtendente)
             .WithName("MudarStatusChamado")
             .WithSummary("Muda o status pela máquina de estados. If-Match opcional (412 se desatualizado).")
             .ProducesProblem(StatusCodes.Status404NotFound)
@@ -47,38 +52,42 @@ internal static class ChamadosEndpoints
     }
 
     private static async Task<Ok<ResultadoPaginado<ChamadoResumo>>> Listar(
-        [AsParameters] ParametrosListagemHttp parametros, ListarChamados casoDeUso, CancellationToken cancellationToken) =>
-        TypedResults.Ok(await casoDeUso.ExecutarAsync(parametros.ParaAplicacao(), cancellationToken));
+        [AsParameters] ParametrosListagemHttp parametros, ClaimsPrincipal principal, ListarChamados casoDeUso, CancellationToken cancellationToken) =>
+        TypedResults.Ok(await casoDeUso.ExecutarAsync(parametros.ParaAplicacao(), principal.ObterUsuario(), cancellationToken));
 
     private static async Task<Ok<ChamadoDetalhe>> Obter(
-        Guid id, ObterChamado casoDeUso, HttpContext http, CancellationToken cancellationToken)
+        Guid id, ClaimsPrincipal principal, ObterChamado casoDeUso, HttpContext http, CancellationToken cancellationToken)
     {
-        var encontrado = await casoDeUso.ExecutarAsync(id, cancellationToken);
+        var encontrado = await casoDeUso.ExecutarAsync(id, principal.ObterUsuario(), cancellationToken);
         http.Response.Headers.ETag = ETag.De(encontrado.Versao);
         return TypedResults.Ok(encontrado.Chamado);
     }
 
     private static async Task<Ok<ChamadoDetalhe>> MudarStatus(
-        Guid id, MudancaDeStatus corpo, MudarStatusChamado casoDeUso, HttpContext http, CancellationToken cancellationToken)
+        Guid id, MudancaDeStatus corpo, ClaimsPrincipal principal, MudarStatusChamado casoDeUso, HttpContext http, CancellationToken cancellationToken)
     {
-        var alterado = await casoDeUso.ExecutarAsync(id, corpo, ETag.VersoesDoIfMatch(http.Request), cancellationToken);
+        var alterado = await casoDeUso.ExecutarAsync(id, corpo, principal.ObterUsuario().Nome, ETag.VersoesDoIfMatch(http.Request), cancellationToken);
         http.Response.Headers.ETag = ETag.De(alterado.Versao);
         return TypedResults.Ok(alterado.Chamado);
     }
 
     private static async Task<Created<ComentarioDetalhe>> Comentar(
-        Guid id, NovoComentario corpo, AdicionarComentario casoDeUso, HttpContext http, CancellationToken cancellationToken)
+        Guid id, NovoComentario corpo, ClaimsPrincipal principal, AdicionarComentario casoDeUso, HttpContext http, CancellationToken cancellationToken)
     {
-        var criado = await casoDeUso.ExecutarAsync(id, corpo, ETag.VersoesDoIfMatch(http.Request), cancellationToken);
+        var criado = await casoDeUso.ExecutarAsync(id, corpo, principal.ObterUsuario(), ETag.VersoesDoIfMatch(http.Request), cancellationToken);
         http.Response.Headers.ETag = ETag.De(criado.VersaoChamado);
         // O comentário não tem rota própria: o Location aponta para o chamado, onde ele aparece.
         return TypedResults.Created($"/api/chamados/{id}", criado.Comentario);
     }
 
     private static async Task<Created<ChamadoDetalhe>> Criar(
-        NovoChamado corpo, CriarChamado casoDeUso, HttpContext http, CancellationToken cancellationToken)
+        NovoChamado corpo, ClaimsPrincipal principal, CriarChamado casoDeUso, HttpContext http, CancellationToken cancellationToken)
     {
-        var criado = await casoDeUso.ExecutarAsync(corpo, cancellationToken);
+        var usuario = principal.ObterUsuario();
+        var dados = usuario.Perfil == PerfilUsuario.Solicitante
+            ? corpo with { SolicitanteNome = usuario.Nome, SolicitanteEmail = usuario.Email }
+            : corpo;
+        var criado = await casoDeUso.ExecutarAsync(dados, cancellationToken);
         http.Response.Headers.ETag = ETag.De(criado.Versao);
         return TypedResults.Created($"/api/chamados/{criado.Chamado.Id}", criado.Chamado);
     }

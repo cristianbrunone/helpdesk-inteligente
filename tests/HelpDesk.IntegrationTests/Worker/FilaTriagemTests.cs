@@ -245,7 +245,7 @@ public sealed class FilaTriagemTests(BancoFixture banco, ApiFactory api) : IClas
         await using var worker = Worker(bancoIsolado, Llm(ModoFake.Lento));
         await worker.Consumidor.StartAsync(Ct);
         await using var apiIsolada = api.WithWebHostBuilder(b => b.UseSetting("ConnectionStrings:Default", bancoIsolado));
-        var cliente = apiIsolada.CreateClient();
+        var cliente = apiIsolada.CriarClienteAtendente();
         using (await cliente.GetAsync("/api/categorias", Ct))
         {
             // Aquece a API (JIT, pool de conexões): mede-se a criação, não a primeira requisição do processo.

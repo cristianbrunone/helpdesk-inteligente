@@ -16,7 +16,8 @@ public sealed class ProblemDetailsTests(ApiFactory api) : IClassFixture<ApiFacto
         using var requisicao = new HttpRequestMessage(HttpMethod.Get, "/api/nao-existe");
         requisicao.Headers.Add("X-Correlation-Id", "teste-404");
 
-        using var resposta = await api.CreateClient().SendAsync(requisicao, Ct);
+        // Com sessão: sem ela, uma rota inexistente dá 401 (a política de fallback não revela quais rotas existem).
+        using var resposta = await api.CriarClienteAtendente().SendAsync(requisicao, Ct);
 
         ((int)resposta.StatusCode).ShouldBe(StatusCodes.Status404NotFound);
         resposta.Content.Headers.ContentType?.MediaType.ShouldBe("application/problem+json");

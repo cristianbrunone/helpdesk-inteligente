@@ -1,4 +1,5 @@
 import { http, HttpResponse } from 'msw';
+import type { UsuarioSessao } from '../api/autenticacao';
 import type { Categoria } from '../api/categorias';
 import type { ChamadoResumo, ResultadoPaginado } from '../api/chamados';
 
@@ -52,7 +53,16 @@ export function paginaDe(
 }
 
 /** Respostas padrão da API nos testes; cada teste pode sobrescrever com servidor.use(...). */
+/** A sessão padrão dos testes: a Ana, atendente (ADR-0026). Os testes de login trocam por um 401. */
+export const atendentePadrao: UsuarioSessao = {
+  id: '0192f0c1-0000-7000-8000-0000000000aa',
+  nome: 'Ana (suporte)',
+  email: 'ana.suporte@example.com',
+  perfil: 'Atendente',
+};
+
 export const handlers = [
+  http.get('/api/auth/eu', () => HttpResponse.json(atendentePadrao)),
   http.get('/api/categorias', () => HttpResponse.json(categoriasPadrao)),
   http.get('/api/chamados', () => HttpResponse.json(paginaDe(chamadosPadrao))),
   http.get('/api/config/ia', () => HttpResponse.json({ triagem: true, copiloto: true })),

@@ -74,10 +74,6 @@ function servirDetalhe(primeiro: ChamadoDetalhe, ...seguintes: ChamadoDetalhe[])
   );
 }
 
-async function informarAtendente() {
-  await userEvent.type(await screen.findByLabelText('Seu nome (atendente)'), 'Ana (suporte)');
-}
-
 describe('PainelTriagem', () => {
   it('mostra a sugestão concluída identificada como gerada por IA', async () => {
     servirDetalhe(chamado());
@@ -91,7 +87,7 @@ describe('PainelTriagem', () => {
       screen.getByText('Olá! Vamos verificar seu acesso ao módulo de boletos.'),
     ).toBeInTheDocument();
     expect(screen.getByText('fake-triagem-v1 · prompt triagem.v1')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Aceitar sugestão' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Aceitar sugestão' })).toBeEnabled();
   });
 
   it('aceita com If-Match e o nome do atendente, e mostra quem decidiu', async () => {
@@ -115,12 +111,11 @@ describe('PainelTriagem', () => {
       }),
     );
     await renderizarApp(`/chamados/${ID}`);
-    await informarAtendente();
 
-    await userEvent.click(screen.getByRole('button', { name: 'Aceitar sugestão' }));
+    await userEvent.click(await screen.findByRole('button', { name: 'Aceitar sugestão' }));
 
     expect(await screen.findByText(/Aceita por Ana \(suporte\) em/)).toBeInTheDocument();
-    expect(recebido).toEqual({ ifMatch: '"1"', corpo: { decididaPor: 'Ana (suporte)' } });
+    expect(recebido).toEqual({ ifMatch: '"1"', corpo: {} });
     expect(screen.queryByRole('button', { name: 'Aceitar sugestão' })).not.toBeInTheDocument();
   });
 
@@ -143,14 +138,13 @@ describe('PainelTriagem', () => {
       }),
     );
     await renderizarApp(`/chamados/${ID}`);
-    await informarAtendente();
 
-    await userEvent.click(screen.getByRole('button', { name: 'Rejeitar' }));
+    await userEvent.click(await screen.findByRole('button', { name: 'Rejeitar' }));
     await userEvent.type(screen.getByLabelText('Motivo (opcional)'), 'Categoria correta é Bug');
     await userEvent.click(screen.getByRole('button', { name: 'Confirmar rejeição' }));
 
     expect(await screen.findByText(/Rejeitada por Ana \(suporte\) em/)).toBeInTheDocument();
-    expect(corpo).toEqual({ decididaPor: 'Ana (suporte)', motivo: 'Categoria correta é Bug' });
+    expect(corpo).toEqual({ motivo: 'Categoria correta é Bug' });
   });
 
   it('em falha mostra a mensagem amigável e refaz, passando a acompanhar a nova pendente', async () => {

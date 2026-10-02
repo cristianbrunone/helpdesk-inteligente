@@ -25,8 +25,21 @@ export default defineConfig({
   },
   projects: [
     {
+      name: 'setup',
+      testMatch: /.*\.setup\.ts/,
+      use: {
+        ...devices['Desktop Chrome'],
+        channel: process.env.E2E_NAVEGADOR || undefined,
+      },
+    },
+    {
       name: 'chromium',
-      use: { ...devices['Desktop Chrome'], channel: process.env.E2E_NAVEGADOR || undefined },
+      use: {
+        ...devices['Desktop Chrome'],
+        channel: process.env.E2E_NAVEGADOR || undefined,
+        storageState: 'playwright/.auth/usuario.json',
+      },
+      dependencies: ['setup'],
     },
   ],
 });

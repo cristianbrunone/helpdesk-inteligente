@@ -11,6 +11,8 @@ internal static class ConfiguracaoProblemDetails
     private static readonly Dictionary<int, (string Codigo, string Titulo)> _padroes = new()
     {
         [StatusCodes.Status400BadRequest] = ("requisicao_invalida", "Requisição inválida"),
+        [StatusCodes.Status401Unauthorized] = ("nao_autenticado", "Não autenticado"),
+        [StatusCodes.Status403Forbidden] = ("acesso_negado", "Acesso negado"),
         [StatusCodes.Status404NotFound] = ("nao_encontrado", "Recurso não encontrado"),
         [StatusCodes.Status405MethodNotAllowed] = ("requisicao_invalida", "Método não permitido"),
         [StatusCodes.Status500InternalServerError] = ("erro_interno", "Erro interno"),

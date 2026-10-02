@@ -1,7 +1,10 @@
 using System.Globalization;
+using System.Security.Cryptography;
+using System.Text;
 using HelpDesk.Application.Conhecimento;
 using HelpDesk.Application.Triagem;
 using HelpDesk.Infrastructure.Ia;
+using HelpDesk.Infrastructure.Seguranca;
 
 namespace HelpDesk.Infrastructure.Configuracao;
 
@@ -15,6 +18,30 @@ public sealed class LeitorAmbiente(Func<string, string?> ler)
     public const string IaTriagemHabilitada = "IA_TRIAGEM_HABILITADA";
     public const string IaCopilotoHabilitado = "IA_COPILOTO_HABILITADO";
     public const string CopilotoRateLimitPorMinuto = "COPILOTO_RATE_LIMIT_POR_MINUTO";
+    public const string JwtChave = "JWT_CHAVE";
+    public const string SessaoCookieSeguro = "SESSAO_COOKIE_SEGURO";
+
+    /// <summary>
+    /// Sessão (ADR-0026). <c>JWT_CHAVE</c> é segredo: a mensagem de erro cita só o tamanho, nunca o valor. Sem ela, uma
+    /// chave aleatória por subida. <c>SESSAO_COOKIE_SEGURO=false</c> só para acessar por HTTP a partir de outra máquina
+    /// (pelo <c>localhost</c>, o navegador aceita o cookie <c>Secure</c> mesmo sem HTTPS).
+    /// </summary>
+    public OpcoesSessao OpcoesSessao()
+    {
+        var chave = Texto(JwtChave) is { } texto ? Encoding.UTF8.GetBytes(texto) : null;
+        if (chave is not null && chave.Length < Seguranca.OpcoesSessao.ChaveTamanhoMinimo)
+        {
+            throw new InvalidOperationException(
+                $"A variável {JwtChave} deve ter pelo menos {Seguranca.OpcoesSessao.ChaveTamanhoMinimo} bytes " +
+                $"(HMAC-SHA256); tem {chave.Length}.");
+        }
+
+        return new OpcoesSessao(
+            chave ?? RandomNumberGenerator.GetBytes(Seguranca.OpcoesSessao.ChaveTamanhoMinimo),
+            ChaveGerada: chave is null,
+            CookieSeguro: Booleano(SessaoCookieSeguro, padrao: true),
+            Seguranca.OpcoesSessao.ValidadePadrao);
+    }
 
     public string? Texto(string chave) => ler(chave) is { } valor && !string.IsNullOrWhiteSpace(valor)
         ? valor.Trim()

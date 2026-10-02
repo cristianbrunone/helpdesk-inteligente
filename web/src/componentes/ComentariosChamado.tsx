@@ -17,12 +17,11 @@ const esquema = z.object({
 
 interface Props {
   versionado: ChamadoVersionado;
-  atendente: string;
   aoDesatualizar: () => void;
 }
 
 /** Comentários em ordem cronológica. O formulário só aparece quando o domínio permite (`podeComentar`). */
-export function ComentariosChamado({ versionado, atendente, aoDesatualizar }: Props) {
+export function ComentariosChamado({ versionado, aoDesatualizar }: Props) {
   const { chamado, etag } = versionado;
   const comentar = useComentar(chamado.id);
   const {
@@ -35,7 +34,7 @@ export function ComentariosChamado({ versionado, atendente, aoDesatualizar }: Pr
 
   const enviar = handleSubmit(async ({ texto }) => {
     try {
-      await comentar.mutateAsync({ autor: atendente.trim(), texto, etag });
+      await comentar.mutateAsync({ texto, etag });
       reset();
     } catch (erro) {
       if (erro instanceof ErroApi && erro.status === 422 && erro.errosPorCampo['texto']) {
@@ -83,12 +82,7 @@ export function ComentariosChamado({ versionado, atendente, aoDesatualizar }: Pr
               {...register('texto')}
             />
             <Group justify="flex-end">
-              <Button
-                type="submit"
-                size="xs"
-                loading={isSubmitting}
-                disabled={atendente.trim().length === 0}
-              >
+              <Button type="submit" size="xs" loading={isSubmitting}>
                 Comentar
               </Button>
             </Group>

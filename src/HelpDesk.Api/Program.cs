@@ -2,6 +2,7 @@ using System.Diagnostics;
 using System.Text.Json.Serialization;
 using System.Threading.RateLimiting;
 using HelpDesk.Api;
+using HelpDesk.Api.Autenticacao;
 using HelpDesk.Api.Endpoints;
 using HelpDesk.Api.Erros;
 using HelpDesk.Api.Observabilidade;
@@ -25,6 +26,9 @@ builder.Services.AddSingleton(leitor.OpcoesIA());
 // IA: LLM, RAG e Copiloto (ADR-0004, ADR-0005, ADR-0012).
 builder.Services.AdicionarClienteLlm(leitor.OpcoesLlm());
 builder.Services.AdicionarCopiloto(leitor.OpcoesRag());
+// Login e perfis (ADR-0026): JWT em cookie httpOnly, validado pelo JwtBearer.
+var opcoesSessao = leitor.OpcoesSessao();
+builder.Services.AdicionarAutenticacao(opcoesSessao);
 
 // Rate limiting do copiloto por IP (ADR-0012): protege a cota da IA.
 var limiteCopiloto = leitor.RateLimitCopilotoPorMinuto();
@@ -80,6 +84,11 @@ builder.Services.AddOpenApi();
 
 var app = builder.Build();
 
+if (opcoesSessao.ChaveGerada)
+{
+    LogsDeSubida.ChaveDeSessaoGerada(app.Logger);
+}
+
 // A correlação vem primeiro, para que até os erros tratados abaixo saiam com CorrelationId.
 app.UseMiddleware<CorrelacaoMiddleware>();
 app.UseExceptionHandler();
@@ -87,7 +96,7 @@ app.UseStatusCodePages();
 app.UseRateLimiter();
 
 // Documento OpenAPI nativo + Swagger UI (só a UI) apontando para ele (ADR-0013).
-app.MapOpenApi();
+app.MapOpenApi().AllowAnonymous();
 app.UseSwaggerUI(options =>
 {
     options.SwaggerEndpoint("/openapi/v1.json", "HelpDesk API v1");
@@ -95,7 +104,13 @@ app.UseSwaggerUI(options =>
     options.DocumentTitle = "HelpDesk Inteligente — API";
 });
 
+// Depois do Swagger UI (HTML estático, sem dados): com a política de fallback, a autorização também vale para
+// requisições sem endpoint, e a interface da documentação precisa abrir sem sessão (ADR-0026).
+app.UseAuthentication();
+app.UseAuthorization();
+
 app.MapSaude();
+app.MapAutenticacao();
 app.MapCategorias();
 app.MapChamados();
 app.MapTriagem();
@@ -107,3 +122,10 @@ app.Run();
 
 // Exposto para o WebApplicationFactory dos testes de integração.
 public partial class Program;
+
+internal static partial class LogsDeSubida
+{
+    [LoggerMessage(Level = LogLevel.Warning, Message = "JWT_CHAVE não configurada: a chave das sessões foi gerada " +
+        "agora e muda a cada subida (as sessões caem quando a API reinicia). Em produção, defina JWT_CHAVE.")]
+    public static partial void ChaveDeSessaoGerada(ILogger logger);
+}

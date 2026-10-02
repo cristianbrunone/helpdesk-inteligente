@@ -77,7 +77,6 @@ export function useRefazerTriagem(chamadoId: string) {
 
 interface Decisao {
   acao: 'aceitar' | 'rejeitar';
-  decididaPor: string;
   motivo?: string;
   etag: string;
 }

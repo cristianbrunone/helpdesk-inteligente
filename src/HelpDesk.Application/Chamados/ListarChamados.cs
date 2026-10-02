@@ -1,3 +1,4 @@
+using HelpDesk.Application.Autenticacao;
 using HelpDesk.Application.Categorias;
 using HelpDesk.Domain.Chamados;
 using HelpDesk.Domain.Triagem;
@@ -36,7 +37,8 @@ public sealed record FiltroChamados(
     OrdenacaoChamados OrdenarPor,
     bool Ascendente,
     int Pagina,
-    int TamanhoPagina);
+    int TamanhoPagina,
+    string? SolicitanteEmail = null);
 
 /// <summary>
 /// Item da listagem. Sem o e-mail do solicitante (minimização de dados, contrato §3). <see cref="TriagemStatus"/> é o
@@ -65,11 +67,19 @@ public sealed class ListarChamados(IConsultaChamados consulta)
     public const int TextoTamanhoMinimo = 3;
     public const int TextoTamanhoMaximo = 100;
 
+    /// <summary>Lista chamados respeitando o perfil: atendente vê todos, solicitante vê só os próprios (ADR-0026).</summary>
+    public Task<ResultadoPaginado<ChamadoResumo>> ExecutarAsync(
+        ParametrosListagem parametros, UsuarioAutenticado usuario, CancellationToken cancellationToken)
+    {
+        var email = usuario.Perfil == HelpDesk.Domain.Usuarios.PerfilUsuario.Solicitante ? usuario.Email : null;
+        return consulta.ListarAsync(Validar(parametros, email), cancellationToken);
+    }
+
     public Task<ResultadoPaginado<ChamadoResumo>> ExecutarAsync(ParametrosListagem parametros, CancellationToken cancellationToken) =>
         consulta.ListarAsync(Validar(parametros), cancellationToken);
 
     /// <summary>Converte a query string no filtro, ou lança 400 com todos os problemas encontrados.</summary>
-    public static FiltroChamados Validar(ParametrosListagem p)
+    public static FiltroChamados Validar(ParametrosListagem p, string? solicitanteEmail = null)
     {
         var problemas = new List<string>();
 
@@ -143,6 +153,7 @@ public sealed class ListarChamados(IConsultaChamados consulta)
             ordenarPor!.Value,
             ascendente!.Value,
             pagina,
-            tamanho);
+            tamanho,
+            solicitanteEmail);
     }
 }

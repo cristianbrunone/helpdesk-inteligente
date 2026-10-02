@@ -12,7 +12,7 @@
 | Base | `/api`. Sem versão na URL na v1; o versionamento, quando necessário, será por prefixo (`/api/v2`). |
 | JSON | `camelCase`, datas em ISO 8601 UTC (`2026-09-30T14:03:00Z`), IDs em UUID. |
 | Enums | Strings **ASCII** em PascalCase: `Aberto`, `EmAndamento`, `Resolvido`, `Fechado`, `Cancelado` / `Baixa`, `Media`, `Alta`, `Critica` / `Pendente`, `Concluida`, `Falhou`, `Aceita`, `Rejeitada`. Os rótulos com acento ("Média", "Crítica") ficam no frontend. Sem acento, os valores funcionam em query string sem encoding. |
-| Identificação do atendente | Sem autenticação na v1 (P-03): os campos `alteradoPor`, `autor` e `decididaPor` vêm no corpo. |
+| Autenticação *(Sprint 6, ADR-0026)* | JWT num cookie `httpOnly` (`helpdesk_sessao`), gravado pelo login; a API também aceita `Authorization: Bearer <token>`. Sem sessão, todo endpoint responde **401**, exceto `/health`, o login e o OpenAPI. A identidade das escritas (`alteradoPor`, `autor`, `decididaPor`) vem do token, e não mais do corpo. Até a `v1.0.0`, sem autenticação (P-03), esses campos vinham no corpo. |
 | Correlação | O header `X-Correlation-Id` é aceito; se ausente, é gerado. Ele é devolvido na resposta e aparece nos logs e no ProblemDetails. |
 | Concorrência | `GET /api/chamados/{id}` devolve um `ETag`. As operações de escrita sobre o chamado aceitam `If-Match` opcional; se o valor estiver desatualizado, a resposta é **412**. |
 | Timeouts | A API nunca espera pelo LLM, exceto no copiloto (streaming com timeout próprio). |
@@ -39,7 +39,9 @@ Semântica dos códigos:
 | HTTP | Quando | `codigo` |
 |---|---|---|
 | **400** | A requisição é malformada: JSON inválido, tipo errado, parâmetro de query inválido (por exemplo, `q` com menos de 3 caracteres ou `pagina=0`). | `requisicao_invalida` |
-| **404** | O recurso não existe (chamado, triagem vigente ou categoria). | `nao_encontrado` |
+| **401** | *(Sprint 6)* Sem sessão, ou com token inválido ou expirado. Também é a resposta do login com e-mail ou senha errados (a mesma mensagem nos dois casos, para não revelar quais e-mails existem). | `nao_autenticado` |
+| **403** | *(Sprint 6)* O perfil não pode fazer a operação (por exemplo, um solicitante mudando status). | `acesso_negado` |
+| **404** | O recurso não existe (chamado, triagem vigente ou categoria). Também é a resposta para um solicitante que pede o chamado de outra pessoa: ele não descobre que o chamado existe. | `nao_encontrado` |
 | **409** | A requisição é bem formada, mas **conflita com o estado atual**. | ver catálogo abaixo |
 | **412** | O `If-Match` não confere (outro atendente alterou o chamado). | `versao_desatualizada` |
 | **422** | O corpo é bem formado, mas **viola regras de validação** (obrigatório, formato de e-mail, tamanho). Inclui `errors: { campo: [mensagens] }`. | `validacao` |
@@ -59,6 +61,49 @@ Catálogo de conflitos (**409**):
 
 ## 3. Endpoints
 
+### Autenticação *(Sprint 6, ADR-0026)*
+
+#### `POST /api/auth/login`
+
+```json
+{ "email": "ana@exemplo.com", "senha": "..." }
+```
+
+**200** com o usuário (`{ "id": "...", "nome": "Ana Atendente", "email": "ana@exemplo.com", "perfil": "Atendente" }`) e o cookie `helpdesk_sessao` (`HttpOnly; Secure; SameSite=Strict; Path=/`, validade de 8 h). O token **não** vem no corpo: o JavaScript nunca o vê. **401** `nao_autenticado` para e-mail ou senha errados. **422** sem e-mail ou senha.
+
+#### `GET /api/auth/eu`
+
+**200** com o usuário da sessão (o mesmo formato do login). **401** sem sessão. O front usa para saber se há sessão e qual é o perfil.
+
+#### `POST /api/auth/sair`
+
+**204**, apagando o cookie. Sem efeito no servidor: o JWT é sem estado e expira sozinho.
+
+#### Usuários de demonstração (seed)
+
+Senha única para demonstração (documentada no README e nos contratos): `HelpDesk@2026`
+
+| Perfil | Nome | E-mail |
+|---|---|---|
+| **Atendente** | Ana (suporte) | `ana.suporte@example.com` |
+| **Atendente** | Bruno (suporte) | `bruno.suporte@example.com` |
+| **Solicitante** | Marina Costa | `marina.costa@example.com` |
+| **Solicitante** | Paulo Reis | `paulo.reis@example.com` |
+
+#### Perfis e acesso
+
+| Recurso | Atendente | Solicitante |
+|---|---|---|
+| Criar chamado | ✅ informando o solicitante (`solicitanteNome`, `solicitanteEmail`) | ✅ o nome e o e-mail vêm do token; os do corpo são ignorados |
+| Listar chamados | ✅ todos | ✅ só os próprios (`solicitanteEmail` = e-mail do token) |
+| Detalhe | ✅ | ✅ só os próprios (o de outra pessoa dá **404**), sem a triagem (`triagem: null`) e com `transicoesPermitidas: []` |
+| Comentar | ✅ | ✅ só nos próprios |
+| Mudar status | ✅ | ❌ **403** |
+| Triagem (refazer, aceitar, rejeitar) | ✅ | ❌ **403** |
+| Copiloto | ✅ | ❌ **403** |
+| Dashboard | ✅ | ❌ **403** |
+| Categorias e `GET /api/config/ia` | ✅ | ✅ |
+
 ### `POST /api/chamados`: criar chamado
 
 ```json
@@ -75,6 +120,7 @@ Catálogo de conflitos (**409**):
 
 - **201 Created**, com `Location: /api/chamados/{id}` e o corpo = detalhe do chamado (seção abaixo), com `triagem.status = "Pendente"`.
 - **422**: título com 5–150 caracteres, descrição com 10–5000, nome obrigatório (até 120), e-mail válido, categoria existente (quando informada).
+- *(Sprint 6)* `solicitanteNome` e `solicitanteEmail` só valem quando um **atendente** abre o chamado em nome de alguém (por exemplo, um pedido por telefone). Para um **solicitante**, os dois vêm do token, e os do corpo são ignorados.
 - É **sempre** rápido: grava o chamado, o histórico (`null → Aberto`) e a triagem pendente numa transação (ADR-0003).
 - **Entrega incremental:** na Sprint 1 o detalhe não tinha `triagem` e a listagem não tinha `triagemStatus`; os dois entraram na Sprint 2. Com a triagem desativada (ADR-0021), o chamado é criado com `triagem: null`.
 
@@ -171,20 +217,20 @@ Catálogo de conflitos (**409**):
 ### `PATCH /api/chamados/{id}/status`: mudar status
 
 ```json
-{ "status": "Resolvido", "alteradoPor": "Ana (suporte)", "comentario": "Permissão reaplicada no perfil." }
+{ "status": "Resolvido", "comentario": "Permissão reaplicada no perfil." }
 ```
 
 - O `comentario` é opcional. Quando presente, é gravado como comentário **na mesma transação**. Ao resolver, ele é o insumo principal do RAG (P-09).
 - **200**: detalhe atualizado.
-- **409**: `transicao_invalida` / `chamado_finalizado` / `critico_nao_cancelavel`. **412** se houver `If-Match` desatualizado. **422** se faltar `alteradoPor`.
+- **409**: `transicao_invalida` / `chamado_finalizado` / `critico_nao_cancelavel`. **412** se houver `If-Match` desatualizado. *(Sprint 6)* O `alteradoPor` vem do token; até a `v1.0.0` ele vinha no corpo e era obrigatório.
 
 ### `POST /api/chamados/{id}/comentarios`: comentar
 
 ```json
-{ "autor": "Ana (suporte)", "texto": "Pode me enviar um print do erro?" }
+{ "texto": "Pode me enviar um print do erro?" }
 ```
 
-**201** com o comentário. **409** `chamado_finalizado`. **422** para validação (texto com 1–4000 caracteres).
+**201** com o comentário. **409** `chamado_finalizado`. **422** para validação (texto com 1–4000 caracteres). *(Sprint 6)* O `autor` vem do token.
 
 ### `POST /api/chamados/{id}/triagem`: refazer triagem
 
@@ -193,7 +239,7 @@ Sem corpo. **202 Accepted**, com a nova triagem (`Pendente`). **409** `triagem_e
 ### `POST /api/chamados/{id}/triagem/aceitar`
 
 ```json
-{ "decididaPor": "Ana (suporte)" }
+{}
 ```
 
 Aplica `categoriaSugerida` e `prioridadeSugerida` da **triagem vigente** ao chamado e marca a triagem como `Aceita`, na mesma transação. **200** com o detalhe. **404** se não houver triagem. **409** `triagem_nao_concluida` / `chamado_finalizado`.
@@ -203,10 +249,10 @@ Aplica `categoriaSugerida` e `prioridadeSugerida` da **triagem vigente** ao cham
 ### `POST /api/chamados/{id}/triagem/rejeitar`
 
 ```json
-{ "decididaPor": "Ana (suporte)", "motivo": "Categoria correta é Bug no sistema" }
+{ "motivo": "Categoria correta é Bug no sistema" }
 ```
 
-O `motivo` é opcional, mas é um insumo valioso para melhorar o prompt. **200**. Os códigos de erro são os mesmos do aceitar.
+O `motivo` é opcional, mas é um insumo valioso para melhorar o prompt. **200**. Os códigos de erro são os mesmos do aceitar. *(Sprint 6)* Nos dois, o `decididaPor` vem do token.
 
 ### `POST /api/chamados/{id}/copiloto`: conversar com o copiloto (SSE)
 

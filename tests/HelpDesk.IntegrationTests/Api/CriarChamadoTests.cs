@@ -23,7 +23,7 @@ public sealed class CriarChamadoTests(ApiFactory api) : IClassFixture<ApiFactory
     [Fact]
     public async Task Criar_DadosValidos_Retorna201ComLocationETagEDetalheDoContrato()
     {
-        using var resposta = await api.CreateClient().PostAsJsonAsync("/api/chamados", CorpoValido(), Ct);
+        using var resposta = await api.CriarClienteAtendente().PostAsJsonAsync("/api/chamados", CorpoValido(), Ct);
 
         resposta.StatusCode.ShouldBe(HttpStatusCode.Created);
         resposta.Headers.ETag.ShouldNotBeNull();
@@ -53,7 +53,7 @@ public sealed class CriarChamadoTests(ApiFactory api) : IClassFixture<ApiFactory
     [Fact]
     public async Task Criar_ComCategoriaEPrioridade_RetornaCategoriaComNomeEPrioridadeInformada()
     {
-        using var resposta = await api.CreateClient()
+        using var resposta = await api.CriarClienteAtendente()
             .PostAsJsonAsync("/api/chamados", CorpoValido(categoriaId: 2, prioridade: "Critica"), Ct);
 
         resposta.StatusCode.ShouldBe(HttpStatusCode.Created);
@@ -72,7 +72,7 @@ public sealed class CriarChamadoTests(ApiFactory api) : IClassFixture<ApiFactory
     {
         var corpo = new { titulo = "abc", descricao = "", solicitanteNome = (string?)null, solicitanteEmail = "x@y", categoriaId = 999 };
 
-        using var resposta = await api.CreateClient().PostAsJsonAsync("/api/chamados", corpo, Ct);
+        using var resposta = await api.CriarClienteAtendente().PostAsJsonAsync("/api/chamados", corpo, Ct);
 
         resposta.StatusCode.ShouldBe(HttpStatusCode.UnprocessableEntity);
         resposta.Content.Headers.ContentType?.MediaType.ShouldBe("application/problem+json");
@@ -93,7 +93,7 @@ public sealed class CriarChamadoTests(ApiFactory api) : IClassFixture<ApiFactory
     [Fact]
     public async Task Criar_SoCategoriaInexistente_Retorna422NoCampoCategoriaId()
     {
-        using var resposta = await api.CreateClient()
+        using var resposta = await api.CriarClienteAtendente()
             .PostAsJsonAsync("/api/chamados", CorpoValido(categoriaId: 999), Ct);
 
         resposta.StatusCode.ShouldBe(HttpStatusCode.UnprocessableEntity);
@@ -110,7 +110,7 @@ public sealed class CriarChamadoTests(ApiFactory api) : IClassFixture<ApiFactory
     {
         using var conteudo = new StringContent(corpo, Encoding.UTF8, "application/json");
 
-        using var resposta = await api.CreateClient().PostAsync("/api/chamados", conteudo, Ct);
+        using var resposta = await api.CriarClienteAtendente().PostAsync("/api/chamados", conteudo, Ct);
 
         resposta.StatusCode.ShouldBe(HttpStatusCode.BadRequest);
         using var json = JsonDocument.Parse(await resposta.Content.ReadAsStringAsync(Ct));
@@ -128,7 +128,7 @@ public sealed class CriarChamadoTests(ApiFactory api) : IClassFixture<ApiFactory
             solicitanteEmail = "pessoa.rastreavel@example.com",
         };
 
-        using var resposta = await api.CreateClient().PostAsJsonAsync("/api/chamados", corpo, Ct);
+        using var resposta = await api.CriarClienteAtendente().PostAsJsonAsync("/api/chamados", corpo, Ct);
 
         resposta.StatusCode.ShouldBe(HttpStatusCode.Created);
         var mensagens = api.Logs.Registros.Select(r => r.Mensagem).ToList();

@@ -2,6 +2,7 @@
 using System;
 using HelpDesk.Domain.Chamados;
 using HelpDesk.Domain.Triagem;
+using HelpDesk.Domain.Usuarios;
 using HelpDesk.Infrastructure.Persistencia;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
@@ -23,6 +24,7 @@ namespace HelpDesk.Infrastructure.Migrations
                 .HasAnnotation("ProductVersion", "10.0.12")
                 .HasAnnotation("Relational:MaxIdentifierLength", 63);
 
+            NpgsqlModelBuilderExtensions.HasPostgresEnum(modelBuilder, "perfil_usuario", new[] { "atendente", "solicitante" });
             NpgsqlModelBuilderExtensions.HasPostgresEnum(modelBuilder, "prioridade_chamado", new[] { "baixa", "media", "alta", "critica" });
             NpgsqlModelBuilderExtensions.HasPostgresEnum(modelBuilder, "status_chamado", new[] { "aberto", "em_andamento", "resolvido", "fechado", "cancelado" });
             NpgsqlModelBuilderExtensions.HasPostgresEnum(modelBuilder, "status_triagem", new[] { "pendente", "concluida", "falhou", "aceita", "rejeitada" });
@@ -432,6 +434,55 @@ namespace HelpDesk.Infrastructure.Migrations
                             t.HasCheckConstraint("ck_triagens_ia_resumo_tamanho", "resumo IS NULL OR char_length(resumo) <= 200");
 
                             t.HasCheckConstraint("ck_triagens_ia_sugestao_completa", "status NOT IN ('concluida', 'aceita', 'rejeitada') OR (categoria_sugerida_id IS NOT NULL AND prioridade_sugerida IS NOT NULL AND resumo IS NOT NULL AND resposta_sugerida IS NOT NULL AND confianca IS NOT NULL)");
+                        });
+                });
+
+            modelBuilder.Entity("HelpDesk.Domain.Usuarios.Usuario", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTimeOffset>("CriadoEm")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("criado_em");
+
+                    b.Property<string>("Email")
+                        .IsRequired()
+                        .HasMaxLength(254)
+                        .HasColumnType("character varying(254)")
+                        .HasColumnName("email");
+
+                    b.Property<string>("Nome")
+                        .IsRequired()
+                        .HasMaxLength(120)
+                        .HasColumnType("character varying(120)")
+                        .HasColumnName("nome");
+
+                    b.Property<PerfilUsuario>("Perfil")
+                        .HasColumnType("perfil_usuario")
+                        .HasColumnName("perfil");
+
+                    b.Property<string>("SenhaHash")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("senha_hash");
+
+                    b.HasKey("Id")
+                        .HasName("pk_usuarios");
+
+                    b.HasIndex("Email")
+                        .IsUnique()
+                        .HasDatabaseName("ix_usuarios_email");
+
+                    b.ToTable("usuarios", null, t =>
+                        {
+                            t.HasCheckConstraint("ck_usuarios_email_formato", "email ~* '^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$'");
+
+                            t.HasCheckConstraint("ck_usuarios_email_minusculo", "email = lower(email)");
+
+                            t.HasCheckConstraint("ck_usuarios_nome_preenchido", "char_length(btrim(nome)) > 0");
                         });
                 });
 
