@@ -19,6 +19,7 @@ import { FiltrosChamados } from '../componentes/FiltrosChamados';
 import { formatarDataHora } from '../dominio/chamado';
 import { useFiltrosDaUrl } from '../hooks/useFiltrosDaUrl';
 import { useTituloDaPagina } from '../hooks/useTituloDaPagina';
+import { LARGURA_CONTEUDO } from '../tema';
 
 const ITENS_DO_ESQUELETO = 5;
 
@@ -32,7 +33,7 @@ export function ListaChamados() {
     useChamados(filtros);
 
   return (
-    <Stack gap="md" maw={960}>
+    <Stack gap="md" maw={LARGURA_CONTEUDO}>
       <Group justify="space-between" wrap="wrap">
         <Title order={2}>{titulo}</Title>
         <Button component={Link} to="/chamados/novo">

@@ -18,6 +18,7 @@ import { SemPermissao } from '../componentes/SemPermissao';
 import { ROTULO_PRIORIDADE, ROTULO_STATUS } from '../dominio/chamado';
 import { useCelular } from '../hooks/useCelular';
 import { useTituloDaPagina } from '../hooks/useTituloDaPagina';
+import { LARGURA_CONTEUDO } from '../tema';
 
 const NUMERO = new Intl.NumberFormat('pt-BR');
 const HORAS = new Intl.NumberFormat('pt-BR', {
@@ -40,7 +41,7 @@ export function Dashboard() {
   useTituloDaPagina('Dashboard');
 
   return (
-    <Stack gap="md" maw={1100}>
+    <Stack gap="md" maw={LARGURA_CONTEUDO}>
       <Title order={2}>Dashboard</Title>
 
       {isPending ? (

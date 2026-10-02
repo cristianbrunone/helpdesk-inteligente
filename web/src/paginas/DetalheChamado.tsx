@@ -13,6 +13,7 @@ import { PainelTriagem } from '../componentes/PainelTriagem';
 import { formatarDataHora } from '../dominio/chamado';
 import { useTituloDaPagina } from '../hooks/useTituloDaPagina';
 import classes from './DetalheChamado.module.css';
+import { LARGURA_CONTEUDO } from '../tema';
 
 export function DetalheChamado() {
   const { id = '' } = useParams();
@@ -23,7 +24,7 @@ export function DetalheChamado() {
   useTituloDaPagina(data ? `#${data.chamado.numero} · ${data.chamado.titulo}` : 'Chamado');
 
   return (
-    <Stack gap="md" maw={1100}>
+    <Stack gap="md" maw={LARGURA_CONTEUDO}>
       <Anchor component={Link} to="/chamados" size="sm">
         ← Voltar para os chamados
       </Anchor>

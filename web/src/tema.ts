@@ -13,6 +13,13 @@ export const tema = createTheme({
   defaultRadius: 'md',
 });
 
+/**
+ * Largura máxima do conteúdo das páginas de trabalho (lista, detalhe e dashboard), alinhado à esquerda junto ao
+ * menu: a mesma em todas, para as bordas e o botão do topo não mudarem de lugar ao navegar. Formulários ficam mais
+ * estreitos (Sprint 7, consistência visual).
+ */
+export const LARGURA_CONTEUDO = 1200;
+
 /** Texto secundário ("dimmed"): o gray.6 padrão dá 3,32:1 sobre branco; o gray.7 dá 8,18:1. */
 export const variaveisCss: CSSVariablesResolver = () => ({
   variables: {},
