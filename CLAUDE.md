@@ -111,6 +111,8 @@ docker compose up --build -d --wait && bash scripts/smoke-compose.sh   # critér
 cd web && npm run e2e                      # E2E (Playwright) contra o compose de pé; E2E_BASE_URL e E2E_NAVEGADOR=msedge opcionais
 dotnet build                               # build do backend
 dotnet test --filter "Category!=ProvedorReal"   # todos os testes do backend (exige Docker); sintaxe válida no MTP
+dotnet test --filter "Category!=ProvedorReal" --results-directory cobertura --coverlet --coverlet-output-format cobertura --coverlet-include "[HelpDesk.*]*" --coverlet-exclude "[HelpDesk.Infrastructure]HelpDesk.Infrastructure.Migrations.*" && node scripts/cobertura.mjs cobertura   # cobertura do backend (relatórios unidos)
+cd web && npm run test:cobertura          # cobertura do frontend (Vitest + v8)
 dotnet test --project tests/HelpDesk.IntegrationTests --filter "Category=ProvedorReal"   # PoC com provedor real (exige chave no .env; nunca no CI)
 OTEL_EXPORTER_OTLP_ENDPOINT=http://aspire-dashboard:18889 docker compose --profile observabilidade up -d   # traces em http://localhost:18888
 LLM_PROVIDER=fake dotnet run --project tools/HelpDesk.Evals -- --rag off --repeticoes 1   # smoke do harness de evals (o mesmo do CI)

@@ -16,5 +16,12 @@ export default defineConfig({
     restoreMocks: true,
     // e2e/*.spec.ts são do Playwright (rodam contra o compose), não do Vitest.
     exclude: [...configDefaults.exclude, 'e2e/**'],
+    // npm run test:cobertura. Só o código da aplicação: sem os testes, o apoio de testes e o ponto de entrada.
+    coverage: {
+      provider: 'v8',
+      include: ['src/**/*.{ts,tsx}'],
+      exclude: ['src/**/*.test.{ts,tsx}', 'src/testes/**', 'src/main.tsx', 'src/**/*.d.ts'],
+      reporter: ['text-summary', 'json-summary', 'lcov'],
+    },
   },
 });
