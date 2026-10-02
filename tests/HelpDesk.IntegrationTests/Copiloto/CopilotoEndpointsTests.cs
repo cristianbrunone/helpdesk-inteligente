@@ -100,7 +100,7 @@ public sealed class CopilotoEndpointsTests(ApiFactory api) : IClassFixture<ApiFa
         bloqueada.StatusCode.ShouldBe(HttpStatusCode.TooManyRequests);
         bloqueada.Headers.Contains("Retry-After").ShouldBeTrue();
         using var json = JsonDocument.Parse(await bloqueada.Content.ReadAsStringAsync(Ct));
-        json.RootElement.GetProperty("codigo").GetString().ShouldBe("limite_de_requisicoes");
+        json.RootElement.GetProperty("codigo").GetString().ShouldBe("limite_excedido");
     }
 
     // ---------- Guardrail: CPF mascarado + Aviso ----------

@@ -42,7 +42,7 @@ builder.Services.AddRateLimiter(options =>
             Title = "Limite de requisições excedido",
             Detail = "Você atingiu o limite de perguntas ao copiloto. Tente novamente em alguns segundos.",
             Type = "https://helpdesk.local/problemas/limite-de-requisicoes",
-            Extensions = { ["codigo"] = "limite_de_requisicoes", ["correlationId"] = correlationId },
+            Extensions = { ["codigo"] = "limite_excedido", ["correlationId"] = correlationId },
         };
 
         if (context.Lease.TryGetMetadata(MetadataName.RetryAfter, out var retryAfter))

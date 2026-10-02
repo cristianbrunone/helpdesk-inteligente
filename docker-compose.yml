@@ -49,9 +49,25 @@ services:
       secrets: [ca_extra]
     environment:
       <<: *banco
-      LLM_PROVIDER: ${LLM_PROVIDER:-fake}
       IA_TRIAGEM_HABILITADA: ${IA_TRIAGEM_HABILITADA:-true}
       IA_COPILOTO_HABILITADO: ${IA_COPILOTO_HABILITADO:-true}
+      # O copiloto roda na API (Sprint 4): ela precisa do mesmo provedor do Worker. Vazio = padrão do código.
+      LLM_PROVIDER: ${LLM_PROVIDER:-fake}
+      LLM_BASE_URL: ${LLM_BASE_URL:-}
+      LLM_API_KEY: ${LLM_API_KEY:-}
+      LLM_CHAT_MODEL: ${LLM_CHAT_MODEL:-}
+      # As ferramentas de busca do copiloto geram embeddings: o modelo tem de ser o mesmo do índice (Worker).
+      LLM_EMBEDDING_MODEL: ${LLM_EMBEDDING_MODEL:-}
+      EMBEDDING_DIMENSIONS: ${EMBEDDING_DIMENSIONS:-}
+      LLM_TIMEOUT_SECONDS: ${LLM_TIMEOUT_SECONDS:-}
+      LLM_MAX_RETRIES: ${LLM_MAX_RETRIES:-}
+      LLM_FAKE_MODO: ${LLM_FAKE_MODO:-}
+      LLM_FAKE_ATRASO_MS: ${LLM_FAKE_ATRASO_MS:-}
+      RAG_TOP_K: ${RAG_TOP_K:-}
+      RAG_MIN_SIMILARITY: ${RAG_MIN_SIMILARITY:-}
+      # Copiloto (ADR-0012, ADR-0021): orçamento de saída e rate limit por minuto
+      COPILOTO_MAX_TOKENS_SAIDA: ${COPILOTO_MAX_TOKENS_SAIDA:-}
+      COPILOTO_RATE_LIMIT_POR_MINUTO: ${COPILOTO_RATE_LIMIT_POR_MINUTO:-}
       OTEL_EXPORTER_OTLP_ENDPOINT: ${OTEL_EXPORTER_OTLP_ENDPOINT:-}
     ports:
       - "${API_PORTA_HOST:-5080}:8080"
