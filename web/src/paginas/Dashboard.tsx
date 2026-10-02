@@ -1,5 +1,5 @@
 import '@mantine/charts/styles.css';
-import { BarChart } from '@mantine/charts';
+import { BarChart, type BarChartProps } from '@mantine/charts';
 import {
   Paper,
   SimpleGrid,
@@ -12,8 +12,13 @@ import {
 } from '@mantine/core';
 import type { ReactNode } from 'react';
 import { useResumoDashboard, type ResumoDashboard } from '../api/dashboard';
+import { ErroApi } from '../api/cliente';
 import { AlertaErro } from '../componentes/AlertaErro';
+import { SemPermissao } from '../componentes/SemPermissao';
 import { ROTULO_PRIORIDADE, ROTULO_STATUS } from '../dominio/chamado';
+import { useCelular } from '../hooks/useCelular';
+import { useTituloDaPagina } from '../hooks/useTituloDaPagina';
+import { LARGURA_CONTEUDO } from '../tema';
 
 const NUMERO = new Intl.NumberFormat('pt-BR');
 const HORAS = new Intl.NumberFormat('pt-BR', {
@@ -23,6 +28,9 @@ const HORAS = new Intl.NumberFormat('pt-BR', {
 const PERCENTUAL = new Intl.NumberFormat('pt-BR', { style: 'percent', maximumFractionDigits: 1 });
 
 const ALTURA_GRAFICO = 220;
+// No celular as barras ficam deitadas: cada categoria ganha uma linha, e o rótulo cabe inteiro no eixo.
+const ALTURA_POR_BARRA = 44;
+const LARGURA_ROTULOS_CELULAR = 110;
 
 /**
  * Dashboard (RF-40 a RF-43). Os números vêm prontos da API, agregados no banco. Cada gráfico é acompanhado de
@@ -30,9 +38,10 @@ const ALTURA_GRAFICO = 220;
  */
 export function Dashboard() {
   const { data, isPending, isError, error, refetch, isFetching } = useResumoDashboard();
+  useTituloDaPagina('Dashboard');
 
   return (
-    <Stack gap="md" maw={1100}>
+    <Stack gap="md" maw={LARGURA_CONTEUDO}>
       <Title order={2}>Dashboard</Title>
 
       {isPending ? (
@@ -44,6 +53,8 @@ export function Dashboard() {
           </SimpleGrid>
           <Skeleton height={ALTURA_GRAFICO} radius="md" />
         </Stack>
+      ) : isError && error instanceof ErroApi && error.status === 403 ? (
+        <SemPermissao />
       ) : isError ? (
         <AlertaErro
           titulo="Não foi possível carregar o dashboard"
@@ -113,10 +124,8 @@ function Conteudo({ resumo }: { resumo: ResumoDashboard }) {
 
       <SimpleGrid cols={{ base: 1, md: 2 }}>
         <Secao titulo="Chamados por status">
-          <BarChart
-            h={ALTURA_GRAFICO}
+          <GraficoBarras
             data={porStatus}
-            dataKey="rotulo"
             series={[{ name: 'total', label: 'Chamados', color: 'blue.6' }]}
           />
           <TabelaOculta
@@ -127,10 +136,8 @@ function Conteudo({ resumo }: { resumo: ResumoDashboard }) {
         </Secao>
 
         <Secao titulo="Chamados por prioridade">
-          <BarChart
-            h={ALTURA_GRAFICO}
+          <GraficoBarras
             data={porPrioridade}
-            dataKey="rotulo"
             series={[{ name: 'total', label: 'Chamados', color: 'orange.6' }]}
           />
           <TabelaOculta
@@ -144,10 +151,8 @@ function Conteudo({ resumo }: { resumo: ResumoDashboard }) {
           titulo="Tempo médio de resolução por categoria"
           detalhe="Em horas, só Resolvido e Fechado"
         >
-          <BarChart
-            h={ALTURA_GRAFICO}
+          <GraficoBarras
             data={tempos}
-            dataKey="rotulo"
             series={[{ name: 'horas', label: 'Horas', color: 'teal.6' }]}
           />
           <TabelaOculta
@@ -171,10 +176,8 @@ function Conteudo({ resumo }: { resumo: ResumoDashboard }) {
             </Text>
           ) : (
             <>
-              <BarChart
-                h={ALTURA_GRAFICO}
+              <GraficoBarras
                 data={decisoes}
-                dataKey="rotulo"
                 type="stacked"
                 withLegend
                 series={[
@@ -203,42 +206,120 @@ function Conteudo({ resumo }: { resumo: ResumoDashboard }) {
             Nenhuma chamada ao provedor de IA nos últimos 30 dias.
           </Text>
         ) : (
-          <Table.ScrollContainer minWidth={520}>
-            <Table striped>
-              <Table.Thead>
-                <Table.Tr>
-                  <Table.Th>Operação</Table.Th>
-                  <Table.Th>Modelo</Table.Th>
-                  <Table.Th ta="right">Chamadas</Table.Th>
-                  <Table.Th ta="right">Falhas</Table.Th>
-                  <Table.Th ta="right">Tokens (entrada / saída)</Table.Th>
-                  <Table.Th ta="right">Latência p95</Table.Th>
-                </Table.Tr>
-              </Table.Thead>
-              <Table.Tbody>
-                {ia.consumo30d.map((c) => (
-                  <Table.Tr key={`${c.operacao}-${c.modelo}`}>
-                    <Table.Td>{c.operacao}</Table.Td>
-                    <Table.Td>{c.modelo}</Table.Td>
-                    <Table.Td ta="right">{NUMERO.format(c.chamadas)}</Table.Td>
-                    <Table.Td ta="right">{NUMERO.format(c.falhas)}</Table.Td>
-                    <Table.Td ta="right">
-                      {c.tokensEntrada === null ? '—' : NUMERO.format(c.tokensEntrada)} /{' '}
-                      {c.tokensSaida === null ? '—' : NUMERO.format(c.tokensSaida)}
-                    </Table.Td>
-                    <Table.Td ta="right">
-                      {c.latenciaP95Ms === null
-                        ? '—'
-                        : `${NUMERO.format(Math.round(c.latenciaP95Ms))} ms`}
-                    </Table.Td>
-                  </Table.Tr>
-                ))}
-              </Table.Tbody>
-            </Table>
-          </Table.ScrollContainer>
+          <ConsumoIA consumo={ia.consumo30d} />
         )}
       </Secao>
     </Stack>
+  );
+}
+
+/**
+ * No celular, as barras ficam deitadas (`orientation="vertical"` da Mantine): em pé, o eixo X escondia rótulos
+ * alternados ("Em andamento", "Fechado"). Sprint 7, item M4 da análise de experiência.
+ */
+function GraficoBarras({
+  data,
+  series,
+  type,
+  withLegend,
+}: Pick<BarChartProps, 'data' | 'series' | 'type' | 'withLegend'>) {
+  const ehCelular = useCelular();
+  return (
+    <BarChart
+      h={
+        ehCelular
+          ? Math.max(ALTURA_GRAFICO / 2, data.length * ALTURA_POR_BARRA + 40)
+          : ALTURA_GRAFICO
+      }
+      data={data}
+      dataKey="rotulo"
+      series={series}
+      type={type}
+      withLegend={withLegend}
+      orientation={ehCelular ? 'vertical' : 'horizontal'}
+      yAxisProps={ehCelular ? { width: LARGURA_ROTULOS_CELULAR } : undefined}
+    />
+  );
+}
+
+type Consumo = ResumoDashboard['ia']['consumo30d'][number];
+
+const tokens = (c: Consumo) =>
+  `${c.tokensEntrada === null ? '—' : NUMERO.format(c.tokensEntrada)} / ${c.tokensSaida === null ? '—' : NUMERO.format(c.tokensSaida)}`;
+const latencia = (c: Consumo) =>
+  c.latenciaP95Ms === null ? '—' : `${NUMERO.format(Math.round(c.latenciaP95Ms))} ms`;
+
+/** Tabela no desktop; no celular, um cartão por linha, em vez de seis colunas roladas de lado (item M4). */
+function ConsumoIA({ consumo }: { consumo: Consumo[] }) {
+  const ehCelular = useCelular();
+
+  if (ehCelular) {
+    return (
+      <Stack component="ul" gap="xs" m={0} p={0} style={{ listStyle: 'none' }}>
+        {consumo.map((c) => (
+          <Paper component="li" key={`${c.operacao}-${c.modelo}`} withBorder p="sm">
+            <Text size="sm" fw={600}>
+              {c.operacao} · {c.modelo}
+            </Text>
+            <SimpleGrid component="dl" cols={2} spacing={4} verticalSpacing={2} m={0} mt={4}>
+              {(
+                [
+                  ['Chamadas', NUMERO.format(c.chamadas)],
+                  ['Falhas', NUMERO.format(c.falhas)],
+                  ['Tokens (entrada / saída)', tokens(c)],
+                  ['Latência p95', latencia(c)],
+                ] as const
+              ).map(([rotulo, valor]) => (
+                <div key={rotulo}>
+                  <Text component="dt" size="xs" c="dimmed">
+                    {rotulo}
+                  </Text>
+                  <Text component="dd" size="sm" m={0}>
+                    {valor}
+                  </Text>
+                </div>
+              ))}
+            </SimpleGrid>
+          </Paper>
+        ))}
+      </Stack>
+    );
+  }
+
+  return (
+    <Table.ScrollContainer minWidth={520}>
+      <Table striped>
+        <Table.Thead>
+          <Table.Tr>
+            <Table.Th>Operação</Table.Th>
+            <Table.Th>Modelo</Table.Th>
+            <Table.Th ta="right">Chamadas</Table.Th>
+            <Table.Th ta="right">Falhas</Table.Th>
+            <Table.Th ta="right">Tokens (entrada / saída)</Table.Th>
+            <Table.Th ta="right">Latência p95</Table.Th>
+          </Table.Tr>
+        </Table.Thead>
+        <Table.Tbody>
+          {consumo.map((c) => (
+            <Table.Tr key={`${c.operacao}-${c.modelo}`}>
+              <Table.Td>{c.operacao}</Table.Td>
+              <Table.Td>{c.modelo}</Table.Td>
+              <Table.Td ta="right">{NUMERO.format(c.chamadas)}</Table.Td>
+              <Table.Td ta="right">{NUMERO.format(c.falhas)}</Table.Td>
+              <Table.Td ta="right">
+                {c.tokensEntrada === null ? '—' : NUMERO.format(c.tokensEntrada)} /{' '}
+                {c.tokensSaida === null ? '—' : NUMERO.format(c.tokensSaida)}
+              </Table.Td>
+              <Table.Td ta="right">
+                {c.latenciaP95Ms === null
+                  ? '—'
+                  : `${NUMERO.format(Math.round(c.latenciaP95Ms))} ms`}
+              </Table.Td>
+            </Table.Tr>
+          ))}
+        </Table.Tbody>
+      </Table>
+    </Table.ScrollContainer>
   );
 }
 

@@ -8,6 +8,8 @@ import {
   Text,
   TextInput,
 } from '@mantine/core';
+import { useId } from '@mantine/hooks';
+import { useState } from 'react';
 import { useCategorias } from '../api/categorias';
 import {
   contarFiltrosAtivos,
@@ -24,6 +26,7 @@ import {
   type Prioridade,
   type StatusChamado,
 } from '../dominio/chamado';
+import { useCelular } from '../hooks/useCelular';
 import type { AlterarFiltros } from '../hooks/useFiltrosDaUrl';
 import { CampoBusca } from './CampoBusca';
 
@@ -61,10 +64,19 @@ interface Props {
   alterar: AlterarFiltros;
 }
 
-/** Filtros da lista. Chips (repetíveis = OR, como na API) funcionam bem no toque, inclusive em 375 px. */
+/**
+ * Filtros da lista. Chips (repetíveis = OR, como na API) funcionam bem no toque, inclusive em 375 px. No celular, só
+ * a busca fica sempre visível: o resto ocupava a primeira tela inteira e fica num painel recolhível, que já abre
+ * quando a URL traz algum filtro (Sprint 7, item A2 da análise de experiência).
+ */
 export function FiltrosChamados({ filtros, alterar }: Props) {
   const { data: categorias = [] } = useCategorias();
   const ativos = contarFiltrosAtivos(filtros);
+  const ocultos = ativos - (filtros.q ? 1 : 0);
+  const ehCelular = useCelular();
+  const [aberto, setAberto] = useState(ocultos > 0);
+  const idPainel = useId();
+  const mostrarPainel = !ehCelular || aberto;
 
   const categoriasMarcadas = [
     ...filtros.categoriaId.map(String),
@@ -78,99 +90,118 @@ export function FiltrosChamados({ filtros, alterar }: Props) {
         aoBuscar={(q) => alterar({ q }, { substituirHistorico: true })}
       />
 
-      <Grupo titulo="Status">
-        <Chip.Group
-          multiple
-          value={filtros.status}
-          onChange={(status) => alterar({ status: status as StatusChamado[] })}
-        >
-          {STATUS_CHAMADO.map((status) => (
-            <Chip key={status} value={status} size="xs">
-              {ROTULO_STATUS[status]}
-            </Chip>
-          ))}
-        </Chip.Group>
-      </Grupo>
-
-      <Grupo titulo="Prioridade">
-        <Chip.Group
-          multiple
-          value={filtros.prioridade}
-          onChange={(prioridade) => alterar({ prioridade: prioridade as Prioridade[] })}
-        >
-          {PRIORIDADES.map((prioridade) => (
-            <Chip key={prioridade} value={prioridade} size="xs">
-              {ROTULO_PRIORIDADE[prioridade]}
-            </Chip>
-          ))}
-        </Chip.Group>
-      </Grupo>
-
-      <Grupo titulo="Categoria">
-        <Chip.Group
-          multiple
-          value={categoriasMarcadas}
-          onChange={(marcadas) =>
-            alterar({
-              categoriaId: marcadas.filter((v) => v !== SEM_CATEGORIA).map(Number),
-              semCategoria: marcadas.includes(SEM_CATEGORIA),
-            })
-          }
-        >
-          {categorias.map((categoria) => (
-            <Chip key={categoria.id} value={String(categoria.id)} size="xs">
-              {categoria.nome}
-            </Chip>
-          ))}
-          <Chip value={SEM_CATEGORIA} size="xs">
-            Sem categoria
-          </Chip>
-        </Chip.Group>
-      </Grupo>
-
-      <SimpleGrid cols={{ base: 1, xs: 3 }} spacing="sm">
-        <TextInput
-          type="date"
-          label="Criado de"
-          value={filtros.criadoDe}
-          max={filtros.criadoAte || undefined}
-          onChange={(evento) => alterar({ criadoDe: evento.currentTarget.value })}
-        />
-        <TextInput
-          type="date"
-          label="Criado até"
-          value={filtros.criadoAte}
-          min={filtros.criadoDe || undefined}
-          onChange={(evento) => alterar({ criadoAte: evento.currentTarget.value })}
-        />
-        <NativeSelect
-          label="Ordenar por"
-          value={`${filtros.ordenarPor}-${filtros.direcao}`}
-          data={ORDENACOES.map(({ valor, rotulo }) => ({ value: valor, label: rotulo }))}
-          onChange={(evento) => {
-            const escolhida = ORDENACOES.find((o) => o.valor === evento.currentTarget.value);
-            if (escolhida)
-              alterar({ ordenarPor: escolhida.ordenarPor, direcao: escolhida.direcao });
-          }}
-        />
-      </SimpleGrid>
-
-      {ativos > 0 && (
+      {ehCelular && (
         <Group>
           <Button
-            variant="subtle"
+            variant="light"
             size="xs"
-            onClick={() =>
-              alterar({
-                ...FILTROS_PADRAO,
-                ordenarPor: filtros.ordenarPor,
-                direcao: filtros.direcao,
-              })
-            }
+            aria-expanded={aberto}
+            aria-controls={aberto ? idPainel : undefined}
+            onClick={() => setAberto((valor) => !valor)}
           >
-            Limpar filtros ({ativos})
+            {aberto ? 'Ocultar filtros' : 'Filtros'}
+            {ocultos > 0 && ` (${ocultos})`}
           </Button>
         </Group>
+      )}
+
+      {mostrarPainel && (
+        <Stack gap="sm" id={idPainel}>
+          <Grupo titulo="Status">
+            <Chip.Group
+              multiple
+              value={filtros.status}
+              onChange={(status) => alterar({ status: status as StatusChamado[] })}
+            >
+              {STATUS_CHAMADO.map((status) => (
+                <Chip key={status} value={status} size="xs">
+                  {ROTULO_STATUS[status]}
+                </Chip>
+              ))}
+            </Chip.Group>
+          </Grupo>
+
+          <Grupo titulo="Prioridade">
+            <Chip.Group
+              multiple
+              value={filtros.prioridade}
+              onChange={(prioridade) => alterar({ prioridade: prioridade as Prioridade[] })}
+            >
+              {PRIORIDADES.map((prioridade) => (
+                <Chip key={prioridade} value={prioridade} size="xs">
+                  {ROTULO_PRIORIDADE[prioridade]}
+                </Chip>
+              ))}
+            </Chip.Group>
+          </Grupo>
+
+          <Grupo titulo="Categoria">
+            <Chip.Group
+              multiple
+              value={categoriasMarcadas}
+              onChange={(marcadas) =>
+                alterar({
+                  categoriaId: marcadas.filter((v) => v !== SEM_CATEGORIA).map(Number),
+                  semCategoria: marcadas.includes(SEM_CATEGORIA),
+                })
+              }
+            >
+              {categorias.map((categoria) => (
+                <Chip key={categoria.id} value={String(categoria.id)} size="xs">
+                  {categoria.nome}
+                </Chip>
+              ))}
+              <Chip value={SEM_CATEGORIA} size="xs">
+                Sem categoria
+              </Chip>
+            </Chip.Group>
+          </Grupo>
+
+          <SimpleGrid cols={{ base: 1, xs: 3 }} spacing="sm">
+            <TextInput
+              type="date"
+              label="Criado de"
+              value={filtros.criadoDe}
+              max={filtros.criadoAte || undefined}
+              onChange={(evento) => alterar({ criadoDe: evento.currentTarget.value })}
+            />
+            <TextInput
+              type="date"
+              label="Criado até"
+              value={filtros.criadoAte}
+              min={filtros.criadoDe || undefined}
+              onChange={(evento) => alterar({ criadoAte: evento.currentTarget.value })}
+            />
+            <NativeSelect
+              label="Ordenar por"
+              value={`${filtros.ordenarPor}-${filtros.direcao}`}
+              data={ORDENACOES.map(({ valor, rotulo }) => ({ value: valor, label: rotulo }))}
+              onChange={(evento) => {
+                const escolhida = ORDENACOES.find((o) => o.valor === evento.currentTarget.value);
+                if (escolhida)
+                  alterar({ ordenarPor: escolhida.ordenarPor, direcao: escolhida.direcao });
+              }}
+            />
+          </SimpleGrid>
+
+          {ativos > 0 && (
+            <Group>
+              <Button
+                variant="subtle"
+                size="xs"
+                onClick={() =>
+                  alterar({
+                    ...FILTROS_PADRAO,
+                    ordenarPor: filtros.ordenarPor,
+                    direcao: filtros.direcao,
+                  })
+                }
+              >
+                Limpar filtros ({ativos})
+              </Button>
+            </Group>
+          )}
+        </Stack>
       )}
     </Stack>
   );

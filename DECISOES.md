@@ -101,6 +101,21 @@ Nenhum ADR novo: as decisões abaixo aplicam os ADRs 0004, 0012, 0020 e 0021 e f
 |---|---|---|---|
 | [0026](docs/adr/0026-autenticacao-jwt-com-usuarios-do-seed.md) | JWT próprio (tabela `usuarios`, PBKDF2 nativo, `JwtBearer`) em cookie `httpOnly` + `SameSite=Strict`; perfis atendente e solicitante; identidade vinda do token | ASP.NET Core Identity (`MapIdentityApi`) | Sem recuperação de senha, bloqueio nem refresh token, em troca de um pacote só, JWT de verdade e um token que o JavaScript nunca lê. |
 
+### Decisões da Sprint 7 (design e experiência)
+
+Sem ADR novo: nada mudou na arquitetura nem no contrato da API. O que guiou a sprint está na [análise de experiência](docs/06-analise-de-experiencia.md).
+
+| Decisão | Motivo |
+|---|---|
+| A ordem do HTML do detalhe é a do celular (ações e triagem primeiro), e áreas de CSS grid reposicionam no desktop | Duplicar o bloco para cada largura repetiria IDs e formulários; a ordem do HTML também é a do teclado e do leitor de tela, e vira um teste simples |
+| Componentes diferentes no celular (filtros recolhíveis, barras deitadas, consumo em cartões) só pelo hook `useCelular`, no mesmo breakpoint do menu | Posição o CSS resolve; trocar componente, não. Um ponto único evita breakpoints divergentes |
+| O dashboard decide "sem permissão" pelo 403 da API, e não pelo perfil lido no front | A regra de quem vê o quê fica só no backend (ADR-0026), como a máquina de estados |
+| Notificação de sucesso só onde o resultado não aparece onde o usuário está olhando (abrir chamado, mudar status, decidir a triagem) | Comentar e refazer a triagem já mostram o resultado no painel; avisar tudo vira ruído |
+| Conteúdo alinhado à esquerda, junto ao menu, com uma largura única (1200 px) na lista, no detalhe e no dashboard | Padrão de aplicações de trabalho; antes, 960 e 1100 px faziam as bordas e o botão do topo mudarem de lugar |
+| Ícones com `@tabler/icons-react`, sempre decorativos (`aria-hidden`) | É a biblioteca dos exemplos da Mantine, MIT, e só os ícones importados entram no pacote; o nome lido pelo leitor de tela continua sendo o texto |
+| Contraste ajustado no tema, e não em cada componente: erro dos campos em `red.9`; variante "light" com fundo no tom 0 e hover no tom 1 | Corrige todos os usos de uma vez (inclusive os que a auditoria não visitou); um teste de unidade recalcula o contraste |
+| O README descreve as mudanças da sprint em texto, sem capturas de tela | Decisão do desenvolvedor; o plano (05-sprints.md) previa as telas no README |
+
 ### Decisões de implementação (Sprint 1)
 
 Decisões menores, que não contrariam nem acrescentam ADR, registradas para quem lê o código.

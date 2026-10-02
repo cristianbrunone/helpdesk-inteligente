@@ -1,0 +1,48 @@
+/*
+ * Áreas do detalhe (Sprint 7, item A1 da análise de experiência). A ordem no HTML é a do celular: as ações e a
+ * triagem do atendente vêm antes do conteúdo. A partir do `md`, voltam para a coluna da direita, acima dos dados
+ * e do histórico, e o conteúdo principal ocupa a coluna da esquerda inteira.
+ */
+.layout {
+  display: grid;
+  gap: var(--mantine-spacing-md);
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-areas:
+    'principal'
+    'lateral';
+}
+
+.layout[data-com-acoes] {
+  grid-template-areas:
+    'acoes'
+    'principal'
+    'lateral';
+}
+
+@media (min-width: $mantine-breakpoint-md) {
+  .layout {
+    grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
+    grid-template-areas: 'principal lateral';
+    align-items: start;
+  }
+
+  .layout[data-com-acoes] {
+    grid-template-rows: auto 1fr;
+    grid-template-areas:
+      'principal acoes'
+      'principal lateral';
+  }
+}
+
+.acoes {
+  grid-area: acoes;
+}
+
+.principal {
+  grid-area: principal;
+}
+
+.lateral {
+  grid-area: lateral;
+  align-self: start;
+}

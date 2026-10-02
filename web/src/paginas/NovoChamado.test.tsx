@@ -8,7 +8,9 @@ import { servidor } from '../testes/servidor';
 const ID_CRIADO = '0192f0c1-0000-7000-8000-0000000000aa';
 
 /** Responde o POST e guarda os corpos recebidos pela "API". */
-function capturarCriacao(resposta = () => HttpResponse.json({ id: ID_CRIADO }, { status: 201 })) {
+function capturarCriacao(
+  resposta = () => HttpResponse.json({ id: ID_CRIADO, numero: 1043 }, { status: 201 }),
+) {
   const corpos: unknown[] = [];
   servidor.use(
     http.post('/api/chamados', async ({ request }) => {
@@ -58,6 +60,7 @@ describe('NovoChamado', () => {
     await abrir();
 
     await waitFor(() => expect(roteador.state.location.pathname).toBe(`/chamados/${ID_CRIADO}`));
+    expect(await screen.findByText('Chamado #1043 aberto.')).toBeInTheDocument();
     expect(corpos).toEqual([
       {
         titulo: 'Erro ao emitir boleto',

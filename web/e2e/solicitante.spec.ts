@@ -27,9 +27,14 @@ test.describe('Fluxo do Solicitante', () => {
 
     // 2. Não vê o link do Dashboard no menu de navegação
     const nav = page.getByRole('navigation', { name: 'Navegação' });
-    await expect(nav.getByRole('link', { name: 'Chamados' })).toBeVisible();
+    await expect(nav.getByRole('link', { name: 'Meus chamados' })).toBeVisible();
     await expect(nav.getByRole('link', { name: 'Novo chamado' })).toBeVisible();
     await expect(nav.getByRole('link', { name: 'Dashboard' })).toHaveCount(0);
+
+    // Pela URL, a API responde 403 e a tela explica, sem alerta de erro (Sprint 7, M3)
+    await page.goto('/dashboard');
+    await expect(page.getByRole('heading', { name: 'Sem acesso a esta página' })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Tentar novamente' })).toHaveCount(0);
 
     // 3. Abertura simplificada: campos de nome e e-mail não aparecem
     await page.goto('/chamados/novo');

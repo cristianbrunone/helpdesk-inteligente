@@ -13,7 +13,7 @@ setup('autenticar como atendente (Ana)', async ({ page }) => {
   await page.getByRole('button', { name: 'Entrar' }).click();
 
   await expect(page).toHaveURL(/\/chamados/);
-  await expect(page.getByText('Ana (suporte)')).toBeVisible();
+  await expect(page.getByRole('banner').getByText('Ana (suporte)')).toBeVisible();
 
   await page.context().storageState({ path: arquivoAuth });
 });

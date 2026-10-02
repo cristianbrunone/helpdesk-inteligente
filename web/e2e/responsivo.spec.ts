@@ -16,7 +16,24 @@ async function semRolagemHorizontal(page: Page) {
 
 test('lista de chamados cabe em 375 px', async ({ page }) => {
   await page.goto('/chamados');
-  await expect(page.getByRole('link', { name: /^#\d+/ }).first()).toBeVisible();
+  // Com os filtros recolhidos (Sprint 7, A2), os primeiros chamados aparecem sem rolar.
+  await expect(page.getByRole('link', { name: /^#\d+/ }).nth(2)).toBeInViewport({ ratio: 1 });
+  await semRolagemHorizontal(page);
+
+  await page.getByRole('button', { name: 'Filtros' }).click();
+  await expect(page.getByRole('group', { name: 'Status' })).toBeVisible();
+  await semRolagemHorizontal(page);
+});
+
+test('no celular, o menu mostra quem está logado (o cabeçalho só tem "Sair")', async ({ page }) => {
+  await page.goto('/chamados');
+  const banner = page.getByRole('banner');
+  await expect(banner.getByText('Ana (suporte)')).toBeHidden();
+
+  await page.getByRole('button', { name: 'Abrir menu' }).click();
+  const usuario = page.getByRole('group', { name: 'Usuário da sessão no menu' });
+  await expect(usuario.getByText('Ana (suporte)')).toBeVisible();
+  await expect(usuario.getByText('Atendente')).toBeVisible();
   await semRolagemHorizontal(page);
 });
 
@@ -37,5 +54,10 @@ test('detalhe do chamado cabe em 375 px', async ({ page, request }) => {
 test('dashboard cabe em 375 px', async ({ page }) => {
   await page.goto('/dashboard');
   await expect(page.getByRole('region', { name: 'Total de chamados' })).toBeVisible();
+  // Barras deitadas no celular (Sprint 7, M4): todos os rótulos do eixo aparecem, sem pular alternados.
+  const grafico = page.getByRole('region', { name: 'Chamados por status' }).locator('svg');
+  for (const rotulo of ['Aberto', 'Em andamento', 'Resolvido', 'Fechado', 'Cancelado']) {
+    await expect(grafico.getByText(rotulo, { exact: true })).toBeVisible();
+  }
   await semRolagemHorizontal(page);
 });

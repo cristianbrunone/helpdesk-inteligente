@@ -19,7 +19,9 @@ import { useCategorias } from '../api/categorias';
 import { useCriarChamado } from '../api/chamados';
 import { ErroApi } from '../api/cliente';
 import { AlertaErro } from '../componentes/AlertaErro';
+import { notificarSucesso } from '../componentes/notificarSucesso';
 import { PRIORIDADES, ROTULO_PRIORIDADE } from '../dominio/chamado';
+import { useTituloDaPagina } from '../hooks/useTituloDaPagina';
 import {
   criarEsquemaNovoChamado,
   paraNovoChamado,
@@ -31,6 +33,7 @@ const CAMPOS = new Set(Object.keys(VALORES_INICIAIS));
 
 export function NovoChamado() {
   const navegar = useNavigate();
+  useTituloDaPagina('Novo chamado');
   const { data: usuario } = useSessao();
   const ehSolicitante = usuario?.perfil === 'Solicitante';
   const { data: categorias = [] } = useCategorias();
@@ -46,6 +49,7 @@ export function NovoChamado() {
   const enviar = handleSubmit(async (valores) => {
     try {
       const chamado = await criacao.mutateAsync(paraNovoChamado(valores));
+      notificarSucesso(`Chamado #${chamado.numero} aberto.`);
       await navegar(`/chamados/${chamado.id}`);
     } catch (erro) {
       // 422: as mensagens da API vão para os campos (os nomes do contrato são os nomes do formulário).

@@ -1,4 +1,4 @@
-import { screen, waitFor } from '@testing-library/react';
+import { screen, waitFor, within } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 import { renderizarApp } from '../testes/renderizar';
 
@@ -16,6 +16,51 @@ describe('LayoutBase', () => {
     expect(navegacao).toContainElement(
       screen.getByRole('link', { name: 'Chamados', current: 'page' }),
     );
+  });
+
+  it('no detalhe de um chamado, marca "Chamados" no menu', async () => {
+    await renderizarApp('/chamados/0192f0c1-0000-7000-8000-000000000001');
+    const navegacao = within(screen.getByRole('navigation', { name: 'Navegação' }));
+
+    const chamados = navegacao.getByRole('link', { name: 'Chamados' });
+    expect(chamados).toHaveAttribute('data-active', 'true');
+    expect(chamados).not.toHaveAttribute('aria-current');
+    expect(navegacao.getByRole('link', { name: 'Novo chamado' })).not.toHaveAttribute(
+      'data-active',
+    );
+  });
+
+  it('em "Novo chamado", "Chamados" não fica marcado', async () => {
+    await renderizarApp('/chamados/novo');
+    const navegacao = within(screen.getByRole('navigation', { name: 'Navegação' }));
+
+    expect(navegacao.getByRole('link', { name: 'Novo chamado', current: 'page' })).toHaveAttribute(
+      'data-active',
+      'true',
+    );
+    expect(navegacao.getByRole('link', { name: 'Chamados' })).not.toHaveAttribute('data-active');
+  });
+
+  it('o menu (que no celular abre pelo hambúrguer) mostra o nome e o perfil do usuário', async () => {
+    await renderizarApp('/chamados');
+    const navegacao = within(screen.getByRole('navigation', { name: 'Navegação' }));
+
+    const usuario = within(
+      await navegacao.findByRole('group', { name: 'Usuário da sessão no menu' }),
+    );
+    expect(usuario.getByText('Ana (suporte)')).toBeInTheDocument();
+    expect(usuario.getByText('Atendente')).toBeInTheDocument();
+  });
+
+  it('cada item do menu tem um ícone decorativo, fora do nome lido pelo leitor de tela', async () => {
+    await renderizarApp('/chamados');
+    const navegacao = within(screen.getByRole('navigation', { name: 'Navegação' }));
+
+    for (const nome of ['Chamados', 'Novo chamado', 'Dashboard']) {
+      const icone = navegacao.getByRole('link', { name: nome }).querySelector('svg');
+      expect(icone, `o item "${nome}" deveria ter um ícone`).not.toBeNull();
+      expect(icone).toHaveAttribute('aria-hidden', 'true');
+    }
   });
 
   it('mostra a página de não encontrada para uma rota inexistente', async () => {

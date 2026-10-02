@@ -26,6 +26,7 @@ import {
 import { formatarDataHora } from '../dominio/chamado';
 import { BadgePrioridade } from './BadgesChamado';
 import { notificarErroDeEscrita, telaDesatualizada } from './notificarErroDeEscrita';
+import { notificarSucesso } from './notificarSucesso';
 
 const MOTIVO_TAMANHO_MAXIMO = 500;
 
@@ -63,7 +64,10 @@ export function PainelTriagem({ versionado, aoDesatualizar }: Props) {
     }
   };
 
-  const aceitar = () => void executar(() => decidir.mutateAsync({ acao: 'aceitar', etag }));
+  const aceitar = async () => {
+    const ok = await executar(() => decidir.mutateAsync({ acao: 'aceitar', etag }));
+    if (ok) notificarSucesso('Sugestão aceita: categoria e prioridade aplicadas ao chamado.');
+  };
 
   const confirmarRejeicao = async () => {
     const ok = await executar(() =>
@@ -74,6 +78,7 @@ export function PainelTriagem({ versionado, aoDesatualizar }: Props) {
       }),
     );
     if (ok) {
+      notificarSucesso('Sugestão rejeitada.');
       setRejeitando(false);
       setMotivo('');
     }
@@ -113,7 +118,7 @@ export function PainelTriagem({ versionado, aoDesatualizar }: Props) {
 
       {triagem?.status === 'Concluida' && (
         <Group gap="xs">
-          <Button size="xs" loading={decidir.isPending} onClick={aceitar}>
+          <Button size="xs" loading={decidir.isPending} onClick={() => void aceitar()}>
             Aceitar sugestão
           </Button>
           <Button size="xs" variant="light" color="red" onClick={() => setRejeitando(true)}>

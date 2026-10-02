@@ -1,4 +1,4 @@
-import { Anchor, Grid, Group, Paper, Skeleton, Stack, Text, Title } from '@mantine/core';
+import { Anchor, Group, Paper, Skeleton, Stack, Text, Title } from '@mantine/core';
 import { Link, useParams } from 'react-router';
 import { useSessao } from '../api/autenticacao';
 import { useChamado, type ChamadoDetalhe } from '../api/chamados';
@@ -11,6 +11,9 @@ import { HistoricoChamado } from '../componentes/HistoricoChamado';
 import { PainelCopiloto } from '../componentes/PainelCopiloto';
 import { PainelTriagem } from '../componentes/PainelTriagem';
 import { formatarDataHora } from '../dominio/chamado';
+import { useTituloDaPagina } from '../hooks/useTituloDaPagina';
+import classes from './DetalheChamado.module.css';
+import { LARGURA_CONTEUDO } from '../tema';
 
 export function DetalheChamado() {
   const { id = '' } = useParams();
@@ -18,9 +21,10 @@ export function DetalheChamado() {
   const { data: usuario } = useSessao();
   const ehAtendente = usuario?.perfil === 'Atendente';
   const recarregar = () => void refetch();
+  useTituloDaPagina(data ? `#${data.chamado.numero} · ${data.chamado.titulo}` : 'Chamado');
 
   return (
-    <Stack gap="md" maw={1100}>
+    <Stack gap="md" maw={LARGURA_CONTEUDO}>
       <Anchor component={Link} to="/chamados" size="sm">
         ← Voltar para os chamados
       </Anchor>
@@ -60,54 +64,52 @@ export function DetalheChamado() {
             </Group>
           </Stack>
 
-          <Grid gap="md">
-            <Grid.Col span={{ base: 12, md: 8 }}>
-              <Stack gap="md">
+          {/* A ordem no HTML é a do celular; o CSS reposiciona as áreas a partir do `md`. */}
+          <div className={classes.layout} data-com-acoes={ehAtendente || undefined}>
+            {ehAtendente && (
+              <Stack gap="md" className={classes.acoes}>
                 <Paper withBorder p="md">
-                  <Title order={3} size="h5" mb="xs">
-                    Descrição
-                  </Title>
-                  <Text size="sm" style={{ whiteSpace: 'pre-wrap', overflowWrap: 'anywhere' }}>
-                    {data.chamado.descricao}
-                  </Text>
+                  <Stack gap="sm">
+                    <Title order={3} size="h5">
+                      Ações
+                    </Title>
+                    <AcoesDeStatus versionado={data} aoDesatualizar={recarregar} />
+                  </Stack>
                 </Paper>
-                {ehAtendente && (
-                  <Paper withBorder p="md">
-                    <PainelCopiloto chamadoId={data.chamado.id} />
-                  </Paper>
-                )}
                 <Paper withBorder p="md">
-                  <ComentariosChamado versionado={data} aoDesatualizar={recarregar} />
+                  <PainelTriagem versionado={data} aoDesatualizar={recarregar} />
                 </Paper>
               </Stack>
-            </Grid.Col>
+            )}
 
-            <Grid.Col span={{ base: 12, md: 4 }}>
-              <Stack gap="md">
-                {ehAtendente && (
-                  <>
-                    <Paper withBorder p="md">
-                      <Stack gap="sm">
-                        <Title order={3} size="h5">
-                          Ações
-                        </Title>
-                        <AcoesDeStatus versionado={data} aoDesatualizar={recarregar} />
-                      </Stack>
-                    </Paper>
-                    <Paper withBorder p="md">
-                      <PainelTriagem versionado={data} aoDesatualizar={recarregar} />
-                    </Paper>
-                  </>
-                )}
+            <Stack gap="md" className={classes.principal}>
+              <Paper withBorder p="md">
+                <Title order={3} size="h5" mb="xs">
+                  Descrição
+                </Title>
+                <Text size="sm" style={{ whiteSpace: 'pre-wrap', overflowWrap: 'anywhere' }}>
+                  {data.chamado.descricao}
+                </Text>
+              </Paper>
+              {ehAtendente && (
                 <Paper withBorder p="md">
-                  <DadosDoChamado chamado={data.chamado} />
+                  <PainelCopiloto chamadoId={data.chamado.id} />
                 </Paper>
-                <Paper withBorder p="md">
-                  <HistoricoChamado historico={data.chamado.historico} />
-                </Paper>
-              </Stack>
-            </Grid.Col>
-          </Grid>
+              )}
+              <Paper withBorder p="md">
+                <ComentariosChamado versionado={data} aoDesatualizar={recarregar} />
+              </Paper>
+            </Stack>
+
+            <Stack gap="md" className={classes.lateral}>
+              <Paper withBorder p="md">
+                <DadosDoChamado chamado={data.chamado} />
+              </Paper>
+              <Paper withBorder p="md">
+                <HistoricoChamado historico={data.chamado.historico} />
+              </Paper>
+            </Stack>
+          </div>
         </>
       )}
     </Stack>

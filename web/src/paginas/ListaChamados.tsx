@@ -10,6 +10,7 @@ import {
   Title,
 } from '@mantine/core';
 import { Link } from 'react-router';
+import { useSessao } from '../api/autenticacao';
 import { useChamados, type ChamadoResumo } from '../api/chamados';
 import { contarFiltrosAtivos, FILTROS_PADRAO } from '../api/filtrosChamados';
 import { AlertaErro } from '../componentes/AlertaErro';
@@ -17,18 +18,24 @@ import { BadgePrioridade, BadgeStatus } from '../componentes/BadgesChamado';
 import { FiltrosChamados } from '../componentes/FiltrosChamados';
 import { formatarDataHora } from '../dominio/chamado';
 import { useFiltrosDaUrl } from '../hooks/useFiltrosDaUrl';
+import { useTituloDaPagina } from '../hooks/useTituloDaPagina';
+import { LARGURA_CONTEUDO } from '../tema';
 
 const ITENS_DO_ESQUELETO = 5;
 
 export function ListaChamados() {
   const [filtros, alterar] = useFiltrosDaUrl();
+  const { data: usuario } = useSessao();
+  const ehSolicitante = usuario?.perfil === 'Solicitante';
+  const titulo = ehSolicitante ? 'Meus chamados' : 'Chamados';
+  useTituloDaPagina(titulo);
   const { data, isPending, isError, error, refetch, isFetching, isPlaceholderData } =
     useChamados(filtros);
 
   return (
-    <Stack gap="md" maw={960}>
+    <Stack gap="md" maw={LARGURA_CONTEUDO}>
       <Group justify="space-between" wrap="wrap">
-        <Title order={2}>Chamados</Title>
+        <Title order={2}>{titulo}</Title>
         <Button component={Link} to="/chamados/novo">
           Novo chamado
         </Button>
@@ -51,14 +58,14 @@ export function ListaChamados() {
           aoTentarNovamente={() => void refetch()}
           tentando={isFetching}
         />
+      ) : data.itens.length === 0 && contarFiltrosAtivos(filtros) === 0 ? (
+        <SemChamados ehSolicitante={ehSolicitante} />
       ) : data.itens.length === 0 ? (
         <Stack gap="xs" align="flex-start">
           <Text c="dimmed">Nenhum chamado encontrado com esses filtros.</Text>
-          {contarFiltrosAtivos(filtros) > 0 && (
-            <Button variant="light" size="xs" onClick={() => alterar(FILTROS_PADRAO)}>
-              Limpar filtros
-            </Button>
-          )}
+          <Button variant="light" size="xs" onClick={() => alterar(FILTROS_PADRAO)}>
+            Limpar filtros
+          </Button>
         </Stack>
       ) : (
         <Stack gap="sm" aria-busy={isPlaceholderData}>
@@ -85,6 +92,30 @@ export function ListaChamados() {
         </Stack>
       )}
     </Stack>
+  );
+}
+
+/**
+ * Lista vazia sem nenhum filtro: não há o que limpar, e sim um primeiro chamado a abrir (Sprint 7, item A4 da análise
+ * de experiência). O solicitante novo cai aqui no primeiro acesso.
+ */
+function SemChamados({ ehSolicitante }: { ehSolicitante: boolean }) {
+  return (
+    <Paper withBorder p="lg">
+      <Stack gap="xs" align="flex-start">
+        <Text fw={500}>
+          {ehSolicitante ? 'Você ainda não abriu nenhum chamado.' : 'Ainda não há chamados.'}
+        </Text>
+        <Text size="sm" c="dimmed">
+          {ehSolicitante
+            ? 'Descreva o problema e acompanhe a resposta da equipe de suporte por aqui.'
+            : 'Os chamados abertos pelos solicitantes aparecem aqui.'}
+        </Text>
+        <Button component={Link} to="/chamados/novo" mt="xs">
+          Abrir chamado
+        </Button>
+      </Stack>
+    </Paper>
   );
 }
 

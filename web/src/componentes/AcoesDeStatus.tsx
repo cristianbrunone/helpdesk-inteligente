@@ -1,8 +1,9 @@
 import { Button, Group, Modal, Stack, Text, Textarea } from '@mantine/core';
 import { useState } from 'react';
 import { useMudarStatus, type ChamadoVersionado } from '../api/chamados';
-import { rotuloDaAcao, type StatusChamado } from '../dominio/chamado';
+import { rotuloDaAcao, ROTULO_STATUS, type StatusChamado } from '../dominio/chamado';
 import { notificarErroDeEscrita, telaDesatualizada } from './notificarErroDeEscrita';
+import { notificarSucesso } from './notificarSucesso';
 
 const COMENTARIO_TAMANHO_MAXIMO = 4000;
 
@@ -42,6 +43,7 @@ export function AcoesDeStatus({ versionado, aoDesatualizar }: Props) {
         comentario: comentario.trim() || undefined,
         etag,
       });
+      notificarSucesso(`Status alterado para ${ROTULO_STATUS[destino]}.`);
       fechar();
     } catch (erro) {
       notificarErroDeEscrita(erro);
