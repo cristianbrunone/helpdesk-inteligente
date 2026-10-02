@@ -3,6 +3,7 @@ import userEvent from '@testing-library/user-event';
 import { http, HttpResponse } from 'msw';
 import { describe, expect, it } from 'vitest';
 import type { ResumoDashboard } from '../api/dashboard';
+import { simularCelular } from '../testes/celular';
 import { renderizarApp } from '../testes/renderizar';
 import { servidor } from '../testes/servidor';
 
@@ -112,6 +113,22 @@ describe('Dashboard', () => {
     expect(within(consumo).getByText('gemini-3.5-flash-lite')).toBeInTheDocument();
     expect(within(consumo).getByText('98.000 / 21.000')).toBeInTheDocument();
     expect(within(consumo).getByText('3.200 ms')).toBeInTheDocument();
+  });
+
+  it('no celular, o consumo vira um cartão por linha, sem a tabela de seis colunas', async () => {
+    simularCelular();
+    servir(resumo());
+    await renderizarApp('/dashboard');
+
+    const consumo = within(
+      await screen.findByRole('region', { name: 'Consumo de IA nos últimos 30 dias' }),
+    );
+    const cartao = within(consumo.getByRole('listitem'));
+    expect(cartao.getByText('triagem · gemini-3.5-flash-lite')).toBeInTheDocument();
+    expect(cartao.getByText('Latência p95')).toBeInTheDocument();
+    expect(cartao.getByText('98.000 / 21.000')).toBeInTheDocument();
+    expect(cartao.getByText('3.200 ms')).toBeInTheDocument();
+    expect(consumo.queryByRole('columnheader', { name: 'Latência p95' })).not.toBeInTheDocument();
   });
 
   it('sem decisões da IA, não inventa taxa nem gráfico', async () => {

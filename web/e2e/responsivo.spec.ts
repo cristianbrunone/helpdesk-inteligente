@@ -54,5 +54,10 @@ test('detalhe do chamado cabe em 375 px', async ({ page, request }) => {
 test('dashboard cabe em 375 px', async ({ page }) => {
   await page.goto('/dashboard');
   await expect(page.getByRole('region', { name: 'Total de chamados' })).toBeVisible();
+  // Barras deitadas no celular (Sprint 7, M4): todos os rótulos do eixo aparecem, sem pular alternados.
+  const grafico = page.getByRole('region', { name: 'Chamados por status' }).locator('svg');
+  for (const rotulo of ['Aberto', 'Em andamento', 'Resolvido', 'Fechado', 'Cancelado']) {
+    await expect(grafico.getByText(rotulo, { exact: true })).toBeVisible();
+  }
   await semRolagemHorizontal(page);
 });

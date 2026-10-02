@@ -8,7 +8,7 @@ import {
   Text,
   TextInput,
 } from '@mantine/core';
-import { useId, useMediaQuery } from '@mantine/hooks';
+import { useId } from '@mantine/hooks';
 import { useState } from 'react';
 import { useCategorias } from '../api/categorias';
 import {
@@ -26,6 +26,7 @@ import {
   type Prioridade,
   type StatusChamado,
 } from '../dominio/chamado';
+import { useCelular } from '../hooks/useCelular';
 import type { AlterarFiltros } from '../hooks/useFiltrosDaUrl';
 import { CampoBusca } from './CampoBusca';
 
@@ -63,9 +64,6 @@ interface Props {
   alterar: AlterarFiltros;
 }
 
-/** Abaixo do breakpoint `sm` da Mantine (48em), o mesmo do menu hambúrguer. */
-const CELULAR = '(max-width: 47.99em)';
-
 /**
  * Filtros da lista. Chips (repetíveis = OR, como na API) funcionam bem no toque, inclusive em 375 px. No celular, só
  * a busca fica sempre visível: o resto ocupava a primeira tela inteira e fica num painel recolhível, que já abre
@@ -75,7 +73,7 @@ export function FiltrosChamados({ filtros, alterar }: Props) {
   const { data: categorias = [] } = useCategorias();
   const ativos = contarFiltrosAtivos(filtros);
   const ocultos = ativos - (filtros.q ? 1 : 0);
-  const ehCelular = useMediaQuery(CELULAR, false, { getInitialValueInEffect: false });
+  const ehCelular = useCelular();
   const [aberto, setAberto] = useState(ocultos > 0);
   const idPainel = useId();
   const mostrarPainel = !ehCelular || aberto;

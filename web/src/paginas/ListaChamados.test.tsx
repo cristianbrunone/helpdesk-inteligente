@@ -1,9 +1,10 @@
 import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { http, HttpResponse } from 'msw';
-import { describe, expect, it, vi } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import type { ChamadoResumo, ResultadoPaginado } from '../api/chamados';
 import { chamadosPadrao, paginaDe } from '../testes/handlers';
+import { simularCelular } from '../testes/celular';
 import { renderizarApp } from '../testes/renderizar';
 import { servidor } from '../testes/servidor';
 
@@ -179,15 +180,6 @@ describe('ListaChamados', () => {
     expect(await screen.findByText('2 chamados')).toBeInTheDocument();
   });
 });
-
-/** Simula uma tela abaixo de 48em (o `restoreMocks` do Vitest desfaz ao fim de cada teste). */
-function simularCelular() {
-  const original = window.matchMedia;
-  vi.spyOn(window, 'matchMedia').mockImplementation((consulta: string) => ({
-    ...original(consulta),
-    matches: consulta.includes('max-width: 47.99em'),
-  }));
-}
 
 describe('ListaChamados no celular', () => {
   it('mostra só a busca e recolhe os demais filtros, que abrem pelo botão', async () => {
