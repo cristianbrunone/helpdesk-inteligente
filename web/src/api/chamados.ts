@@ -67,8 +67,8 @@ export interface ChamadoDetalhe {
 export interface NovoChamado {
   titulo: string;
   descricao: string;
-  solicitanteNome: string;
-  solicitanteEmail: string;
+  solicitanteNome?: string;
+  solicitanteEmail?: string;
   categoriaId: number | null;
   prioridade: Prioridade | null;
 }
@@ -136,12 +136,10 @@ export function useChamado(id: string) {
 
 export interface MudancaDeStatus {
   status: StatusChamado;
-  alteradoPor: string;
   comentario?: string;
 }
 
 export interface NovoComentario {
-  autor: string;
   texto: string;
 }
 

@@ -55,7 +55,9 @@ export function LayoutBase() {
       </AppShell.Header>
 
       <AppShell.Navbar p="sm" component="nav" aria-label="Navegação">
-        {ITENS_DO_MENU.map(({ rotulo, destino }) => (
+        {ITENS_DO_MENU.filter(
+          (item) => !(usuario?.perfil === 'Solicitante' && item.destino === '/dashboard'),
+        ).map(({ rotulo, destino }) => (
           <NavLink
             key={destino}
             component={Link}

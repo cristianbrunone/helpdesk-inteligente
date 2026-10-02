@@ -64,9 +64,9 @@ internal static class ChamadosEndpoints
     }
 
     private static async Task<Ok<ChamadoDetalhe>> MudarStatus(
-        Guid id, MudancaDeStatus corpo, MudarStatusChamado casoDeUso, HttpContext http, CancellationToken cancellationToken)
+        Guid id, MudancaDeStatus corpo, ClaimsPrincipal principal, MudarStatusChamado casoDeUso, HttpContext http, CancellationToken cancellationToken)
     {
-        var alterado = await casoDeUso.ExecutarAsync(id, corpo, ETag.VersoesDoIfMatch(http.Request), cancellationToken);
+        var alterado = await casoDeUso.ExecutarAsync(id, corpo, principal.ObterUsuario().Nome, ETag.VersoesDoIfMatch(http.Request), cancellationToken);
         http.Response.Headers.ETag = ETag.De(alterado.Versao);
         return TypedResults.Ok(alterado.Chamado);
     }

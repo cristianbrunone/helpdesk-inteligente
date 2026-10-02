@@ -3,8 +3,8 @@ using HelpDesk.Domain.Erros;
 
 namespace HelpDesk.Application.Chamados;
 
-/// <summary>Corpo de <c>PATCH /api/chamados/{id}/status</c>. O comentário é opcional (P-09).</summary>
-public sealed record MudancaDeStatus(StatusChamado? Status, string? AlteradoPor, string? Comentario);
+/// <summary>Corpo de <c>PATCH /api/chamados/{id}/status</c>. O comentário é opcional (P-09). O autor vem do token (ADR-0026).</summary>
+public sealed record MudancaDeStatus(StatusChamado? Status, string? Comentario);
 
 /// <summary>
 /// Muda o status (RF-06). Ordem das verificações: existe (404) → versão confere (412) → dados válidos (422) →
@@ -19,6 +19,7 @@ public sealed class MudarStatusChamado(
     public async Task<ChamadoVersionado> ExecutarAsync(
         Guid id,
         MudancaDeStatus dados,
+        string alteradoPor,
         IReadOnlyCollection<string>? versoesAceitas,
         CancellationToken cancellationToken)
     {
@@ -35,7 +36,7 @@ public sealed class MudarStatusChamado(
             });
         }
 
-        chamado.MudarStatus(destino, dados.AlteradoPor, dados.Comentario, relogio.GetUtcNow());
+        chamado.MudarStatus(destino, alteradoPor, dados.Comentario, relogio.GetUtcNow());
         await repositorio.SalvarAsync(cancellationToken);
 
         return await consulta.ObterDetalheAsync(id, cancellationToken)

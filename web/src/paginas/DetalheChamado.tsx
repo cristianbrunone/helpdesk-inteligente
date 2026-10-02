@@ -1,6 +1,6 @@
-import { Anchor, Grid, Group, Paper, Skeleton, Stack, Text, TextInput, Title } from '@mantine/core';
-import { useLocalStorage } from '@mantine/hooks';
+import { Anchor, Grid, Group, Paper, Skeleton, Stack, Text, Title } from '@mantine/core';
 import { Link, useParams } from 'react-router';
+import { useSessao } from '../api/autenticacao';
 import { useChamado, type ChamadoDetalhe } from '../api/chamados';
 import { ErroApi } from '../api/cliente';
 import { AcoesDeStatus } from '../componentes/AcoesDeStatus';
@@ -15,11 +15,8 @@ import { formatarDataHora } from '../dominio/chamado';
 export function DetalheChamado() {
   const { id = '' } = useParams();
   const { data, isPending, isError, error, refetch, isFetching } = useChamado(id);
-  // Sem login na v1 (P-03): o nome do atendente vai em alteradoPor/autor e fica lembrado neste navegador.
-  const [atendente, setAtendente] = useLocalStorage({
-    key: 'helpdesk.atendente',
-    defaultValue: '',
-  });
+  const { data: usuario } = useSessao();
+  const ehAtendente = usuario?.perfil === 'Atendente';
   const recarregar = () => void refetch();
 
   return (
@@ -74,47 +71,34 @@ export function DetalheChamado() {
                     {data.chamado.descricao}
                   </Text>
                 </Paper>
+                {ehAtendente && (
+                  <Paper withBorder p="md">
+                    <PainelCopiloto chamadoId={data.chamado.id} />
+                  </Paper>
+                )}
                 <Paper withBorder p="md">
-                  <PainelCopiloto chamadoId={data.chamado.id} />
-                </Paper>
-                <Paper withBorder p="md">
-                  <ComentariosChamado
-                    versionado={data}
-                    atendente={atendente}
-                    aoDesatualizar={recarregar}
-                  />
+                  <ComentariosChamado versionado={data} aoDesatualizar={recarregar} />
                 </Paper>
               </Stack>
             </Grid.Col>
 
             <Grid.Col span={{ base: 12, md: 4 }}>
               <Stack gap="md">
-                <Paper withBorder p="md">
-                  <Stack gap="sm">
-                    <Title order={3} size="h5">
-                      Ações
-                    </Title>
-                    <TextInput
-                      label="Seu nome (atendente)"
-                      placeholder="Ex.: Ana (suporte)"
-                      value={atendente}
-                      onChange={(evento) => setAtendente(evento.currentTarget.value)}
-                      maxLength={120}
-                    />
-                    <AcoesDeStatus
-                      versionado={data}
-                      atendente={atendente}
-                      aoDesatualizar={recarregar}
-                    />
-                  </Stack>
-                </Paper>
-                <Paper withBorder p="md">
-                  <PainelTriagem
-                    versionado={data}
-                    atendente={atendente}
-                    aoDesatualizar={recarregar}
-                  />
-                </Paper>
+                {ehAtendente && (
+                  <>
+                    <Paper withBorder p="md">
+                      <Stack gap="sm">
+                        <Title order={3} size="h5">
+                          Ações
+                        </Title>
+                        <AcoesDeStatus versionado={data} aoDesatualizar={recarregar} />
+                      </Stack>
+                    </Paper>
+                    <Paper withBorder p="md">
+                      <PainelTriagem versionado={data} aoDesatualizar={recarregar} />
+                    </Paper>
+                  </>
+                )}
                 <Paper withBorder p="md">
                   <DadosDoChamado chamado={data.chamado} />
                 </Paper>

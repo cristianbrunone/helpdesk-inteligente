@@ -73,10 +73,6 @@ function servirDetalhe(
   return () => leituras;
 }
 
-async function informarAtendente() {
-  await userEvent.type(await screen.findByLabelText('Seu nome (atendente)'), 'Bruno (suporte)');
-}
-
 describe('DetalheChamado', () => {
   it('mostra dados, comentários e histórico, e só os botões das transições permitidas', async () => {
     servirDetalhe([detalhe(), '"7"']);
@@ -113,13 +109,11 @@ describe('DetalheChamado', () => {
     ).toBeInTheDocument();
   });
 
-  it('exige o nome do atendente antes de habilitar as ações', async () => {
+  it('habilita as ações imediatamente para o atendente logado', async () => {
     servirDetalhe([detalhe(), '"7"']);
     await renderizarApp(`/chamados/${ID}`);
 
-    expect(await screen.findByRole('button', { name: 'Fechar' })).toBeDisabled();
-    await informarAtendente();
-    expect(screen.getByRole('button', { name: 'Fechar' })).toBeEnabled();
+    expect(await screen.findByRole('button', { name: 'Fechar' })).toBeEnabled();
   });
 
   it('muda o status com If-Match e comentário, e mostra o resultado', async () => {
@@ -135,9 +129,8 @@ describe('DetalheChamado', () => {
       }),
     );
     await renderizarApp(`/chamados/${ID}`);
-    await informarAtendente();
 
-    await userEvent.click(screen.getByRole('button', { name: 'Fechar' }));
+    await userEvent.click(await screen.findByRole('button', { name: 'Fechar' }));
     await userEvent.type(
       screen.getByLabelText('Comentário (opcional)'),
       'Confirmado pelo cliente.',
@@ -151,7 +144,6 @@ describe('DetalheChamado', () => {
       ifMatch: '"7"',
       corpo: {
         status: 'Fechado',
-        alteradoPor: 'Bruno (suporte)',
         comentario: 'Confirmado pelo cliente.',
       },
     });
@@ -171,9 +163,8 @@ describe('DetalheChamado', () => {
       ),
     );
     await renderizarApp(`/chamados/${ID}`);
-    await informarAtendente();
 
-    await userEvent.click(screen.getByRole('button', { name: 'Fechar' }));
+    await userEvent.click(await screen.findByRole('button', { name: 'Fechar' }));
     await userEvent.click(screen.getByRole('button', { name: 'Confirmar' }));
 
     expect(
@@ -197,7 +188,7 @@ describe('DetalheChamado', () => {
             ...detalhe().comentarios,
             {
               id: 'c2',
-              autor: 'Bruno (suporte)',
+              autor: 'Ana (suporte)',
               texto: 'Tudo certo?',
               criadoEm: '2026-10-01T10:00:00Z',
             },
@@ -214,15 +205,14 @@ describe('DetalheChamado', () => {
       }),
     );
     await renderizarApp(`/chamados/${ID}`);
-    await informarAtendente();
 
-    await userEvent.type(screen.getByLabelText('Novo comentário'), '  Tudo certo?  ');
+    await userEvent.type(await screen.findByLabelText('Novo comentário'), '  Tudo certo?  ');
     await userEvent.click(screen.getByRole('button', { name: 'Comentar' }));
 
     expect(await screen.findByText('Tudo certo?')).toBeInTheDocument();
     expect(recebido).toEqual({
       ifMatch: '"7"',
-      corpo: { autor: 'Bruno (suporte)', texto: 'Tudo certo?' },
+      corpo: { texto: 'Tudo certo?' },
     });
     expect(screen.getByLabelText('Novo comentário')).toHaveValue('');
   });

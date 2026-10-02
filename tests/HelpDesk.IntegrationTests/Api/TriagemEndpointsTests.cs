@@ -105,7 +105,7 @@ public sealed class TriagemEndpointsTests(ApiFactory api, BancoFixture banco) : 
         var id = await CriarAsync(StatusTriagem.Concluida);
         var etagAntes = await ETagAsync(id);
 
-        using var resposta = await DecidirAsync(id, "aceitar", new { decididaPor = "Ana (suporte)" }, etagAntes);
+        using var resposta = await DecidirAsync(id, "aceitar", new { }, etagAntes);
 
         resposta.StatusCode.ShouldBe(HttpStatusCode.OK);
         resposta.Headers.ETag!.ToString().ShouldNotBe(etagAntes);
@@ -123,11 +123,11 @@ public sealed class TriagemEndpointsTests(ApiFactory api, BancoFixture banco) : 
         var id = await CriarAsync(StatusTriagem.Concluida);
         var etagLido = await ETagAsync(id);
         using (await api.CriarClienteAtendente().PostAsJsonAsync($"/api/chamados/{id}/comentarios",
-                   new { autor = "Bruno", texto = "Alterei antes." }, Ct))
+                   new { texto = "Alterei antes." }, Ct))
         {
         }
 
-        using var resposta = await DecidirAsync(id, "aceitar", new { decididaPor = "Ana" }, etagLido);
+        using var resposta = await DecidirAsync(id, "aceitar", new { }, etagLido);
 
         resposta.StatusCode.ShouldBe(HttpStatusCode.PreconditionFailed);
         (await LerTriagemAsync(id)).Status.ShouldBe(StatusTriagem.Concluida);
@@ -141,7 +141,7 @@ public sealed class TriagemEndpointsTests(ApiFactory api, BancoFixture banco) : 
     {
         var id = await CriarAsync(status);
 
-        using var resposta = await DecidirAsync(id, "aceitar", new { decididaPor = "Ana" });
+        using var resposta = await DecidirAsync(id, "aceitar", new { });
 
         resposta.StatusCode.ShouldBe(HttpStatusCode.Conflict);
         (await LerAsync(resposta)).GetProperty("codigo").GetString().ShouldBe("triagem_nao_concluida");
@@ -152,7 +152,7 @@ public sealed class TriagemEndpointsTests(ApiFactory api, BancoFixture banco) : 
     {
         var id = await CriarAsync(StatusTriagem.Concluida, finalizar: true);
 
-        using var resposta = await DecidirAsync(id, "aceitar", new { decididaPor = "Ana" });
+        using var resposta = await DecidirAsync(id, "aceitar", new { });
 
         (await LerAsync(resposta)).GetProperty("codigo").GetString().ShouldBe("chamado_finalizado");
     }
@@ -162,21 +162,22 @@ public sealed class TriagemEndpointsTests(ApiFactory api, BancoFixture banco) : 
     {
         var id = await CriarAsync(status: null);
 
-        using var resposta = await DecidirAsync(id, "aceitar", new { decididaPor = "Ana" });
+        using var resposta = await DecidirAsync(id, "aceitar", new { });
 
         resposta.StatusCode.ShouldBe(HttpStatusCode.NotFound);
         (await LerAsync(resposta)).GetProperty("detail").GetString().ShouldBe("Este chamado não tem triagem.");
     }
 
     [Fact]
-    public async Task Aceitar_SemQuemDecidiu_Retorna422()
+    public async Task Aceitar_SemCorpoOuComObjetoVazio_UsaIdentidadeDoUsuarioAutenticado()
     {
         var id = await CriarAsync(StatusTriagem.Concluida);
 
-        using var resposta = await DecidirAsync(id, "aceitar", new { decididaPor = " " });
+        using var resposta = await DecidirAsync(id, "aceitar", new { });
 
-        resposta.StatusCode.ShouldBe(HttpStatusCode.UnprocessableEntity);
-        (await LerAsync(resposta)).GetProperty("errors").EnumerateObject().Select(p => p.Name).ShouldBe(["decididaPor"]);
+        resposta.StatusCode.ShouldBe(HttpStatusCode.OK);
+        var chamado = await LerAsync(resposta);
+        chamado.GetProperty("triagem").GetProperty("decididaPor").GetString().ShouldBe("Ana (suporte)");
     }
 
     // ---------- Rejeitar (RF-14) ----------
@@ -187,13 +188,15 @@ public sealed class TriagemEndpointsTests(ApiFactory api, BancoFixture banco) : 
         var id = await CriarAsync(StatusTriagem.Concluida);
 
         using var resposta = await DecidirAsync(id, "rejeitar",
-            new { decididaPor = "Ana", motivo = "Categoria correta é Bug no sistema" });
+            new { motivo = "Categoria correta é Bug no sistema" });
 
         resposta.StatusCode.ShouldBe(HttpStatusCode.OK);
         var chamado = await LerAsync(resposta);
         chamado.GetProperty("categoria").ValueKind.ShouldBe(JsonValueKind.Null);
         chamado.GetProperty("prioridade").GetString().ShouldBe("Media");
-        chamado.GetProperty("triagem").GetProperty("status").GetString().ShouldBe("Rejeitada");
+        var triagem = chamado.GetProperty("triagem");
+        triagem.GetProperty("status").GetString().ShouldBe("Rejeitada");
+        triagem.GetProperty("decididaPor").GetString().ShouldBe("Ana (suporte)");
         (await LerTriagemAsync(id)).MotivoRejeicao.ShouldBe("Categoria correta é Bug no sistema");
     }
 
@@ -202,7 +205,7 @@ public sealed class TriagemEndpointsTests(ApiFactory api, BancoFixture banco) : 
     {
         var id = await CriarAsync(StatusTriagem.Aceita);
 
-        using var resposta = await DecidirAsync(id, "rejeitar", new { decididaPor = "Ana" });
+        using var resposta = await DecidirAsync(id, "rejeitar", new { });
 
         (await LerAsync(resposta)).GetProperty("codigo").GetString().ShouldBe("triagem_nao_concluida");
     }

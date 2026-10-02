@@ -31,7 +31,6 @@ const MOTIVO_TAMANHO_MAXIMO = 500;
 
 interface Props {
   versionado: ChamadoVersionado;
-  atendente: string;
   aoDesatualizar: () => void;
 }
 
@@ -40,7 +39,7 @@ interface Props {
  * do atendente. Os botões aparecem conforme o status da triagem e o que o domínio permite no chamado. Desde a
  * Sprint 3, mostra também em que documentos a sugestão se apoiou (RF-16).
  */
-export function PainelTriagem({ versionado, atendente, aoDesatualizar }: Props) {
+export function PainelTriagem({ versionado, aoDesatualizar }: Props) {
   const { chamado, etag } = versionado;
   const { data: configuracao } = useConfiguracaoIA();
   const refazer = useRefazerTriagem(chamado.id);
@@ -50,7 +49,6 @@ export function PainelTriagem({ versionado, atendente, aoDesatualizar }: Props) 
 
   const triagem = chamado.triagem;
   const iaAtiva = configuracao?.triagem ?? true;
-  const semAtendente = atendente.trim().length === 0;
   // Chamado finalizado não aceita refazer (P-11); podeComentar já vem calculado pelo domínio.
   const podeRefazer = iaAtiva && chamado.podeComentar && triagem?.status !== 'Pendente';
 
@@ -65,16 +63,12 @@ export function PainelTriagem({ versionado, atendente, aoDesatualizar }: Props) 
     }
   };
 
-  const aceitar = () =>
-    void executar(() =>
-      decidir.mutateAsync({ acao: 'aceitar', decididaPor: atendente.trim(), etag }),
-    );
+  const aceitar = () => void executar(() => decidir.mutateAsync({ acao: 'aceitar', etag }));
 
   const confirmarRejeicao = async () => {
     const ok = await executar(() =>
       decidir.mutateAsync({
         acao: 'rejeitar',
-        decididaPor: atendente.trim(),
         motivo: motivo.trim() || undefined,
         etag,
       }),
@@ -119,16 +113,10 @@ export function PainelTriagem({ versionado, atendente, aoDesatualizar }: Props) 
 
       {triagem?.status === 'Concluida' && (
         <Group gap="xs">
-          <Button size="xs" disabled={semAtendente} loading={decidir.isPending} onClick={aceitar}>
+          <Button size="xs" loading={decidir.isPending} onClick={aceitar}>
             Aceitar sugestão
           </Button>
-          <Button
-            size="xs"
-            variant="light"
-            color="red"
-            disabled={semAtendente}
-            onClick={() => setRejeitando(true)}
-          >
+          <Button size="xs" variant="light" color="red" onClick={() => setRejeitando(true)}>
             Rejeitar
           </Button>
         </Group>
@@ -145,12 +133,6 @@ export function PainelTriagem({ versionado, atendente, aoDesatualizar }: Props) 
             {triagem ? 'Refazer triagem' : 'Solicitar triagem'}
           </Button>
         </Group>
-      )}
-
-      {triagem?.status === 'Concluida' && semAtendente && (
-        <Text size="xs" c="dimmed">
-          Informe seu nome em “Ações” para aceitar ou rejeitar.
-        </Text>
       )}
 
       <Modal

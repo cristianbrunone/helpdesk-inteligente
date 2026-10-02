@@ -8,7 +8,6 @@ const COMENTARIO_TAMANHO_MAXIMO = 4000;
 
 interface Props {
   versionado: ChamadoVersionado;
-  atendente: string;
   aoDesatualizar: () => void;
 }
 
@@ -16,7 +15,7 @@ interface Props {
  * Um botão por item de `transicoesPermitidas`, que vem calculado pelo domínio no backend: a tela nunca decide
  * sozinha quais mudanças de status existem.
  */
-export function AcoesDeStatus({ versionado, atendente, aoDesatualizar }: Props) {
+export function AcoesDeStatus({ versionado, aoDesatualizar }: Props) {
   const { chamado, etag } = versionado;
   const mudanca = useMudarStatus(chamado.id);
   const [destino, setDestino] = useState<StatusChamado | null>(null);
@@ -40,7 +39,6 @@ export function AcoesDeStatus({ versionado, atendente, aoDesatualizar }: Props) 
     try {
       await mudanca.mutateAsync({
         status: destino,
-        alteradoPor: atendente.trim(),
         comentario: comentario.trim() || undefined,
         etag,
       });
@@ -54,7 +52,6 @@ export function AcoesDeStatus({ versionado, atendente, aoDesatualizar }: Props) 
     }
   };
 
-  const semAtendente = atendente.trim().length === 0;
   const longo = comentario.trim().length > COMENTARIO_TAMANHO_MAXIMO;
 
   return (
@@ -66,18 +63,12 @@ export function AcoesDeStatus({ versionado, atendente, aoDesatualizar }: Props) 
             size="xs"
             variant={status === 'Cancelado' ? 'light' : 'filled'}
             color={status === 'Cancelado' ? 'red' : undefined}
-            disabled={semAtendente}
             onClick={() => setDestino(status)}
           >
             {rotuloDaAcao(chamado.status, status)}
           </Button>
         ))}
       </Group>
-      {semAtendente && (
-        <Text size="xs" c="dimmed">
-          Informe seu nome acima para registrar ações.
-        </Text>
-      )}
 
       <Modal
         opened={destino !== null}

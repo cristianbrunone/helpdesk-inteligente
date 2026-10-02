@@ -3,8 +3,8 @@ using HelpDesk.Domain.Usuarios;
 
 namespace HelpDesk.Application.Chamados;
 
-/// <summary>Corpo de <c>POST /api/chamados/{id}/comentarios</c>.</summary>
-public sealed record NovoComentario(string? Autor, string? Texto);
+/// <summary>Corpo de <c>POST /api/chamados/{id}/comentarios</c>. O autor vem do token (ADR-0026).</summary>
+public sealed record NovoComentario(string? Texto);
 
 /// <summary>O comentário criado e a nova versão do chamado (comentar também altera o chamado).</summary>
 public sealed record ComentarioCriado(ComentarioDetalhe Comentario, string VersaoChamado);
@@ -34,26 +34,7 @@ public sealed class AdicionarComentario(IRepositorioChamados repositorio, TimePr
 
         Precondicao.ExigirVersao(versoesAceitas, repositorio.Versao(chamado));
 
-        var comentario = chamado.Comentar(dados.Autor, dados.Texto, relogio.GetUtcNow());
-        await repositorio.SalvarAsync(cancellationToken);
-
-        return new ComentarioCriado(
-            new ComentarioDetalhe(comentario.Id, comentario.Autor, comentario.Texto, comentario.CriadoEm),
-            repositorio.Versao(chamado));
-    }
-
-    public async Task<ComentarioCriado> ExecutarAsync(
-        Guid chamadoId,
-        NovoComentario dados,
-        IReadOnlyCollection<string>? versoesAceitas,
-        CancellationToken cancellationToken)
-    {
-        var chamado = await repositorio.ObterParaAlteracaoAsync(chamadoId, cancellationToken)
-            ?? throw RecursoNaoEncontradoException.Chamado(chamadoId);
-
-        Precondicao.ExigirVersao(versoesAceitas, repositorio.Versao(chamado));
-
-        var comentario = chamado.Comentar(dados.Autor, dados.Texto, relogio.GetUtcNow());
+        var comentario = chamado.Comentar(usuario.Nome, dados.Texto, relogio.GetUtcNow());
         await repositorio.SalvarAsync(cancellationToken);
 
         return new ComentarioCriado(

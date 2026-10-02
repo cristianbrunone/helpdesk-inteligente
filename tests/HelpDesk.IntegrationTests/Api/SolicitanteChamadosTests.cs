@@ -94,7 +94,7 @@ public sealed class SolicitanteChamadosTests(ApiFactory api) : IClassFixture<Api
 
         using var resposta = await clienteMarina.PostAsJsonAsync(
             $"/api/chamados/{chamadoPauloId}/comentarios",
-            new NovoComentario("Marina", "Tentando comentar no chamado alheio"),
+            new NovoComentario("Tentando comentar no chamado alheio"),
             Ct);
 
         resposta.StatusCode.ShouldBe(HttpStatusCode.NotFound);
@@ -108,7 +108,7 @@ public sealed class SolicitanteChamadosTests(ApiFactory api) : IClassFixture<Api
 
         using var resposta = await clienteMarina.PostAsJsonAsync(
             $"/api/chamados/{chamadoId}/comentarios",
-            new NovoComentario("Marina", "Comentário legítimo no próprio chamado"),
+            new NovoComentario("Comentário legítimo no próprio chamado"),
             Ct);
 
         resposta.StatusCode.ShouldBe(HttpStatusCode.Created);

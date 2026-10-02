@@ -85,7 +85,7 @@ busca_sem_acento() {
 patch_status() {
   curl -s -o /dev/null -w '%{http_code}' --max-time 10 -X PATCH ${SESSAO:+-H "$SESSAO"} \
     -H 'Content-Type: application/json' -H "If-Match: $3" \
-    -d "{\"status\":\"$2\",\"alteradoPor\":\"Smoke (suporte)\"}" "$WEB/api/chamados/$1/status"
+    -d "{\"status\":\"$2\"}" "$WEB/api/chamados/$1/status"
 }
 
 EMAIL_SMOKE="smoke.$(date +%s).$RANDOM@example.com"
@@ -160,7 +160,7 @@ triagem_concluida_pelo_worker() {
 
 aceitar_triagem() {
   [ -n "$ID_TRIAGEM" ] || return 1
-  curl -fsS --max-time 10 ${SESSAO:+-H "$SESSAO"} -H 'Content-Type: application/json' -d '{"decididaPor":"Smoke (suporte)"}' \
+  curl -fsS --max-time 10 ${SESSAO:+-H "$SESSAO"} -H 'Content-Type: application/json' -d '{}' \
     "$WEB/api/chamados/$ID_TRIAGEM/triagem/aceitar" | grep -q '"status":"Aceita"'
 }
 

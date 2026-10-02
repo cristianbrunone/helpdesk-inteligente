@@ -1,3 +1,4 @@
+using System.Security.Claims;
 using HelpDesk.Api.Autenticacao;
 using HelpDesk.Application.Chamados;
 using HelpDesk.Application.Triagem;
@@ -44,17 +45,17 @@ internal static class TriagemEndpoints
         TypedResults.Accepted($"/api/chamados/{id}", await casoDeUso.ExecutarAsync(id, cancellationToken));
 
     private static async Task<Ok<ChamadoDetalhe>> Aceitar(
-        Guid id, AceiteTriagem corpo, DecidirTriagem casoDeUso, HttpContext http, CancellationToken cancellationToken)
+        Guid id, ClaimsPrincipal principal, DecidirTriagem casoDeUso, HttpContext http, CancellationToken cancellationToken)
     {
-        var decidido = await casoDeUso.AceitarAsync(id, corpo, ETag.VersoesDoIfMatch(http.Request), cancellationToken);
+        var decidido = await casoDeUso.AceitarAsync(id, principal.ObterUsuario().Nome, ETag.VersoesDoIfMatch(http.Request), cancellationToken);
         http.Response.Headers.ETag = ETag.De(decidido.Versao);
         return TypedResults.Ok(decidido.Chamado);
     }
 
     private static async Task<Ok<ChamadoDetalhe>> Rejeitar(
-        Guid id, RejeicaoTriagem corpo, DecidirTriagem casoDeUso, HttpContext http, CancellationToken cancellationToken)
+        Guid id, RejeicaoTriagem? corpo, ClaimsPrincipal principal, DecidirTriagem casoDeUso, HttpContext http, CancellationToken cancellationToken)
     {
-        var decidido = await casoDeUso.RejeitarAsync(id, corpo, ETag.VersoesDoIfMatch(http.Request), cancellationToken);
+        var decidido = await casoDeUso.RejeitarAsync(id, corpo, principal.ObterUsuario().Nome, ETag.VersoesDoIfMatch(http.Request), cancellationToken);
         http.Response.Headers.ETag = ETag.De(decidido.Versao);
         return TypedResults.Ok(decidido.Chamado);
     }
