@@ -114,7 +114,7 @@ jobs:
           cache: npm
           cache-dependency-path: web/package-lock.json
 
-      - name: E2E (Playwright, Chromium) criar → triagem → aceitar
+      - name: E2E (Playwright, Chromium) triagem, copiloto e telas em 375 px
         working-directory: web
         env:
           E2E_BASE_URL: http://localhost:8080

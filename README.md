@@ -81,7 +81,7 @@ cd web && npm ci && npm run lint && npm test && npm run build
 # Smoke test do ambiente completo (com o docker compose de pé)
 docker compose up --build -d --wait && bash scripts/smoke-compose.sh
 
-# E2E com Playwright (criar → triagem → aceitar), com o docker compose de pé
+# E2E com Playwright (criar → triagem → aceitar; copiloto citando fontes; telas em 375 px), com o compose de pé
 cd web && npx playwright install chromium && npm run e2e
 
 # Smoke do harness de evals da IA com o provedor fake (a medição real está em "Evals", na Sprint 3)
