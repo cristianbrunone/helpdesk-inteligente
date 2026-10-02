@@ -65,6 +65,36 @@ Nenhum ADR novo: as decisões abaixo aplicam os ADRs 0007, 0009, 0010, 0011 e 00
 | O harness de evals usa um registro de uso **em memória**, e não o `uso_llm` | Medir a IA não pode sujar o dashboard de produção; o custo do eval sai no relatório |
 | Os tokens dos embeddings do Gemini não entram no custo | O endpoint OpenAI-compatível do Gemini não os devolve; o relatório registra a limitação |
 
+### Decisões da Sprint 4 (copiloto conversacional)
+
+Nenhum ADR novo: as decisões abaixo aplicam os ADRs 0004, 0012, 0020 e 0021 e ficam registradas para quem lê o código.
+
+| Decisão | Motivo |
+|---|---|
+| SSE com `TypedResults.ServerSentEvents` (nativo do .NET 10), rate limiter nativo do ASP.NET Core e parser SSE escrito à mão no front | Nenhuma biblioteca nova para o streaming; o parser tem ~40 linhas e testes próprios (o ADR-0012 previa a opção) |
+| O caso de uso tem dois passos: `PrepararAsync` (kill switch, validação, chamado, prompt) e `ResponderAsync` (eventos) | Depois do primeiro byte do stream o status HTTP não muda mais: 503, 422 e 404 precisam acontecer antes |
+| A porta `ICopilotoLlm` recebe só `TextoMascarado` e devolve passos neutros (texto, ferramenta, fim); a falha do provedor vira `IaIndisponivelException` | O laço de ferramentas do `Microsoft.Extensions.AI` fica na Infrastructure, e a Application não conhece as exceções do SDK |
+| Um parâmetro inválido de ferramenta volta ao modelo como `{"erro": "..."}`, e não como erro HTTP | O modelo corrige a chamada (por exemplo, usa uma categoria que existe); exceções inesperadas não mandam detalhes ao modelo (`IncludeDetailedErrors = false`) |
+| Os parâmetros opcionais das ferramentas têm valor padrão no C# | Sem ele, o `AIFunctionFactory` os trata como obrigatórios, e a chamada do modelo falha antes de executar |
+| No stream, a resiliência só repete **antes do primeiro pedaço**, e o prazo vira de inatividade depois dele | Repetir depois duplicaria texto na tela; um prazo total cortaria respostas longas e saudáveis |
+| `uso_llm` ganha `erro_tipo = cancelado`, distinto de `timeout` (a resiliência passa o token do prazo nas opções clonadas) | Fechar o painel não é falha do provedor; sem a distinção, todo timeout apareceria como cancelamento |
+| O caso de uso reafirma o `Activity.Current` a cada passo do iterador assíncrono | A cada `MoveNextAsync` o contexto volta ao de quem consome; sem isso, as ferramentas e as chamadas ao provedor ficariam fora do span `copiloto.responder` |
+| O evento `fontes` leva os chamados **citados e devolvidos pelas ferramentas**, mais os artigos citados pelo título; o número do chamado em contexto pode ser citado sem aviso | Só aparece o que a resposta de fato usou e é verificável; o chamado aberto está no prompt e não é invenção |
+| O buffer do guardrail corta preferindo um espaço, nunca dentro de um marcador | Um dado pessoal sem espaço (e-mail, CPF) fica inteiro no buffer até ser mascarado |
+| A ferramenta de similares exclui o próprio chamado em contexto, e a de artigos só devolve artigos ativos | O chamado resolvido não é "parecido consigo mesmo"; um artigo desativado some antes de o reconciliador limpá-lo do índice |
+| Rate limit por IP de origem, **limitação conhecida** atrás do Nginx (todos chegam com o IP do proxy) | Particionar pelo `X-Forwarded-For` exige confiar só no proxy; sem isso, qualquer um burlaria o limite chamando a API direto. Fica para a próxima versão |
+| O prompt `copiloto.v1` não passou pelo harness de evals | O harness (ADR-0018) cobre só a triagem; evals do copiloto ficam para a próxima versão |
+
+### Decisões da Sprint 5 (hardening)
+
+| # | Decisão | Alternativa rejeitada | Trade-off principal |
+|---|---|---|---|
+| [0025](docs/adr/0025-icu-nas-imagens-dotnet.md) | ICU nas imagens do .NET (copiado da imagem do SDK), sem globalização invariante | Código independente do ICU (tabela própria de acentos) | +58 MB por imagem em troca de produção se comportar como os testes ao remover e comparar acentos (mascarador de nomes, validador da IA, copiloto). |
+
+| Decisão | Motivo |
+|---|---|
+| O Nginx não comprime as respostas da API (`gzip off` em `/api/`) | Ao comprimir, ele trocava o ETag forte por um fraco (`W/"..."`), e o `If-Match` de toda escrita feita pelo navegador dava 412; os assets seguem comprimidos |
+
 ### Decisões de implementação (Sprint 1)
 
 Decisões menores, que não contrariam nem acrescentam ADR, registradas para quem lê o código.

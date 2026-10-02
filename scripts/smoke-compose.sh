@@ -67,15 +67,20 @@ EMAIL_SMOKE="smoke.$(date +%s).$RANDOM@example.com"
 
 ciclo_do_chamado() {
   # Cria (201) → muda status com o ETag atual (200) → repete com o ETag antigo (412 versao_desatualizada).
+  # --compressed pede gzip, como o navegador: se o Nginx comprimir a resposta da API, o ETag vira fraco (W/"...")
+  # e o If-Match deixa de casar. Sem isso, o smoke não via o 412 que todo navegador recebia.
   local cabecalhos corpo id etag
   cabecalhos="$(mktemp)"
-  corpo="$(curl -fsS --max-time 10 -D "$cabecalhos" -H 'Content-Type: application/json' \
+  corpo="$(curl -fsS --compressed --max-time 10 -D "$cabecalhos" -H 'Content-Type: application/json' \
     -d "{\"titulo\":\"Smoke test do compose\",\"descricao\":\"Chamado criado pelo smoke test. CPF 123.456.789-09.\",\"solicitanteNome\":\"Pessoa Smoke\",\"solicitanteEmail\":\"$EMAIL_SMOKE\"}" \
     "$WEB/api/chamados")" || return 1
   grep -qi '^HTTP/[0-9.]* 201' "$cabecalhos" || return 1
   id="$(echo "$corpo" | campo_json id)"
+  [ -n "$id" ] || return 1
+  # O ETag vem do detalhe (200), como na tela: o Nginx só comprime respostas 200, não o 201 da criação.
+  curl -fsS --compressed --max-time 10 -D "$cabecalhos" -o /dev/null "$WEB/api/chamados/$id" || return 1
   etag="$(grep -i '^etag:' "$cabecalhos" | cut -d' ' -f2- | tr -d '\r')"
-  [ -n "$id" ] && [ -n "$etag" ] || return 1
+  [ -n "$etag" ] || return 1
   [ "$(patch_status "$id" EmAndamento "$etag")" = "200" ] || return 1
   [ "$(patch_status "$id" Resolvido "$etag")" = "412" ]
 }
@@ -91,6 +96,26 @@ saude_com_fila_de_triagem() {
 }
 
 ID_TRIAGEM=""
+
+texto_acentuado_na_triagem() {
+  # ADR-0025: as imagens .NET rodam com ICU. Em globalização invariante (o padrão das imagens Alpine), a remoção de
+  # acentos não funciona: o fake não reconhece "Não consigo" (prioridade Alta), e o mascarador de nomes e o
+  # validador da saída da IA falham do mesmo jeito. O corpo vai pelo stdin para o UTF-8 chegar intacto.
+  local corpo id
+  corpo="$(printf '%s' "{\"titulo\":\"Não consigo acessar o relatório\",\"descricao\":\"Desde ontem não consigo abrir o relatório mensal.\",\"solicitanteNome\":\"Pessoa Smoke\",\"solicitanteEmail\":\"$EMAIL_SMOKE\"}" |
+    curl -fsS --max-time 10 -H 'Content-Type: application/json' --data-binary @- "$WEB/api/chamados")" || return 1
+  id="$(echo "$corpo" | campo_json id)"
+  [ -n "$id" ] || return 1
+  for _ in $(seq 1 30); do
+    corpo="$(curl -fsS --max-time 10 "$WEB/api/chamados/$id")"
+    if echo "$corpo" | grep -q '"triagem":{"id":"[^"]*","status":"Concluida"'; then
+      echo "$corpo" | grep -q '"prioridadeSugerida":"Alta"'
+      return
+    fi
+    sleep 1
+  done
+  return 1
+}
 
 triagem_concluida_pelo_worker() {
   # Critério da Sprint 2: com o fake, a triagem fica Concluida em segundos (o Worker consome a fila).
@@ -200,6 +225,7 @@ verificar "GET /api/config/ia → triagem e copiloto ativos" config_ia
 verificar "GET /health traz o check filaTriagem" saude_com_fila_de_triagem
 verificar "criar chamado → Worker conclui a triagem (fake) em até 30 s" triagem_concluida_pelo_worker
 verificar "aceitar a triagem pelo Nginx → Aceita" aceitar_triagem
+verificar "texto acentuado: o Worker remove acentos (ICU na imagem, ADR-0025)" texto_acentuado_na_triagem
 verificar "resolvidos e artigos do seed indexados no RAG (sem ação manual)" indice_rag_completo
 # Depois do índice completo: as buscas do copiloto dependem dele (sem isso, a ordem dependeria da velocidade da máquina).
 verificar "POST /copiloto via SSE pelo Nginx → stream com ferramenta, delta, fim e fontes verificadas" copiloto_via_sse_pelo_nginx

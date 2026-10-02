@@ -1,12 +1,12 @@
 import { MantineProvider } from '@mantine/core';
 import { Notifications } from '@mantine/notifications';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { render } from '@testing-library/react';
+import { render, waitFor } from '@testing-library/react';
 import type { ReactElement } from 'react';
 import { createMemoryRouter, MemoryRouter } from 'react-router';
 import { RouterProvider } from 'react-router/dom';
 import { rotas } from '../rotas';
-import { tema } from '../tema';
+import { tema, variaveisCss } from '../tema';
 
 function criarQueryClientDeTeste(): QueryClient {
   // Sem novas tentativas: o teste de erro vê o erro na primeira resposta.
@@ -16,7 +16,7 @@ function criarQueryClientDeTeste(): QueryClient {
 /** Renderiza um componente com os mesmos providers da aplicação. */
 export function renderizar(ui: ReactElement, { rota = '/' }: { rota?: string } = {}) {
   return render(
-    <MantineProvider theme={tema} env="test">
+    <MantineProvider theme={tema} cssVariablesResolver={variaveisCss} env="test">
       <Notifications />
       <QueryClientProvider client={criarQueryClientDeTeste()}>
         <MemoryRouter initialEntries={[rota]}>{ui}</MemoryRouter>
@@ -25,16 +25,31 @@ export function renderizar(ui: ReactElement, { rota = '/' }: { rota?: string } =
   );
 }
 
-/** Renderiza a aplicação inteira (rotas reais) a partir de uma URL; o roteador expõe a URL atual. */
-export function renderizarApp(rota = '/') {
+/**
+ * Renderiza a aplicação inteira (rotas reais) a partir de uma URL; o roteador expõe a URL atual. As páginas são
+ * carregadas sob demanda (`lazy` nas rotas): só devolve depois que a página da URL carregou, como no navegador.
+ */
+export async function renderizarApp(rota = '/') {
   const roteador = createMemoryRouter(rotas, { initialEntries: [rota] });
   const resultado = render(
-    <MantineProvider theme={tema} env="test">
+    <MantineProvider theme={tema} cssVariablesResolver={variaveisCss} env="test">
       <Notifications />
       <QueryClientProvider client={criarQueryClientDeTeste()}>
         <RouterProvider router={roteador} />
       </QueryClientProvider>
     </MantineProvider>,
+  );
+  await waitFor(
+    () => {
+      if (
+        !roteador.state.initialized ||
+        roteador.state.navigation.state !== 'idle' ||
+        resultado.queryByLabelText('Carregando a página')
+      ) {
+        throw new Error('A página ainda está carregando.');
+      }
+    },
+    { timeout: 5000 },
   );
   return { ...resultado, roteador };
 }

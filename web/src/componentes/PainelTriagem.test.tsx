@@ -81,7 +81,7 @@ async function informarAtendente() {
 describe('PainelTriagem', () => {
   it('mostra a sugestão concluída identificada como gerada por IA', async () => {
     servirDetalhe(chamado());
-    renderizarApp(`/chamados/${ID}`);
+    await renderizarApp(`/chamados/${ID}`);
 
     expect(await screen.findByText('Gerado por IA')).toBeInTheDocument();
     expect(screen.getByText('Financeiro')).toBeInTheDocument();
@@ -114,7 +114,7 @@ describe('PainelTriagem', () => {
         );
       }),
     );
-    renderizarApp(`/chamados/${ID}`);
+    await renderizarApp(`/chamados/${ID}`);
     await informarAtendente();
 
     await userEvent.click(screen.getByRole('button', { name: 'Aceitar sugestão' }));
@@ -142,7 +142,7 @@ describe('PainelTriagem', () => {
         );
       }),
     );
-    renderizarApp(`/chamados/${ID}`);
+    await renderizarApp(`/chamados/${ID}`);
     await informarAtendente();
 
     await userEvent.click(screen.getByRole('button', { name: 'Rejeitar' }));
@@ -172,7 +172,7 @@ describe('PainelTriagem', () => {
         return HttpResponse.json(triagem({ status: 'Pendente' }), { status: 202 });
       }),
     );
-    renderizarApp(`/chamados/${ID}`);
+    await renderizarApp(`/chamados/${ID}`);
 
     expect(
       await screen.findByText('O provedor de IA não respondeu a tempo. Tente refazer a triagem.'),
@@ -186,7 +186,7 @@ describe('PainelTriagem', () => {
 
   it('enquanto pendente, consulta de novo sozinho até a triagem concluir', async () => {
     servirDetalhe(chamado({ triagem: triagem({ status: 'Pendente' }) }), chamado());
-    renderizarApp(`/chamados/${ID}`);
+    await renderizarApp(`/chamados/${ID}`);
 
     expect(await screen.findByText('A IA está analisando o chamado…')).toBeInTheDocument();
     expect(await screen.findByText('Gerado por IA', {}, { timeout: 5_000 })).toBeInTheDocument();
@@ -194,7 +194,7 @@ describe('PainelTriagem', () => {
 
   it('sem triagem e com a IA ativa, oferece solicitar a triagem', async () => {
     servirDetalhe(chamado({ triagem: null }));
-    renderizarApp(`/chamados/${ID}`);
+    await renderizarApp(`/chamados/${ID}`);
 
     expect(await screen.findByText('Este chamado ainda não tem triagem.')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Solicitar triagem' })).toBeInTheDocument();
@@ -205,7 +205,7 @@ describe('PainelTriagem', () => {
     servidor.use(
       http.get('/api/config/ia', () => HttpResponse.json({ triagem: false, copiloto: true })),
     );
-    renderizarApp(`/chamados/${ID}`);
+    await renderizarApp(`/chamados/${ID}`);
 
     expect(await screen.findByText('Triagem por IA desativada no momento.')).toBeInTheDocument();
     await waitFor(() =>
@@ -237,7 +237,7 @@ describe('PainelTriagem', () => {
         }),
       }),
     );
-    renderizarApp(`/chamados/${ID}`);
+    await renderizarApp(`/chamados/${ID}`);
 
     const lista = await screen.findByRole('list', { name: 'Baseado em' });
     expect(lista.querySelectorAll('li')).toHaveLength(2);
@@ -253,7 +253,7 @@ describe('PainelTriagem', () => {
 
   it('sem fontes (sem RAG ou nada parecido), não mostra a seção', async () => {
     servirDetalhe(chamado());
-    renderizarApp(`/chamados/${ID}`);
+    await renderizarApp(`/chamados/${ID}`);
 
     expect(await screen.findByText('Gerado por IA')).toBeInTheDocument();
     expect(screen.queryByText('Baseado em')).not.toBeInTheDocument();
@@ -268,7 +268,7 @@ describe('PainelTriagem', () => {
         triagem: triagem({ status: 'Falhou', erro: 'Falhou.' }),
       }),
     );
-    renderizarApp(`/chamados/${ID}`);
+    await renderizarApp(`/chamados/${ID}`);
 
     expect(await screen.findByText('Falhou.')).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Refazer triagem' })).not.toBeInTheDocument();

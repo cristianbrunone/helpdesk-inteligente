@@ -10,7 +10,7 @@ import {
 
 export function BadgeStatus({ status }: { status: StatusChamado }) {
   return (
-    <Badge color={COR_STATUS[status]} variant="light">
+    <Badge color={COR_STATUS[status]} variant="filled">
       {ROTULO_STATUS[status]}
     </Badge>
   );
@@ -18,7 +18,7 @@ export function BadgeStatus({ status }: { status: StatusChamado }) {
 
 export function BadgePrioridade({ prioridade }: { prioridade: Prioridade }) {
   return (
-    <Badge color={COR_PRIORIDADE[prioridade]} variant="outline">
+    <Badge color={COR_PRIORIDADE[prioridade]} variant="dot">
       {ROTULO_PRIORIDADE[prioridade]}
     </Badge>
   );

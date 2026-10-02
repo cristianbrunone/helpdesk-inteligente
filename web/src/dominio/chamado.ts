@@ -26,12 +26,16 @@ export const ROTULO_STATUS: Record<StatusChamado, string> = {
   Cancelado: 'Cancelado',
 };
 
+/**
+ * Cores dos badges de status (preenchidos). Os tons escuros garantem texto branco com contraste ≥ 5:1 (WCAG AA);
+ * no amarelo, o autoContrast do tema usa texto escuro.
+ */
 export const COR_STATUS: Record<StatusChamado, string> = {
-  Aberto: 'blue',
+  Aberto: 'blue.8',
   EmAndamento: 'yellow',
-  Resolvido: 'teal',
-  Fechado: 'gray',
-  Cancelado: 'red',
+  Resolvido: 'teal.9',
+  Fechado: 'gray.7',
+  Cancelado: 'red.9',
 };
 
 export const ROTULO_PRIORIDADE: Record<Prioridade, string> = {

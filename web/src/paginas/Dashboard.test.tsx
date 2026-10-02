@@ -65,7 +65,7 @@ describe('Dashboard', () => {
         return HttpResponse.json(resumo());
       }),
     );
-    renderizarApp('/dashboard');
+    await renderizarApp('/dashboard');
 
     expect(await screen.findByLabelText('Carregando o dashboard')).toHaveAttribute(
       'aria-busy',
@@ -77,7 +77,7 @@ describe('Dashboard', () => {
 
   it('mostra os cartões e os números de cada gráfico (tabelas para leitor de tela)', async () => {
     servir(resumo());
-    renderizarApp('/dashboard');
+    await renderizarApp('/dashboard');
 
     const total = await screen.findByRole('region', { name: 'Total de chamados' });
     expect(within(total).getByText('200')).toBeInTheDocument();
@@ -104,7 +104,7 @@ describe('Dashboard', () => {
 
   it('mostra o consumo de IA dos últimos 30 dias', async () => {
     servir(resumo());
-    renderizarApp('/dashboard');
+    await renderizarApp('/dashboard');
 
     const consumo = await screen.findByRole('region', {
       name: 'Consumo de IA nos últimos 30 dias',
@@ -127,7 +127,7 @@ describe('Dashboard', () => {
         },
       }),
     );
-    renderizarApp('/dashboard');
+    await renderizarApp('/dashboard');
 
     const aceitacao = await screen.findByRole('region', { name: 'Aceitação da IA' });
     expect(within(aceitacao).getByText('—')).toBeInTheDocument();
@@ -140,7 +140,7 @@ describe('Dashboard', () => {
 
   it('sem chamados, mostra o estado vazio', async () => {
     servir(resumo({ totalChamados: 0 }));
-    renderizarApp('/dashboard');
+    await renderizarApp('/dashboard');
 
     expect(
       await screen.findByText(
@@ -164,7 +164,7 @@ describe('Dashboard', () => {
         { once: true },
       ),
     );
-    renderizarApp('/dashboard');
+    await renderizarApp('/dashboard');
 
     expect(await screen.findByText('Não foi possível carregar o dashboard')).toBeInTheDocument();
     expect(screen.getByText('Código de rastreio: rastreio-789')).toBeInTheDocument();
@@ -176,7 +176,7 @@ describe('Dashboard', () => {
 
   it('aparece no menu de navegação', async () => {
     servir(resumo());
-    renderizarApp('/chamados');
+    await renderizarApp('/chamados');
 
     expect(await screen.findByRole('link', { name: 'Dashboard' })).toHaveAttribute(
       'href',

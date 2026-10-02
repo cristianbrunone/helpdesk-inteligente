@@ -16,7 +16,7 @@ O projeto foi **planejado antes de ser codificado**. As decisões já tomadas es
 | `docs/03-modelo-de-dados.md` | ER, constraints, índices justificados, SQL do dashboard, seed. |
 | `docs/04-contratos-api.md` | Endpoints, payloads, catálogo de erros, eventos SSE. |
 | `docs/05-sprints.md` | Escopo, critérios de aceite e testes de cada sprint. |
-| `docs/adr/` | Decisões (ADRs). **Antes de implementar algo, leia o ADR relacionado.** Os números 0015–0017 e 0022–0023 são da Sprint 0 (plataforma); os 0018–0021 vieram da revisão de 30/09; o 0024 é da Sprint 2. |
+| `docs/adr/` | Decisões (ADRs). **Antes de implementar algo, leia o ADR relacionado.** Os números 0015–0017 e 0022–0023 são da Sprint 0 (plataforma); os 0018–0021 vieram da revisão de 30/09; o 0024 é da Sprint 2; o 0025 é da Sprint 5. |
 | `docs/revisoes/` | Registros de revisões de arquitetura (o que motivou, o que foi adotado e o que foi rejeitado). |
 | `docs/JORNADA.md` | Narrativa do projeto por fase. |
 | `DECISOES.md` | Índice curto das decisões e premissas (entregável do enunciado). |
@@ -58,7 +58,7 @@ tools/
 evals/                      conjuntos de avaliação rotulados (triagem/casos.jsonl)
 web/                        frontend (src/api/ isola todo acesso HTTP)
 prompts/                    prompts versionados (triagem.v1.md, copiloto.v1.md...)
-scripts/                    smoke-compose.sh (critérios de aceite contra o compose de pé; usado pelo CI)
+scripts/                    testes.sh (comando único), smoke-compose.sh (critérios de aceite; usado pelo CI), cobertura.mjs
 docs/                       documentação de arquitetura (docs/evals/ guarda os relatórios de eval)
 ```
 
@@ -107,9 +107,13 @@ docs/                       documentação de arquitetura (docs/evals/ guarda os
 
 ```bash
 docker compose up --build                  # sobe tudo (IA fake por padrão; sem .env)
+bash scripts/testes.sh [--completo]        # comando único: backend + front; --completo soma compose isolado, smoke e E2E
 docker compose up --build -d --wait && bash scripts/smoke-compose.sh   # critérios de aceite contra o ambiente de pé
+cd web && npm run e2e                      # E2E (Playwright) contra o compose de pé; E2E_BASE_URL e E2E_NAVEGADOR=msedge opcionais
 dotnet build                               # build do backend
 dotnet test --filter "Category!=ProvedorReal"   # todos os testes do backend (exige Docker); sintaxe válida no MTP
+dotnet test --filter "Category!=ProvedorReal" --results-directory cobertura --coverlet --coverlet-output-format cobertura --coverlet-include "[HelpDesk.*]*" --coverlet-exclude "[HelpDesk.Infrastructure]HelpDesk.Infrastructure.Migrations.*" && node scripts/cobertura.mjs cobertura   # cobertura do backend (relatórios unidos)
+cd web && npm run test:cobertura          # cobertura do frontend (Vitest + v8)
 dotnet test --project tests/HelpDesk.IntegrationTests --filter "Category=ProvedorReal"   # PoC com provedor real (exige chave no .env; nunca no CI)
 OTEL_EXPORTER_OTLP_ENDPOINT=http://aspire-dashboard:18889 docker compose --profile observabilidade up -d   # traces em http://localhost:18888
 LLM_PROVIDER=fake dotnet run --project tools/HelpDesk.Evals -- --rag off --repeticoes 1   # smoke do harness de evals (o mesmo do CI)

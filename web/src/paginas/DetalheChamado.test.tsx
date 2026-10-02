@@ -80,7 +80,7 @@ async function informarAtendente() {
 describe('DetalheChamado', () => {
   it('mostra dados, comentários e histórico, e só os botões das transições permitidas', async () => {
     servirDetalhe([detalhe(), '"7"']);
-    renderizarApp(`/chamados/${ID}`);
+    await renderizarApp(`/chamados/${ID}`);
 
     expect(
       await screen.findByRole('heading', {
@@ -101,7 +101,7 @@ describe('DetalheChamado', () => {
       detalhe({ status: 'Fechado', transicoesPermitidas: [], podeComentar: false }),
       '"9"',
     ]);
-    renderizarApp(`/chamados/${ID}`);
+    await renderizarApp(`/chamados/${ID}`);
 
     expect(
       await screen.findByText('Chamado finalizado: não aceita mais mudanças de status.'),
@@ -115,7 +115,7 @@ describe('DetalheChamado', () => {
 
   it('exige o nome do atendente antes de habilitar as ações', async () => {
     servirDetalhe([detalhe(), '"7"']);
-    renderizarApp(`/chamados/${ID}`);
+    await renderizarApp(`/chamados/${ID}`);
 
     expect(await screen.findByRole('button', { name: 'Fechar' })).toBeDisabled();
     await informarAtendente();
@@ -134,7 +134,7 @@ describe('DetalheChamado', () => {
         );
       }),
     );
-    renderizarApp(`/chamados/${ID}`);
+    await renderizarApp(`/chamados/${ID}`);
     await informarAtendente();
 
     await userEvent.click(screen.getByRole('button', { name: 'Fechar' }));
@@ -170,7 +170,7 @@ describe('DetalheChamado', () => {
         ),
       ),
     );
-    renderizarApp(`/chamados/${ID}`);
+    await renderizarApp(`/chamados/${ID}`);
     await informarAtendente();
 
     await userEvent.click(screen.getByRole('button', { name: 'Fechar' }));
@@ -213,7 +213,7 @@ describe('DetalheChamado', () => {
         return HttpResponse.json({ id: 'c2' }, { status: 201, headers: { ETag: '"8"' } });
       }),
     );
-    renderizarApp(`/chamados/${ID}`);
+    await renderizarApp(`/chamados/${ID}`);
     await informarAtendente();
 
     await userEvent.type(screen.getByLabelText('Novo comentário'), '  Tudo certo?  ');
@@ -236,7 +236,7 @@ describe('DetalheChamado', () => {
         ),
       ),
     );
-    renderizarApp(`/chamados/${ID}`);
+    await renderizarApp(`/chamados/${ID}`);
 
     expect(
       await screen.findByRole('heading', { name: 'Chamado não encontrado' }),
@@ -257,7 +257,7 @@ describe('DetalheChamado', () => {
         { once: true },
       ),
     );
-    renderizarApp(`/chamados/${ID}`);
+    await renderizarApp(`/chamados/${ID}`);
 
     expect(await screen.findByText('Não foi possível carregar o chamado')).toBeInTheDocument();
     expect(screen.getByText('Código de rastreio: rastreio-321')).toBeInTheDocument();

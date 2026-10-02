@@ -6,9 +6,9 @@ Gestão de chamados de suporte com **triagem assistida por IA** (RAG com pgvecto
 
 [![CI](https://github.com/cristianbrunone/helpdesk-inteligente/actions/workflows/ci.yml/badge.svg)](https://github.com/cristianbrunone/helpdesk-inteligente/actions/workflows/ci.yml)
 
-> 🚧 **Em desenvolvimento.** O projeto é construído em sprints incrementais, e este README cresce a cada entrega. O plano está em [`docs/05-sprints.md`](docs/05-sprints.md).
->
-> **Entregue até agora:** Sprint 0 (Walking Skeleton + PoC de IA), Sprint 1 (chamados de ponta a ponta), Sprint 2 (triagem por IA) e Sprint 3 (RAG, dashboard e evals). Veja [o que já existe](#o-que-já-existe).
+> **Entregue em seis sprints incrementais** ([plano](docs/05-sprints.md)): walking skeleton e PoC de IA, chamados de ponta a ponta, triagem por IA, RAG + dashboard + evals, copiloto conversacional e hardening (E2E, cobertura, acessibilidade e padrões). Veja [o que existe](#o-que-existe) e, para quem avalia, o [mapa do enunciado](#mapa-do-enunciado).
+
+**Para testar em 10 minutos:** `docker compose up --build`, abra http://localhost:8080, crie um chamado ("Não consigo emitir o boleto") e veja a triagem da IA chegar em segundos; informe seu nome em "Ações" e aceite a sugestão; no detalhe de um chamado sobre "erro 403", pergunte ao copiloto "Já tivemos casos parecidos?"; e abra o dashboard. Tudo com a IA fake, sem chave.
 
 ## Documentação
 
@@ -23,6 +23,7 @@ O projeto foi planejado antes de ser codificado. Recomendo ler nesta ordem:
 | [`docs/03-modelo-de-dados.md`](docs/03-modelo-de-dados.md) | Modelo de dados, índices e consultas |
 | [`docs/04-contratos-api.md`](docs/04-contratos-api.md) | Contratos da API |
 | [`docs/adr/`](docs/adr/) | Registros de decisão de arquitetura (ADRs) |
+| [`docs/padroes/`](docs/padroes/LEIAME.md) | Padrões de engenharia: fluxo Git, convenções de código, guia de testes, checklist de revisão e fluxo de ADR |
 
 ---
 
@@ -71,6 +72,15 @@ A CA é passada como *build secret* e vale **só durante o build**: as imagens f
 
 ### Rodar os testes
 
+**Um comando só** roda tudo (precisa do .NET 10 SDK, do Node 24 e do Docker):
+
+```bash
+bash scripts/testes.sh              # backend (unitários, integração, arquitetura) + frontend (lint, Vitest, build)
+bash scripts/testes.sh --completo   # + compose isolado (projeto helpdesk-testes, portas 8089/5081): smoke e E2E
+```
+
+O modo `--completo` usa sempre a IA fake, não toca no ambiente de desenvolvimento e derruba o compose dele no fim. As suítes também rodam separadas:
+
 ```bash
 # Backend: unitários, integração (PostgreSQL real via Testcontainers) e arquitetura
 dotnet test --filter "Category!=ProvedorReal"
@@ -81,23 +91,64 @@ cd web && npm ci && npm run lint && npm test && npm run build
 # Smoke test do ambiente completo (com o docker compose de pé)
 docker compose up --build -d --wait && bash scripts/smoke-compose.sh
 
+# E2E com Playwright (criar → triagem → aceitar; copiloto citando fontes; telas em 375 px), com o compose de pé
+cd web && npx playwright install chromium && npm run e2e
+
 # Smoke do harness de evals da IA com o provedor fake (a medição real está em "Evals", na Sprint 3)
 LLM_PROVIDER=fake dotnet run --project tools/HelpDesk.Evals -- --rag off --repeticoes 1
 ```
 
-O mesmo conjunto roda no **CI** (GitHub Actions) a cada push, em três jobs paralelos: backend (com o smoke do harness de evals), frontend e smoke do `docker compose up` sem `.env` (ADR-0022).
+O mesmo conjunto roda no **CI** (GitHub Actions) a cada push, em três jobs paralelos: backend (com cobertura e o smoke do harness de evals), frontend (com cobertura) e o `docker compose up` sem `.env`, com o smoke dos critérios de aceite e o **E2E** no navegador (ADR-0022).
 
 | Suíte | Testes | O que cobrem |
 |---|---|---|
 | Arquitetura | 6 | Regra de dependência entre camadas, nos tipos (NetArchTest) e nos `.csproj` |
 | Unitários | 446 | Máquina de estados do chamado e da triagem; **mascaramento** (positivos, negativos e falsos positivos aceitos); **validador da saída da IA**; fake e seus modos de falha; **resiliência** (timeout, retry, backoff, `Retry-After`) do chat e dos embeddings; **embedding fake** (norma 1, determinismo, proximidade) e normalização do provedor real; **montagem dos documentos do RAG** (mascaramento, corte, chunking, hash); prompt v1/v2 e injeção pelo contexto; **métricas do harness de evals** com resultados simulados; o **conjunto rotulado** (composição e independência do seed); **ferramentas do copiloto** e seus parâmetros; **guardrail de saída do copiloto** (retenção em stream, PII dividida, verificação de citações); **caso de uso ConversarComCopiloto** e adaptador de IA; variáveis de ambiente; seed; heartbeat |
-| Integração | 240 | PostgreSQL real: `CHECK`s, índices, seed e concorrência. API de chamados, de triagem, do copiloto e do dashboard. **Pipeline com spy** (nenhum dado pessoal chega ao provedor, com e sem contexto). **Fila** da triagem. **Reconciliador do RAG** (indexar, reabrir, comentar, fechar sem reindexar, trocar o modelo, desativar artigo, dois reconciliadores e provedor fora). **Busca semântica** ("erro 403 em boletos" recupera o artigo financeiro; `EXPLAIN` com o índice HNSW). **Consultas das ferramentas do copiloto** (similares, artigos, histórico e métricas). **Endpoint SSE do copiloto** (sequência, rate limit 429, guardrail de PII e citação inventada, kill switch 503 e cancelamento). **Harness de evals** com o fake. **Tracing** sem conteúdo. `/health` com a fila |
+| Integração | 237 | PostgreSQL real: `CHECK`s, índices, seed e concorrência. API de chamados, de triagem, do copiloto e do dashboard. **Pipeline com spy** (nenhum dado pessoal chega ao provedor, com e sem contexto). **Fila** da triagem. **Reconciliador do RAG** (indexar, reabrir, comentar, fechar sem reindexar, trocar o modelo, desativar artigo, dois reconciliadores e provedor fora). **Busca semântica** ("erro 403 em boletos" recupera o artigo financeiro; `EXPLAIN` com o índice HNSW). **Consultas das ferramentas do copiloto** (similares, artigos, histórico e métricas). **Endpoint SSE do copiloto** (sequência, rate limit 429, guardrail de PII e citação inventada, kill switch 503 e cancelamento). **Harness de evals** com o fake. **Tracing** sem conteúdo. `/health` com a fila |
 | Frontend | 62 | Filtros na URL; busca com debounce; paginação; formulário e erros 422; botões só das `transicoesPermitidas`; 412; **painel da triagem** (concluída, falhou, pendente com polling, aceitar, rejeitar, refazer, IA desativada, **fontes do RAG**); **dashboard** (cartões, tabelas acessíveis dos gráficos, consumo de IA); **parser e cliente SSE do copiloto** (chunks fragmentados, AbortController, eventos tipados); **painel do copiloto** (streaming incremental, etapas das ferramentas, fontes clicáveis, selo de referência não verificada, resposta truncada, botão parar, kill switch); estados de carregando, vazio e erro |
-| Smoke (Compose) | 19 | Critérios de aceite contra o ambiente de pé: seed, busca sem acento, ciclo com `If-Match` e 412, **triagem concluída pelo Worker e aceita pelo Nginx**, **copiloto via SSE pelo Nginx sem buffer**, **seed indexado no RAG sem ação manual**, **dashboard batendo com a listagem**, `/api/config/ia`, e dados pessoais fora dos logs da API **e do Worker** |
+| Smoke (Compose) | 20 | Critérios de aceite contra o ambiente de pé: seed, busca sem acento, ciclo com `If-Match` e 412 **pedindo gzip como o navegador**, **triagem concluída pelo Worker e aceita pelo Nginx**, **texto acentuado tratado pelo Worker** (ICU), **copiloto via SSE pelo Nginx sem buffer, com fontes verificadas**, **seed indexado no RAG sem ação manual**, **dashboard batendo com a listagem**, `/api/config/ia`, e dados pessoais fora dos logs da API **e do Worker** |
+| E2E (Playwright) | 6 | No navegador, contra o compose: **criar chamado → ver a triagem → aceitar** (categoria e prioridade aplicadas); **copiloto** citando chamados parecidos com fontes clicáveis; lista, novo chamado, detalhe e dashboard **sem rolagem horizontal em 375 px** |
+
+#### Cobertura
+
+Medida em toda execução do CI e publicada no resumo dela. Os números abaixo são da entrega:
+
+| Backend (linhas, os 3 projetos de teste unidos) | Cobertura |
+|---|---:|
+| `HelpDesk.Domain` | 99,4% |
+| `HelpDesk.Application` | 99,3% |
+| `HelpDesk.Infrastructure` (sem as migrations) | 97,6% |
+| `HelpDesk.Api` | 92,5% |
+| `HelpDesk.Evals` | 91,7% |
+| `HelpDesk.Worker` | 63,8% |
+| **Total** | **96,2%** (5.168 de 5.374 linhas) |
+
+**Frontend:** 90,9% das linhas, 80,6% dos ramos e 94,1% das funções. O Worker é o mais baixo porque os `BackgroundService` são exercitados mais pelo smoke e pelo E2E (que não medem cobertura .NET) do que pelos testes de unidade. A cobertura é consequência, não meta ([guia de testes](docs/padroes/guia-de-testes.md#cobertura)).
+
+```bash
+# Backend: um relatório Cobertura por projeto de teste, unidos pelo script (linha coberta por qualquer suíte)
+dotnet test --filter "Category!=ProvedorReal" --results-directory cobertura --coverlet --coverlet-output-format cobertura \
+  --coverlet-include "[HelpDesk.*]*" --coverlet-exclude "[HelpDesk.Infrastructure]HelpDesk.Infrastructure.Migrations.*"
+node scripts/cobertura.mjs cobertura
+
+# Frontend (relatório HTML em web/coverage/lcov-report)
+cd web && npm run test:cobertura
+```
 
 ---
 
-## O que já existe
+## O que existe
+
+### Sprint 5: Hardening e entrega
+
+- **E2E no navegador** (Playwright, no CI): o fluxo do enunciado (criar → triagem → aceitar), o copiloto citando fontes e as quatro telas em 375 px, contra o compose de pé e passando pelo Nginx.
+- **Dois bugs de produção encontrados pelo E2E**, que passavam em todos os 689 testes do backend e nos 62 do front, porque só aparecem no caminho real do usuário:
+  - **o Nginx enfraquecia o `ETag`** ao comprimir o JSON da API (`"12"` virava `W/"12"`), e **toda escrita pelo navegador** (mudar status, comentar, aceitar a triagem) respondia 412. Corrigido com `gzip off` nas rotas da API; o smoke agora pede gzip, como um navegador;
+  - **as imagens .NET (Alpine) rodavam sem ICU**: remover e comparar acentos não funcionava em produção, afetando o mascaramento de nomes ("João" × "Joao"), o validador da saída da IA e o copiloto. Os testes rodam com ICU e não viam. Corrigido instalando o ICU nas imagens ([ADR-0025](docs/adr/0025-icu-nas-imagens-dotnet.md)); o smoke agora envia texto acentuado.
+- **Acessibilidade:** auditoria com o axe-core nas telas. O único problema era contraste de cor (até 88 elementos por tela abaixo de 4,5:1); depois do ajuste no tema, **zero violações** do WCAG 2.1 AA.
+- **Pacote inicial do front 61% menor** (1.112 → 429 kB; gzip 331 → 133 kB): dashboard, formulário e detalhe carregados sob demanda.
+- **Cobertura medida** (backend 96,2%, frontend 90,9% das linhas) e **um comando para todos os testes** (`bash scripts/testes.sh`).
+- **Padrões de engenharia** para o time em [`docs/padroes/`](docs/padroes/LEIAME.md): guia de testes, convenções de código, checklist de revisão, fluxo de ADR e fluxo Git.
 
 ### Sprint 4: Copiloto conversacional
 
@@ -214,9 +265,9 @@ O provedor é escolhido só por variáveis de ambiente (ADR-0005). No `.env` (nu
 | **OpenAI** | `LLM_PROVIDER=openai-compatible` · `LLM_BASE_URL=https://api.openai.com/v1/` · `LLM_API_KEY=<chave>` · `LLM_CHAT_MODEL=<modelo>` |
 | **Ollama** (100% local, nenhum dado sai da máquina) | `LLM_PROVIDER=openai-compatible` · `LLM_BASE_URL=http://host.docker.internal:11434/v1/` · `LLM_API_KEY=ollama` (qualquer valor) · `LLM_CHAT_MODEL=<modelo baixado>` |
 
-Depois, `docker compose up -d worker` (só o Worker chama o LLM). Configuração inválida impede o serviço de subir com uma mensagem clara, que **nunca** mostra o valor da chave.
+Depois, `docker compose up -d api worker`: o Worker faz a triagem e a API roda o copiloto, e os dois leem as mesmas variáveis. Configuração inválida impede o serviço de subir com uma mensagem clara, que **nunca** mostra o valor da chave. Trocar o modelo de embedding reindexa o RAG sozinho ([como funciona o RAG](#como-funciona-o-rag)).
 
-> **Rede com inspeção TLS** (proxy corporativo/DLP): a CA corporativa entra só no **build** das imagens, nunca nelas. Nesse cenário, o Worker em contêiner não consegue falar com um provedor na internet (`certificate verify failed`). Para testar um provedor real, rode o Worker fora do contêiner (`dotnet run --project src/HelpDesk.Worker`, apontando `ConnectionStrings__Default` para `localhost:55432`) ou use o Ollama local.
+> **Rede com inspeção TLS** (proxy corporativo/DLP): a CA corporativa entra só no **build** das imagens, nunca nelas. Nesse cenário, os contêineres não conseguem falar com um provedor na internet (`certificate verify failed`). Para testar um provedor real, rode o Worker (e, para o copiloto, a API) fora do contêiner (`dotnet run --project src/HelpDesk.Worker`, apontando `ConnectionStrings__Default` para `localhost:55432`) ou use o Ollama local.
 
 > **Free tier × dados reais:** o free tier do Gemini pode usar os dados para melhorar o produto. O mascaramento abaixo reduz o risco, mas para dados reais de clientes use o tier pago, a Vertex AI ou o Ollama (ADR-0006).
 
@@ -253,6 +304,7 @@ Abra **http://localhost:18888** → *Traces* (sem login: o painel é local e ef�
 |---|---|---|
 | A IA está gerando sugestões ruins ou o provedor está instável | `IA_TRIAGEM_HABILITADA=false` no `.env` e `docker compose up -d api worker` | Chamados novos nascem sem triagem, "Refazer" responde 503 e o Worker para de consumir a fila. As pendentes ficam guardadas e são processadas quando a flag voltar. O `/health` mostra `Degraded` se houver pendentes. |
 | Custo ou cota estourando | `TRIAGEM_MAX_TOKENS_SAIDA` menor, ou desligar a triagem como acima | Respostas mais curtas; o que passar do limite vira `Falhou` |
+| O copiloto está respondendo mal, ou consumindo cota demais | `IA_COPILOTO_HABILITADO=false` (ou `COPILOTO_MAX_TOKENS_SAIDA` / `COPILOTO_RATE_LIMIT_POR_MINUTO` menores) e `docker compose up -d api` | O painel some da tela e o endpoint responde 503; a triagem continua funcionando |
 | Suspeita de vazamento de chave | Revogar a chave no console do provedor e trocar no `.env` | O `.env` nunca é versionado (ADR-0023) |
 
 Trocar para `LLM_PROVIDER=fake` **não** é forma de desligar a IA: o fake gera sugestões de verdade (ADR-0021).
@@ -387,9 +439,10 @@ src/
 tests/                      unitários, integração (Testcontainers) e arquitetura
 tools/HelpDesk.Evals/       harness de evals offline da IA (ADR-0018)
 evals/                      conjunto rotulado (evals/triagem/casos.jsonl)
-prompts/                    prompts versionados (triagem.v1.md, triagem.v2.md)
-web/                        React + TypeScript (src/api/ isola todo acesso HTTP)
-scripts/                    smoke test do ambiente completo
+prompts/                    prompts versionados (triagem.v1.md, triagem.v2.md, copiloto.v1.md)
+web/                        React + TypeScript (src/api/ isola todo acesso HTTP; e2e/ com o Playwright)
+scripts/                    testes.sh (comando único), smoke-compose.sh, cobertura.mjs
+docs/                       requisitos, arquitetura, ADRs, contratos, evals e padrões de engenharia
 ```
 
 ---
@@ -424,6 +477,7 @@ A convenção snake_case, o health check do banco e a validação dos dados de e
 | Testcontainers.PostgreSql | PostgreSQL **real** (imagem `pgvector/pgvector`) nos testes de integração, sem banco em memória |
 | Microsoft.AspNetCore.Mvc.Testing | `WebApplicationFactory`: a API real em memória nos testes |
 | NetArchTest.Rules | Garante a regra de dependência entre camadas |
+| coverlet.MTP | Cobertura de código como extensão do Microsoft.Testing.Platform, com licença MIT (um relatório por projeto, unidos pelo `scripts/cobertura.mjs`) |
 
 ### Frontend (React + TypeScript)
 
@@ -437,6 +491,8 @@ A convenção snake_case, o health check do banco e a validação dos dados de e
 | React Hook Form + Zod + @hookform/resolvers | Formulários sem re-render a cada tecla e esquema de validação tipado, com as mesmas regras e mensagens da API. O resolver é o adaptador oficial entre os dois |
 | ESLint (typescript-eslint strict) + Prettier | Qualidade e formatação; proíbe `any` |
 | Vitest + Testing Library + MSW | Testes de componente com a API simulada no nível da rede |
+| @vitest/coverage-v8 | Cobertura do Vitest com a instrumentação nativa do V8, sem transformar o código |
+| Playwright (`@playwright/test`) | E2E no navegador real contra o compose; no CI usa o Chromium, e localmente aceita um navegador instalado (`E2E_NAVEGADOR=msedge`) |
 
 ### Infraestrutura
 
@@ -445,5 +501,62 @@ A convenção snake_case, o health check do banco e a validação dos dados de e
 | PostgreSQL + pgvector | Dados, fila de trabalho e vetores no mesmo banco (ADR-0003, ADR-0007) |
 | Nginx (sem root) | Serve o frontend e faz o proxy de `/api` na mesma origem |
 | Docker Compose | Ambiente completo com um comando (NFR-08) |
+| ICU nas imagens .NET | As imagens Alpine vêm sem ICU; sem ele, remover e comparar acentos não funciona (ADR-0025). Copiado da imagem do SDK, sem rede no build |
 | GitHub Actions | CI com build, testes e smoke do Compose (ADR-0022) |
 | Aspire Dashboard (opcional) | Visualização local dos traces, no profile `observabilidade` do Compose (ADR-0019) |
+
+---
+
+## O que ficaria para uma próxima versão
+
+O que ficou de fora foi decidido, não esquecido. Cada item tem o motivo e, quando existe, o ADR com o gatilho de reavaliação.
+
+| Tema | O que falta | Por que ficou para depois |
+|---|---|---|
+| **Autenticação e perfis** | JWT com perfis solicitante e atendente; hoje o atendente se identifica num campo livre (P-03) | Diferencial do enunciado; o escopo priorizou a IA conversacional, foco da vaga |
+| **Qualidade da triagem** | `triagem.v3` para a regra "problema com contorno = Média" (onde a v2 perdeu para a v1), com o critério de adoção fixado **antes** de medir; métrica conjunta (categoria **e** prioridade certas) no relatório do harness | O eval da Sprint 3 mostrou o alvo; ajustar o prompt sem um critério prévio seria escolher o resultado depois de vê-lo |
+| **Evals do copiloto** | Conjunto rotulado e métricas para o `copiloto.v1` (uso certo das ferramentas, citações, recusa de escrita) | O harness (ADR-0018) cobre a triagem; o copiloto tem testes determinísticos com o fake, mas não medição de qualidade com o modelo real |
+| **Grounding das respostas** | LLM-as-judge por amostragem para afirmações sem citação | Hoje só as citações `#numero` são verificadas (ADR-0020); o juiz dobra custo e latência |
+| **Dados pessoais** | NER/DLP além das regex (nomes de terceiros, endereços) | O mascaramento por regex cobre e-mail, telefone, CPF e o nome do solicitante; não é um DLP completo (ADR-0006) |
+| **Rate limit do copiloto** | Por atendente (com autenticação) ou por IP real atrás do proxy (`ForwardedHeaders` restrito à rede do Nginx) | Hoje, atrás do Nginx, o limite vale para o conjunto dos atendentes |
+| **Notificações em tempo real** | SignalR/SSE para "a triagem terminou", no lugar do polling | O polling com backoff resolve com uma triagem de segundos (ADR-0012, gatilho registrado) |
+| **Feature flags dinâmicas** | Kill switches sem reiniciar o contêiner | Num único ambiente, reiniciar leva segundos (ADR-0021) |
+| **RAG** | *Reranking* e reescrita da consulta para chamados ambíguos | Só se a taxa de rejeição por categoria pedir (gatilho do ADR-0004) |
+| **Acessibilidade no CI** | Auditoria com o axe-core no E2E, falhando o build em nova violação | A auditoria foi feita na Sprint 5, com zero violações, mas ainda não roda a cada push |
+| **Histórico do copiloto** | Persistir as conversas | Fora do escopo de propósito (P-08): evita guardar conversas com possíveis dados pessoais |
+| **Fila e escala** | Mensageria (RabbitMQ, Service Bus) | A fila em tabela com `SKIP LOCKED` atende o volume com zero infraestrutura extra (ADR-0003) |
+| **Deploy** | Ambiente em nuvem com link acessível | Diferencial do enunciado, fora do prazo |
+
+## Uso de assistentes de IA no desenvolvimento
+
+O enunciado permite o uso de assistentes e pede que ele seja informado. Este projeto foi desenvolvido com o **Claude Code** (Anthropic), no VS Code, como par de programação. Em resumo:
+
+- **Planejamento:** os requisitos, a arquitetura, os ADRs, o modelo de dados, os contratos e o plano de sprints (`docs/`) foram escritos antes do código, em conversa com o assistente, e revisados e decididos por mim. As alternativas de cada ADR vieram dessa discussão; a escolha final foi sempre minha.
+- **Implementação, um commit por vez:** para cada commit, o assistente explicava o que ia fazer, implementava, rodava build, testes e lint, e mostrava os resultados reais. Eu revisava, fazia o commit e o push. Nenhum commit, push, merge ou tag foi feito pelo assistente.
+- **Testes que provam algo:** todo teste novo foi quebrado de propósito uma vez, para mostrar que detecta a falha que promete detectar.
+- **Regras explícitas** no [`CLAUDE.md`](CLAUDE.md): seguir os ADRs (ou propor um novo), escopo da sprint, nenhum segredo, mascaramento tipado, fake por padrão, bibliotecas só com justificativa.
+- **Segredos:** a chave do provedor real foi colocada por mim no `.env`; o assistente nunca a leu, imprimiu ou registrou.
+- **Revisão:** o assistente também revisou código escrito por mim, e encontrou, por exemplo, a API sem as variáveis de IA no compose e o código do 429 fora do contrato (Sprint 4).
+
+A [`JORNADA.md`](docs/JORNADA.md) conta, sprint a sprint, o que foi feito, o que deu errado e o que se aprendeu, inclusive os erros do assistente que os testes e as revisões pegaram.
+
+## Mapa do enunciado
+
+Onde cada item da seção 8 (Entrega) e dos testes (seção 7) está atendido:
+
+| Enunciado | Onde |
+|---|---|
+| `docker compose up` sobe banco, API e frontend, com migrations, seed e IA fake | [Subir tudo](#subir-tudo); verificado a cada push pelo smoke do CI, a partir de um clone sem `.env` |
+| Como rodar | [Como rodar](#como-rodar) |
+| Como rodar os testes (um comando) e a cobertura | [Rodar os testes](#rodar-os-testes) e [Cobertura](#cobertura) |
+| Como ativar um provedor real de IA | [Como ativar um provedor real](#como-ativar-um-provedor-real) |
+| Como o prompt foi construído | [Como o prompt foi construído](#como-o-prompt-foi-construído) e [o prompt com contexto](#o-prompt-com-contexto-triagemv2) |
+| Arquitetura em alto nível, com diagrama | [Arquitetura](#arquitetura) e [`docs/02-add.md`](docs/02-add.md) |
+| Justificativa dos índices | [Índices](#índices-resumo) e [`docs/03-modelo-de-dados.md` §5](docs/03-modelo-de-dados.md#5-índices-e-justificativas) |
+| O que ficaria para uma próxima versão | [Próxima versão](#o-que-ficaria-para-uma-próxima-versão) |
+| `DECISOES.md` com decisões, alternativas e trade-offs | [`DECISOES.md`](DECISOES.md), com os ADRs completos em [`docs/adr/`](docs/adr/) |
+| Histórico de commits real e incremental | 6 PRs de sprint com merge commit e tags `v0.1.0` a `v1.0.0` ([fluxo Git](docs/padroes/fluxo-git.md)) |
+| Pipeline de CI | [`.github/workflows/ci.yml`](.github/workflows/ci.yml): backend, frontend, smoke do compose e E2E |
+| Bibliotecas usadas e por quê | [Stack e bibliotecas](#stack-e-bibliotecas) |
+| Uso de assistentes de IA | [Uso de assistentes de IA](#uso-de-assistentes-de-ia-no-desenvolvimento) |
+| Testes mínimos (transições, mascaramento, parsing da IA, integração com banco real, 3+ de componente) e E2E | [Rodar os testes](#rodar-os-testes): 689 no backend, 62 no front, 20 no smoke e 6 no E2E |
