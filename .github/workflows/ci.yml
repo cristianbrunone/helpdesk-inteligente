@@ -107,6 +107,22 @@ jobs:
       - name: Verifica os critérios de aceite
         run: bash scripts/smoke-compose.sh
 
+      # E2E (enunciado §7): o navegador fala com o mesmo ambiente de pé, pelo Nginx, com a IA fake.
+      - uses: actions/setup-node@v7.0.0
+        with:
+          node-version-file: web/.nvmrc
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+
+      - name: E2E (Playwright, Chromium) criar → triagem → aceitar
+        working-directory: web
+        env:
+          E2E_BASE_URL: http://localhost:8080
+        run: |
+          npm ci --no-audit --no-fund
+          npx playwright install --with-deps chromium
+          npm run e2e
+
       - name: Logs dos serviços (em caso de falha)
         if: failure()
         run: docker compose ps -a && docker compose logs --no-color

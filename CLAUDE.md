@@ -108,6 +108,7 @@ docs/                       documentação de arquitetura (docs/evals/ guarda os
 ```bash
 docker compose up --build                  # sobe tudo (IA fake por padrão; sem .env)
 docker compose up --build -d --wait && bash scripts/smoke-compose.sh   # critérios de aceite contra o ambiente de pé
+cd web && npm run e2e                      # E2E (Playwright) contra o compose de pé; E2E_BASE_URL e E2E_NAVEGADOR=msedge opcionais
 dotnet build                               # build do backend
 dotnet test --filter "Category!=ProvedorReal"   # todos os testes do backend (exige Docker); sintaxe válida no MTP
 dotnet test --project tests/HelpDesk.IntegrationTests --filter "Category=ProvedorReal"   # PoC com provedor real (exige chave no .env; nunca no CI)
