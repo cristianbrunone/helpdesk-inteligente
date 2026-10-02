@@ -154,6 +154,7 @@ public sealed class LeitorAmbienteTests
     [InlineData("JSON_INVALIDO", ModoFake.JsonInvalido)]
     [InlineData("categoria_inexistente", ModoFake.CategoriaInexistente)]
     [InlineData("rate_limit", ModoFake.RateLimit)]
+    [InlineData("vaza_dados", ModoFake.VazaDados)]
     public void OpcoesLlm_ModoDoFake_EAceitoSemDiferenciarCaixa(string valor, ModoFake esperado)
     {
         ComVariaveis(("LLM_FAKE_MODO", valor)).OpcoesLlm().ModoFake.ShouldBe(esperado);

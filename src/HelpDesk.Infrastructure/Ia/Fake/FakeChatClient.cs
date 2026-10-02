@@ -44,14 +44,17 @@ public sealed class FakeChatClient(ModoFake modo = ModoFake.Normal, TimeSpan? at
         CancellationToken cancellationToken = default)
     {
         var mensagens = messages.ToList();
-        switch (modo)
+        await AplicarModoDeFalhaAsync(cancellationToken);
+
+        if (EhCopiloto(options))
         {
-            case ModoFake.Lento:
-                await Task.Delay(_atraso, cancellationToken);
-                break;
-            case ModoFake.RateLimit:
-                throw new ProvedorIndisponivelException(ProvedorIndisponivelException.TipoRateLimit,
-                    "Fake em modo rate_limit (HTTP 429).", TimeSpan.FromMilliseconds(200));
+            var (mensagem, motivo) = FakeCopiloto.Responder(mensagens, options!, modo == ModoFake.VazaDados);
+            return new ChatResponse(mensagem)
+            {
+                ModelId = OpcoesLlm.ModeloFake,
+                FinishReason = motivo,
+                Usage = Uso(mensagens, mensagem.Text),
+            };
         }
 
         var sistema = string.Join('\n', mensagens.Where(m => m.Role == ChatRole.System).Select(m => m.Text));
@@ -80,11 +83,53 @@ public sealed class FakeChatClient(ModoFake modo = ModoFake.Normal, TimeSpan? at
         [EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
         var resposta = await GetResponseAsync(messages, options, cancellationToken);
-        foreach (var atualizacao in resposta.ToChatResponseUpdates())
+        if (!EhCopiloto(options) || resposta.Messages.Single().Contents.OfType<FunctionCallContent>().Any())
         {
-            yield return atualizacao;
+            foreach (var atualizacao in resposta.ToChatResponseUpdates())
+            {
+                yield return atualizacao;
+            }
+
+            yield break;
+        }
+
+        // O texto do copiloto chega em pedaços, como de um modelo real; o uso vem no fim (ADR-0012).
+        foreach (var pedaco in FakeCopiloto.Pedacos(resposta.Text))
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            yield return new ChatResponseUpdate(ChatRole.Assistant, pedaco) { ModelId = OpcoesLlm.ModeloFake };
+        }
+
+        yield return new ChatResponseUpdate
+        {
+            Role = ChatRole.Assistant,
+            ModelId = OpcoesLlm.ModeloFake,
+            FinishReason = resposta.FinishReason,
+            Contents = [new UsageContent(resposta.Usage!)],
+        };
+    }
+
+    /// <summary>O copiloto é quem manda ferramentas; a triagem nunca manda (ADR-0004).</summary>
+    private static bool EhCopiloto(ChatOptions? options) => options?.Tools is { Count: > 0 };
+
+    private async Task AplicarModoDeFalhaAsync(CancellationToken cancellationToken)
+    {
+        switch (modo)
+        {
+            case ModoFake.Lento:
+                await Task.Delay(_atraso, cancellationToken);
+                break;
+            case ModoFake.RateLimit:
+                throw new ProvedorIndisponivelException(ProvedorIndisponivelException.TipoRateLimit,
+                    "Fake em modo rate_limit (HTTP 429).", TimeSpan.FromMilliseconds(200));
         }
     }
+
+    private static UsageDetails Uso(List<ChatMessage> mensagens, string resposta) => new()
+    {
+        InputTokenCount = mensagens.Sum(m => EstimarTokens(m.Text)),
+        OutputTokenCount = EstimarTokens(resposta),
+    };
 
     public object? GetService(Type serviceType, object? serviceKey = null) =>
         serviceKey is not null ? null

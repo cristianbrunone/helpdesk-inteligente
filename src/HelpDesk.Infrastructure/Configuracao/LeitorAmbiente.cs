@@ -154,8 +154,9 @@ public sealed class LeitorAmbiente(Func<string, string?> ler)
         "json_invalido" => ModoFake.JsonInvalido,
         "categoria_inexistente" => ModoFake.CategoriaInexistente,
         "rate_limit" => ModoFake.RateLimit,
+        "vaza_dados" => ModoFake.VazaDados,
         var outro => throw Invalida(LlmFakeModo, outro,
-            "normal, lento, json_invalido, categoria_inexistente ou rate_limit"),
+            "normal, lento, json_invalido, categoria_inexistente, rate_limit ou vaza_dados"),
     };
 
     /// <summary>Padrões do ADR-0005 (revisados na PoC) e do ADR-0021.</summary>

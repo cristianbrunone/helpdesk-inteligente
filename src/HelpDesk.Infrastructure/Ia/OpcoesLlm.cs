@@ -14,6 +14,9 @@ public enum ModoFake
     JsonInvalido,
     CategoriaInexistente,
     RateLimit,
+
+    /// <summary>Copiloto: a resposta "vaza" um CPF e cita um chamado inexistente (teste do guardrail, ADR-0020).</summary>
+    VazaDados,
 }
 
 /// <summary>
