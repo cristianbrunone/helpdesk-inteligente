@@ -1,6 +1,7 @@
 using System.ClientModel;
 using System.Diagnostics;
 using System.Globalization;
+using System.Runtime.CompilerServices;
 using Microsoft.Extensions.AI;
 using Microsoft.Extensions.Logging;
 
@@ -73,12 +74,101 @@ public sealed partial class ResilienciaChatClient(
         }
     }
 
-    /// <summary>Streaming passa direto: repetir no meio de um stream já entregue duplicaria texto.</summary>
-    public override IAsyncEnumerable<ChatResponseUpdate> GetStreamingResponseAsync(
+    /// <summary>
+    /// Streaming (copiloto, ADR-0012). Repete só <b>antes do primeiro pedaço</b>: depois que algo foi entregue,
+    /// repetir duplicaria texto na tela, então a falha sobe já classificada. O prazo vale até o primeiro pedaço e,
+    /// depois, entre um pedaço e o seguinte (inatividade), para um stream longo e saudável não ser cortado.
+    /// </summary>
+    public override async IAsyncEnumerable<ChatResponseUpdate> GetStreamingResponseAsync(
         IEnumerable<ChatMessage> messages,
         ChatOptions? options = null,
-        CancellationToken cancellationToken = default) =>
-        base.GetStreamingResponseAsync(messages, options, cancellationToken);
+        [EnumeratorCancellation] CancellationToken cancellationToken = default)
+    {
+        var mensagens = messages as IList<ChatMessage> ?? [.. messages];
+        var totalTentativas = opcoes.MaxRetries + 1;
+
+        for (var tentativa = 1; ; tentativa++)
+        {
+            using var atividade = _fonte.StartActivity("llm.tentativa");
+            atividade?.SetTag("llm.tentativa", tentativa);
+            atividade?.SetTag("llm.streaming", true);
+
+            using var prazo = new CancellationTokenSource(opcoes.Timeout);
+            using var limite = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, prazo.Token);
+            var opcoesComPrazo = ContextoUsoLlm.ComPrazo(options, prazo.Token);
+            await using var enumerador = base.GetStreamingResponseAsync(mensagens, opcoesComPrazo, limite.Token)
+                .GetAsyncEnumerator(limite.Token);
+
+            ProvedorIndisponivelException? falha;
+            bool temPrimeiro;
+            try
+            {
+                temPrimeiro = await enumerador.MoveNextAsync();
+                falha = null;
+            }
+            catch (Exception erro) when (TransitoriaNoStream(erro, cancellationToken) is { } transitoria)
+            {
+                temPrimeiro = false;
+                falha = transitoria;
+            }
+            catch (Exception erro) when (Marcar(atividade, erro, cancellationToken))
+            {
+                throw; // nunca chega aqui: o filtro só marca o span
+            }
+
+            if (falha is not null)
+            {
+                atividade?.SetTag("llm.resultado", "transitoria");
+                atividade?.SetTag("llm.erro_tipo", falha.Tipo);
+                atividade?.SetStatus(ActivityStatusCode.Error, falha.Tipo);
+                if (tentativa >= totalTentativas)
+                {
+                    LogEsgotou(logger, totalTentativas, falha.Tipo);
+                    throw falha;
+                }
+
+                var espera = CalcularEspera(tentativa, falha.RetryAfter, _aleatorio);
+                LogNovaTentativa(logger, tentativa, totalTentativas, falha.Tipo, espera.TotalMilliseconds);
+                await _esperar(espera, cancellationToken);
+                continue;
+            }
+
+            if (temPrimeiro)
+            {
+                yield return enumerador.Current;
+                while (true)
+                {
+                    prazo.CancelAfter(opcoes.Timeout);
+                    bool temProximo;
+                    try
+                    {
+                        temProximo = await enumerador.MoveNextAsync();
+                    }
+                    catch (Exception erro) when (TransitoriaNoStream(erro, cancellationToken) is { } noMeio)
+                    {
+                        atividade?.SetTag("llm.resultado", "falha_no_meio_do_stream");
+                        atividade?.SetTag("llm.erro_tipo", noMeio.Tipo);
+                        atividade?.SetStatus(ActivityStatusCode.Error, noMeio.Tipo);
+                        throw noMeio;
+                    }
+                    catch (Exception erro) when (Marcar(atividade, erro, cancellationToken))
+                    {
+                        throw;
+                    }
+
+                    if (!temProximo)
+                    {
+                        break;
+                    }
+
+                    yield return enumerador.Current;
+                }
+            }
+
+            atividade?.SetTag("llm.resultado", "sucesso");
+            yield break;
+        }
+    }
 
     /// <summary>
     /// Backoff exponencial (1 s, 2 s, 4 s...) com jitter entre 50% e 100%, limitado a 30 s. Se o provedor pediu
@@ -115,6 +205,25 @@ public sealed partial class ResilienciaChatClient(
             ProvedorIndisponivelException.TipoIndisponivel, "Falha de rede ao chamar o provedor."),
         _ => null,
     };
+
+    /// <summary>No stream, o prazo cancela o token: um cancelamento que não veio de fora é timeout.</summary>
+    private ProvedorIndisponivelException? TransitoriaNoStream(Exception erro, CancellationToken externo) =>
+        erro is OperationCanceledException && !externo.IsCancellationRequested
+            ? new ProvedorIndisponivelException(ProvedorIndisponivelException.TipoTimeout,
+                $"O provedor ficou {opcoes.Timeout.TotalSeconds:0} s sem enviar nada.")
+            : Transitoria(erro, externo);
+
+    /// <summary>Marca o span de uma falha definitiva e devolve <c>false</c>: usado num filtro, não captura nada.</summary>
+    private static bool Marcar(Activity? atividade, Exception erro, CancellationToken externo)
+    {
+        if (!externo.IsCancellationRequested)
+        {
+            atividade?.SetTag("llm.resultado", "erro");
+            atividade?.SetStatus(ActivityStatusCode.Error, erro.GetType().Name);
+        }
+
+        return false;
+    }
 
     private async Task<ChatResponse> TentarAsync(
         IList<ChatMessage> mensagens, ChatOptions? options, CancellationToken externo)

@@ -12,6 +12,12 @@ public static class ContextoUsoLlm
     public const string TriagemId = "helpdesk.triagem_id";
     public const string ChamadoId = "helpdesk.chamado_id";
 
+    /// <summary>
+    /// O token do prazo da tentativa, posto pela resiliência no streaming: com ele, a telemetria distingue um
+    /// timeout (falha do provedor) de o atendente ter parado o stream (cancelamento).
+    /// </summary>
+    internal const string Prazo = "helpdesk.prazo";
+
     public static ChatOptions ParaTriagem(this ChatOptions opcoes, Guid triagemId, Guid chamadoId)
     {
         opcoes.AdditionalProperties ??= [];
@@ -20,6 +26,27 @@ public static class ContextoUsoLlm
         opcoes.AdditionalProperties[ChamadoId] = chamadoId;
         return opcoes;
     }
+
+    /// <summary>Uma pergunta ao copiloto sobre o chamado (cada rodada de ferramentas é uma chamada registrada).</summary>
+    public static ChatOptions ParaCopiloto(this ChatOptions opcoes, Guid chamadoId)
+    {
+        opcoes.AdditionalProperties ??= [];
+        opcoes.AdditionalProperties[Operacao] = Persistencia.RegistroUsoLlm.OperacaoCopiloto;
+        opcoes.AdditionalProperties[ChamadoId] = chamadoId;
+        return opcoes;
+    }
+
+    internal static ChatOptions ComPrazo(ChatOptions? opcoes, CancellationToken prazo)
+    {
+        var copia = opcoes?.Clone() ?? new ChatOptions();
+        copia.AdditionalProperties ??= [];
+        copia.AdditionalProperties[Prazo] = prazo;
+        return copia;
+    }
+
+    internal static bool PrazoEsgotado(ChatOptions? opcoes) =>
+        opcoes?.AdditionalProperties?.TryGetValue(Prazo, out var prazo) == true
+        && prazo is CancellationToken { IsCancellationRequested: true };
 
     internal static (string? Operacao, Guid? TriagemId, Guid? ChamadoId) Ler(ChatOptions? opcoes) => (
         opcoes?.AdditionalProperties?.TryGetValue(Operacao, out var operacao) == true ? operacao as string : null,
