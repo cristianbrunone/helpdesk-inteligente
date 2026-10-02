@@ -16,7 +16,12 @@ async function semRolagemHorizontal(page: Page) {
 
 test('lista de chamados cabe em 375 px', async ({ page }) => {
   await page.goto('/chamados');
-  await expect(page.getByRole('link', { name: /^#\d+/ }).first()).toBeVisible();
+  // Com os filtros recolhidos (Sprint 7, A2), os primeiros chamados aparecem sem rolar.
+  await expect(page.getByRole('link', { name: /^#\d+/ }).nth(2)).toBeInViewport({ ratio: 1 });
+  await semRolagemHorizontal(page);
+
+  await page.getByRole('button', { name: 'Filtros' }).click();
+  await expect(page.getByRole('group', { name: 'Status' })).toBeVisible();
   await semRolagemHorizontal(page);
 });
 
