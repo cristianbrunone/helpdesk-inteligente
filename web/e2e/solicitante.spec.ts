@@ -21,8 +21,9 @@ test.describe('Fluxo do Solicitante', () => {
     await page.getByRole('button', { name: 'Entrar' }).click();
 
     await expect(page).toHaveURL(/\/chamados/);
-    await expect(page.getByText('Marina Costa')).toBeVisible();
-    await expect(page.getByText('Solicitante')).toBeVisible();
+    const sessaoUsuario = page.getByRole('group', { name: 'Usuário da sessão' });
+    await expect(sessaoUsuario.getByText('Marina Costa')).toBeVisible();
+    await expect(sessaoUsuario.getByText('Solicitante')).toBeVisible();
 
     // 2. Não vê o link do Dashboard no menu de navegação
     const nav = page.getByRole('navigation', { name: 'Navegação' });
