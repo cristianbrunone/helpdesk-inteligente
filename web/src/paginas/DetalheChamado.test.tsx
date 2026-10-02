@@ -173,6 +173,7 @@ describe('DetalheChamado', () => {
     expect(
       await screen.findByText('Chamado finalizado: não aceita mais mudanças de status.'),
     ).toBeInTheDocument();
+    expect(await screen.findByText('Status alterado para Fechado.')).toBeInTheDocument();
     expect(recebido).toEqual({
       ifMatch: '"7"',
       corpo: {

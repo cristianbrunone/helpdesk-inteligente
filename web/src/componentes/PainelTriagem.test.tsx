@@ -115,6 +115,9 @@ describe('PainelTriagem', () => {
     await userEvent.click(await screen.findByRole('button', { name: 'Aceitar sugestão' }));
 
     expect(await screen.findByText(/Aceita por Ana \(suporte\) em/)).toBeInTheDocument();
+    expect(
+      await screen.findByText('Sugestão aceita: categoria e prioridade aplicadas ao chamado.'),
+    ).toBeInTheDocument();
     expect(recebido).toEqual({ ifMatch: '"1"', corpo: {} });
     expect(screen.queryByRole('button', { name: 'Aceitar sugestão' })).not.toBeInTheDocument();
   });
@@ -144,6 +147,7 @@ describe('PainelTriagem', () => {
     await userEvent.click(screen.getByRole('button', { name: 'Confirmar rejeição' }));
 
     expect(await screen.findByText(/Rejeitada por Ana \(suporte\) em/)).toBeInTheDocument();
+    expect(await screen.findByText('Sugestão rejeitada.')).toBeInTheDocument();
     expect(corpo).toEqual({ motivo: 'Categoria correta é Bug' });
   });
 
