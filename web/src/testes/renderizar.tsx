@@ -53,7 +53,8 @@ export async function renderizarApp(rota = '/') {
         throw new Error('A página ainda está carregando.');
       }
     },
-    { timeout: 5000 },
+    // Abaixo do testTimeout (vite.config.ts), para a falha dizer que a página não carregou, e não só "timeout".
+    { timeout: 10_000 },
   );
   return { ...resultado, roteador };
 }

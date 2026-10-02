@@ -14,6 +14,9 @@ export default defineConfig({
     environment: 'jsdom',
     setupFiles: ['./src/testes/setup.ts'],
     restoreMocks: true,
+    // O primeiro teste de cada arquivo carrega a página sob demanda (`lazy`), e o Vite a transforma nessa hora: com os
+    // arquivos rodando em paralelo, isso passava às vezes dos 5 s padrão. A folga vale só para esse início a frio.
+    testTimeout: 15_000,
     // e2e/*.spec.ts são do Playwright (rodam contra o compose), não do Vitest.
     exclude: [...configDefaults.exclude, 'e2e/**'],
     // npm run test:cobertura. Só o código da aplicação: sem os testes, o apoio de testes e o ponto de entrada.
