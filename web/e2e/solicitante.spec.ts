@@ -27,7 +27,7 @@ test.describe('Fluxo do Solicitante', () => {
 
     // 2. Não vê o link do Dashboard no menu de navegação
     const nav = page.getByRole('navigation', { name: 'Navegação' });
-    await expect(nav.getByRole('link', { name: 'Chamados' })).toBeVisible();
+    await expect(nav.getByRole('link', { name: 'Meus chamados' })).toBeVisible();
     await expect(nav.getByRole('link', { name: 'Novo chamado' })).toBeVisible();
     await expect(nav.getByRole('link', { name: 'Dashboard' })).toHaveCount(0);
 

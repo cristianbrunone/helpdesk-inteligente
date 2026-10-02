@@ -110,6 +110,49 @@ describe('ListaChamados', () => {
     await waitFor(() => expect(urlAtual(roteador).toString()).toBe(''));
   });
 
+  it('sem chamados e sem filtros, convida o atendente a abrir o primeiro', async () => {
+    capturarListagem(paginaDe([]));
+    await renderizarApp('/chamados');
+
+    expect(await screen.findByText('Ainda não há chamados.')).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Abrir chamado' })).toHaveAttribute(
+      'href',
+      '/chamados/novo',
+    );
+    expect(
+      screen.queryByText('Nenhum chamado encontrado com esses filtros.'),
+    ).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Limpar filtros' })).not.toBeInTheDocument();
+  });
+
+  it('para o solicitante, a lista se chama "Meus chamados" e o vazio fala com ele', async () => {
+    servidor.use(
+      http.get('/api/auth/eu', () =>
+        HttpResponse.json({
+          id: '0192f0c1-0000-7000-8000-0000000000bb',
+          nome: 'Marina Costa',
+          email: 'marina.costa@example.com',
+          perfil: 'Solicitante',
+        }),
+      ),
+    );
+    capturarListagem(paginaDe([]));
+    await renderizarApp('/chamados');
+
+    expect(
+      await screen.findByRole('heading', { level: 2, name: 'Meus chamados' }),
+    ).toBeInTheDocument();
+    expect(await screen.findByText('Você ainda não abriu nenhum chamado.')).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Abrir chamado' })).toHaveAttribute(
+      'href',
+      '/chamados/novo',
+    );
+    const navegacao = within(screen.getByRole('navigation', { name: 'Navegação' }));
+    expect(
+      navegacao.getByRole('link', { name: 'Meus chamados', current: 'page' }),
+    ).toBeInTheDocument();
+  });
+
   it('mostra o erro com o código de rastreio e permite tentar novamente', async () => {
     servidor.use(
       http.get(

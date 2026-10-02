@@ -3,8 +3,9 @@ import { useDisclosure } from '@mantine/hooks';
 import { Link, Outlet, useLocation, useNavigate } from 'react-router';
 import { useSair, useSessao } from '../api/autenticacao';
 
+// O solicitante só vê os próprios chamados (ADR-0026): o rótulo diz isso.
 const ITENS_DO_MENU = [
-  { rotulo: 'Chamados', destino: '/chamados' },
+  { rotulo: 'Chamados', rotuloSolicitante: 'Meus chamados', destino: '/chamados' },
   { rotulo: 'Novo chamado', destino: '/chamados/novo' },
   { rotulo: 'Dashboard', destino: '/dashboard' },
 ];
@@ -16,6 +17,7 @@ export function LayoutBase() {
   const navegar = useNavigate();
   const { data: usuario } = useSessao();
   const sair = useSair();
+  const ehSolicitante = usuario?.perfil === 'Solicitante';
 
   const aoSair = () =>
     sair.mutate(undefined, { onSettled: () => void navegar('/entrar', { replace: true }) });
@@ -55,19 +57,19 @@ export function LayoutBase() {
       </AppShell.Header>
 
       <AppShell.Navbar p="sm" component="nav" aria-label="Navegação">
-        {ITENS_DO_MENU.filter(
-          (item) => !(usuario?.perfil === 'Solicitante' && item.destino === '/dashboard'),
-        ).map(({ rotulo, destino }) => (
-          <NavLink
-            key={destino}
-            component={Link}
-            to={destino}
-            label={rotulo}
-            active={pathname === destino}
-            aria-current={pathname === destino ? 'page' : undefined}
-            onClick={close}
-          />
-        ))}
+        {ITENS_DO_MENU.filter((item) => !(ehSolicitante && item.destino === '/dashboard')).map(
+          ({ rotulo, rotuloSolicitante, destino }) => (
+            <NavLink
+              key={destino}
+              component={Link}
+              to={destino}
+              label={ehSolicitante && rotuloSolicitante ? rotuloSolicitante : rotulo}
+              active={pathname === destino}
+              aria-current={pathname === destino ? 'page' : undefined}
+              onClick={close}
+            />
+          ),
+        )}
       </AppShell.Navbar>
 
       <AppShell.Main>
