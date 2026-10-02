@@ -71,6 +71,15 @@ A CA é passada como *build secret* e vale **só durante o build**: as imagens f
 
 ### Rodar os testes
 
+**Um comando só** roda tudo (precisa do .NET 10 SDK, do Node 24 e do Docker):
+
+```bash
+bash scripts/testes.sh              # backend (unitários, integração, arquitetura) + frontend (lint, Vitest, build)
+bash scripts/testes.sh --completo   # + compose isolado (projeto helpdesk-testes, portas 8089/5081): smoke e E2E
+```
+
+O modo `--completo` usa sempre a IA fake, não toca no ambiente de desenvolvimento e derruba o compose dele no fim. As suítes também rodam separadas:
+
 ```bash
 # Backend: unitários, integração (PostgreSQL real via Testcontainers) e arquitetura
 dotnet test --filter "Category!=ProvedorReal"

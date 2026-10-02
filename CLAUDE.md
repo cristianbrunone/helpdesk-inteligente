@@ -58,7 +58,7 @@ tools/
 evals/                      conjuntos de avaliação rotulados (triagem/casos.jsonl)
 web/                        frontend (src/api/ isola todo acesso HTTP)
 prompts/                    prompts versionados (triagem.v1.md, copiloto.v1.md...)
-scripts/                    smoke-compose.sh (critérios de aceite contra o compose de pé; usado pelo CI)
+scripts/                    testes.sh (comando único), smoke-compose.sh (critérios de aceite; usado pelo CI), cobertura.mjs
 docs/                       documentação de arquitetura (docs/evals/ guarda os relatórios de eval)
 ```
 
@@ -107,6 +107,7 @@ docs/                       documentação de arquitetura (docs/evals/ guarda os
 
 ```bash
 docker compose up --build                  # sobe tudo (IA fake por padrão; sem .env)
+bash scripts/testes.sh [--completo]        # comando único: backend + front; --completo soma compose isolado, smoke e E2E
 docker compose up --build -d --wait && bash scripts/smoke-compose.sh   # critérios de aceite contra o ambiente de pé
 cd web && npm run e2e                      # E2E (Playwright) contra o compose de pé; E2E_BASE_URL e E2E_NAVEGADOR=msedge opcionais
 dotnet build                               # build do backend
