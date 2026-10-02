@@ -73,6 +73,11 @@ function servirDetalhe(
   return () => leituras;
 }
 
+/** Se `a` aparece antes de `b` no documento (a ordem de leitura e de foco). */
+function vemAntes(a: Element, b: Element) {
+  return Boolean(a.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING);
+}
+
 describe('DetalheChamado', () => {
   it('mostra dados, comentários e histórico, e só os botões das transições permitidas', async () => {
     servirDetalhe([detalhe(), '"7"']);
@@ -107,6 +112,34 @@ describe('DetalheChamado', () => {
     expect(
       screen.getByText('Chamados fechados ou cancelados não aceitam comentários.'),
     ).toBeInTheDocument();
+  });
+
+  it('no HTML (a ordem do celular), as ações e a triagem vêm antes da descrição para o atendente', async () => {
+    servirDetalhe([detalhe(), '"7"']);
+    await renderizarApp(`/chamados/${ID}`);
+
+    const acoes = await screen.findByRole('heading', { name: 'Ações' });
+    const descricao = screen.getByRole('heading', { name: 'Descrição' });
+    expect(vemAntes(acoes, descricao)).toBe(true);
+  });
+
+  it('para o solicitante, a descrição continua antes dos dados e do histórico', async () => {
+    servidor.use(
+      http.get('/api/auth/eu', () =>
+        HttpResponse.json({
+          id: '0192f0c1-0000-7000-8000-0000000000bb',
+          nome: 'Marina Costa',
+          email: 'marina.costa@example.com',
+          perfil: 'Solicitante',
+        }),
+      ),
+    );
+    servirDetalhe([detalhe({ triagem: null, transicoesPermitidas: [] }), '"7"']);
+    await renderizarApp(`/chamados/${ID}`);
+
+    const descricao = await screen.findByRole('heading', { name: 'Descrição' });
+    expect(screen.queryByRole('heading', { name: 'Ações' })).not.toBeInTheDocument();
+    expect(vemAntes(descricao, screen.getByRole('heading', { name: 'Histórico' }))).toBe(true);
   });
 
   it('habilita as ações imediatamente para o atendente logado', async () => {
