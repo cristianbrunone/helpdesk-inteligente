@@ -1,3 +1,4 @@
+using HelpDesk.Application.Autenticacao;
 using HelpDesk.Application.Categorias;
 using HelpDesk.Application.Chamados;
 using HelpDesk.Application.Copiloto;
@@ -14,6 +15,7 @@ internal static class ServicosAplicacao
 {
     public static IServiceCollection AdicionarCasosDeUso(this IServiceCollection services)
     {
+        services.AddScoped<EntrarNoSistema>();
         services.AddScoped<ListarCategorias>();
         services.AddScoped<CriarChamado>();
         services.AddScoped<ListarChamados>();

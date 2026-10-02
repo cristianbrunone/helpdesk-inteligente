@@ -20,6 +20,8 @@ internal sealed partial class DominioExceptionHandler(
     private static readonly Dictionary<string, (int Status, string Titulo)> _errosDominio = new()
     {
         ["requisicao_invalida"] = (StatusCodes.Status400BadRequest, "Requisição inválida"),
+        ["nao_autenticado"] = (StatusCodes.Status401Unauthorized, "Não autenticado"),
+        ["acesso_negado"] = (StatusCodes.Status403Forbidden, "Acesso negado"),
         ["nao_encontrado"] = (StatusCodes.Status404NotFound, "Recurso não encontrado"),
         ["versao_desatualizada"] = (StatusCodes.Status412PreconditionFailed, "Versão desatualizada"),
         ["validacao"] = (StatusCodes.Status422UnprocessableEntity, "Dados inválidos"),

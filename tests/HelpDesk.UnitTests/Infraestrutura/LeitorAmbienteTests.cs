@@ -116,6 +116,41 @@ public sealed class LeitorAmbienteTests
     }
 
     [Fact]
+    public void OpcoesSessao_SemChave_GeraUmaAleatoriaDe32BytesECookieSeguro()
+    {
+        var opcoes = ComVariaveis().OpcoesSessao();
+
+        opcoes.ChaveGerada.ShouldBeTrue();
+        opcoes.Chave.Length.ShouldBe(32);
+        opcoes.CookieSeguro.ShouldBeTrue();
+        opcoes.Validade.ShouldBe(TimeSpan.FromHours(8));
+        ComVariaveis().OpcoesSessao().Chave.ShouldNotBe(opcoes.Chave); // muda a cada subida
+    }
+
+    [Fact]
+    public void OpcoesSessao_ComChave_UsaAChaveEAceitaCookieSemHttps()
+    {
+        var chave = new string('k', 40);
+
+        var opcoes = ComVariaveis(("JWT_CHAVE", chave), ("SESSAO_COOKIE_SEGURO", "false")).OpcoesSessao();
+
+        opcoes.ChaveGerada.ShouldBeFalse();
+        opcoes.Chave.ShouldBe(System.Text.Encoding.UTF8.GetBytes(chave));
+        opcoes.CookieSeguro.ShouldBeFalse();
+        opcoes.ToString().ShouldNotContain(chave);
+    }
+
+    [Fact]
+    public void OpcoesSessao_ChaveCurta_ImpedeASubidaSemEcoarOValor()
+    {
+        var erro = Should.Throw<InvalidOperationException>(() =>
+            ComVariaveis(("JWT_CHAVE", "segredo-curto")).OpcoesSessao());
+
+        erro.Message.ShouldStartWith("A variável JWT_CHAVE deve ter pelo menos 32 bytes");
+        erro.Message.ShouldNotContain("segredo-curto");
+    }
+
+    [Fact]
     public void OpcoesLlm_OrcamentoDoCopiloto_LidoDoAmbiente() =>
         ComVariaveis(("COPILOTO_MAX_TOKENS_SAIDA", "300")).OpcoesLlm().MaxTokensSaidaCopiloto.ShouldBe(300);
 

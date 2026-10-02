@@ -68,6 +68,9 @@ services:
       # Copiloto (ADR-0012, ADR-0021): orçamento de saída e rate limit por minuto
       COPILOTO_MAX_TOKENS_SAIDA: ${COPILOTO_MAX_TOKENS_SAIDA:-}
       COPILOTO_RATE_LIMIT_POR_MINUTO: ${COPILOTO_RATE_LIMIT_POR_MINUTO:-}
+      # Sessão (ADR-0026): sem JWT_CHAVE, uma chave aleatória por subida (as sessões caem ao reiniciar a API)
+      JWT_CHAVE: ${JWT_CHAVE:-}
+      SESSAO_COOKIE_SEGURO: ${SESSAO_COOKIE_SEGURO:-}
       OTEL_EXPORTER_OTLP_ENDPOINT: ${OTEL_EXPORTER_OTLP_ENDPOINT:-}
     ports:
       - "${API_PORTA_HOST:-5080}:8080"

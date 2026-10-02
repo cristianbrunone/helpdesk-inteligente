@@ -24,6 +24,7 @@ public static class ServicosInfraestrutura
         services.AddDbContext<HelpDeskDbContext>(options => ConfiguracaoBanco.Configurar(options, connectionString));
         services.AddScoped<InicializadorBanco>();
         services.TryAddSingleton<IHashSenha, HashSenhaPbkdf2>();
+        services.AddScoped<IConsultaUsuarios, ConsultaUsuarios>();
         services.AddScoped<IConsultaCategorias, ConsultaCategorias>();
         services.AddScoped<IRepositorioChamados, RepositorioChamados>();
         services.AddScoped<IConsultaChamados, ConsultaChamados>();
